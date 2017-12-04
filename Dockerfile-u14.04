@@ -1,0 +1,39 @@
+#################################################
+#
+# Build :
+# docker build --tag cassiopee:2.5on14.04 .
+#
+# Run :
+# docker run -ti cassiopee:2.5on14.04
+# container_prompt > source env_Cassiopee.sh
+# container_prompt > python
+#   Test installation by trying to import KCore
+#
+#################################################
+FROM ubuntu:14.04
+
+MAINTAINER Guillaume Florent version: 0.1
+
+RUN apt-get update && apt-get install -y \
+    g++ \
+    git \
+    python-dev \
+    python-numpy \
+    scons \
+    gfortran \
+    xorg-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV CASSIOPEE /opt/cassiopee/build
+ENV LD_LIBRARY_PATH /usr/lib/x86_64-linux-gnu
+
+WORKDIR /opt
+ADD https://api.github.com/repos/guillaume-florent/cassiopee/git/refs/heads/master version.json
+RUN git clone https://github.com/guillaume-florent/cassiopee
+
+WORKDIR /opt/cassiopee/cassiopee/KCore/
+RUN ./install && . $CASSIOPEE/Dist/env_Cassiopee.sh && ./install
+
+WORKDIR /opt/cassiopee/build/Dist/
+
+CMD ["/bin/bash"]

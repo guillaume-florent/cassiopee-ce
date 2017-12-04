@@ -35,7 +35,7 @@ BCAPPS = ['tkBC', '---',
           'tkExtractBC']
 MOTIONAPPS = ['tkRigidMotion', 'tkTime']
 SOLVERAPPS = ['tkInit', 'tkDistributor', 'tkDist2Walls', '---',
-              'tkCassiopeeSolver', 'tkElsaSolver', 'tkFastSolver']
+              'tkCassiopeeSolver', 'tkElsaSolver']
 POSTAPPS = ['tkVariables', '---',
             'tkExtractMesh', '---',
             'tkStream', 'tkIsoLine', 'tkIsoSurf', '---',

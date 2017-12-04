@@ -21,7 +21,7 @@ displayVar="$DISPLAY"
 
 echo "*******************************************************"
 echo ""
-echo "Building Docker XFoil container ${containerName}"
+echo "Building Docker container : ${containerName}"
 
 docker build --tag ${imageName} .
 

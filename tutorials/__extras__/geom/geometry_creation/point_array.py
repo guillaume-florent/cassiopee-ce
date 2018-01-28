@@ -1,4 +1,7 @@
-# - point (array) -
+#!/usr/bin/env python
+# coding: utf-8
+
+r"""point (array)"""
 
 import os
 import sys
@@ -12,6 +15,6 @@ a = D.point((0,0,0))
 C.convertArrays2File([a], "out.plt")
 
 if PY3:
-    os.chmod("out.plt", 0o666)  
+    os.chmod("out.plt", 0o666)
 else:
     os.chmod("out.plt", 0666)

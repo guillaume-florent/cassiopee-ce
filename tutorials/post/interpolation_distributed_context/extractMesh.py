@@ -1,4 +1,10 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+r"""<TBC>"""
+
 # - ExtractMesh distribue -
+
 import Converter.PyTree as C
 import Distributor2.PyTree as Distributor2
 import Converter.Mpi as Cmpi
@@ -6,7 +12,8 @@ import Transform.PyTree as T
 import Post.Mpi as Pmpi
 import Converter.Internal as Internal
 
-rank = Cmpi.rank ; size = Cmpi.size
+rank = Cmpi.rank
+size = Cmpi.size
 
 # Maillage d'extraction (distribue)
 FILE = 'receiver.cgns'

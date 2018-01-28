@@ -1,4 +1,7 @@
-# - point (pyTree) -
+#!/usr/bin/env python
+# coding: utf-8
+
+r"""point (pyTree)"""
 
 import os
 import sys

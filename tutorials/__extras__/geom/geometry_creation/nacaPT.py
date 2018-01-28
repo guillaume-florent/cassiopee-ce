@@ -1,4 +1,8 @@
-# - naca (pyTree) -
+#!/usr/bin/env python
+# coding: utf-8
+
+r"""naca (pyTree)"""
+
 import Geom.PyTree as D
 import Converter.PyTree as C
 

@@ -1,6 +1,10 @@
-# - circle (pyTree) -
+#!/usr/bin/env python
+# coding: utf-8
+
+r"""circle (pyTree)"""
+
 import Geom.PyTree as D
 import Converter.PyTree as C
 
-a = D.circle((0,0,0), 1. , 0., 360.)
+a = D.circle((0, 0, 0), 1., 0., 360.)
 C.convertPyTree2File(a, 'out.cgns')

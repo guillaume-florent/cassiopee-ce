@@ -13,7 +13,7 @@
 #
 # At the container prompt :
 # > source env_Cassiopee.sh (in /opt/cassiopee/build/Dist)
-# > source /opt/cassiopee/build/Dist/env_Cassiopee.sh
+# > source /opt/cassiopee-ce/build/Dist/env_Cassiopee.sh
 # > python
 #   Test installation by trying to import KCore
 # OR

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # coding: utf-8
 
 r"""Generator : generate an unstructured octree"""
@@ -40,7 +40,8 @@ if refine is not None:
 # - octree4 firewall -
 s = C.deleteFlowSolutions__(s)
 s = C.convertArray2Tetra(s)
-s = T.join(s); s = G.close(s)
+s = T.join(s)
+s = G.close(s)
 s = T.reorder(s, (+1,))
 # - end of firewall -
 
@@ -350,7 +351,8 @@ for zone in Internal.getByType(bc, 'Zone_t')[2]:
 
 m = C.fillEmptyBCWith(m, 'WALL', 'FamilySpecified:WALL')
 
-tp = C.newPyTree(['Base']); tp[2][1][2] += [m]
+tp = C.newPyTree(['Base'])
+tp[2][1][2] += [m]
 
 C._addFamily2Base(tp, 'TOP', bndType='BCFarfield')
 C._addFamily2Base(tp, 'DOWN', bndType='BCFarfield')

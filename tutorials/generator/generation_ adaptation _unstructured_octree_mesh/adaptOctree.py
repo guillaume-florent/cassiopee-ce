@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # coding: utf-8
 
 r"""Generator : generation and adaptation of an unstructured octree mesh"""

@@ -1,4 +1,8 @@
-# - naca (array) -
+#!/usr/bin/env python
+# coding: utf-8
+
+r"""naca (array)"""
+
 import Geom as D
 import Converter as C
 

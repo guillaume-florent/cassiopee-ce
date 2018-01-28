@@ -1,10 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # coding: utf-8
 
 r"""Generator : cut an octree along X/Y/Z planes"""
 
-# cut an octree along X/Y/Z planes
-#
 import Converter.PyTree as C
 import Transform.PyTree as T
 import Generator.PyTree as G

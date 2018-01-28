@@ -1,6 +1,10 @@
-# - sphere6 (array) -
+#!/usr/bin/env python
+# coding: utf-8
+
+r"""sphere6 (array)"""
+
 import Geom as D
 import Converter as C
 
-a = D.sphere6((0,0,0), 1., 20)
+a = D.sphere6((0, 0, 0), 1., 20)
 C.convertArrays2File(a, "out.plt")

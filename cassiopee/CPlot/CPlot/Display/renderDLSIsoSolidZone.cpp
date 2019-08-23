@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -114,8 +114,7 @@ void DataDL::renderSIsoSolidZone(StructZone* zonep, int zone, int nofield)
 //=============================================================================
 void DataDL::renderSIsoSolidZone(StructZone* zonep, int zone, int nofield1,
                                int nfield2, int nofield3)
-{
-  
+{  
   int i, j, k, n1, n2;
   float offb;
   double blend;

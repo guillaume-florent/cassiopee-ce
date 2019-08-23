@@ -16,10 +16,10 @@ t = C.fillEmptyBCWith(t,'nref','BCFarfield',dim=2)
 for i in range(1,3): t[2][i] = C.addState(t[2][i], 'EquationDimension', 2)
 # depth = 2
 t1 = X.applyBCOverlaps(t, depth=2)
-t1 = X.setInterpolations(t1, loc='cell')
+t1 = X.setInterpolations(t1, loc='cell',storage='direct')
 test.testT(t1,1)
 # depth = 1
 t2 = X.applyBCOverlaps(t, depth=1)
-t2 = X.setInterpolations(t2, loc='face')
-t2 = X.setInterpolations(t2, loc='cell')
+t2 = X.setInterpolations(t2, loc='face',storage='direct')
+t2 = X.setInterpolations(t2, loc='cell',storage='direct')
 test.testT(t2,2)

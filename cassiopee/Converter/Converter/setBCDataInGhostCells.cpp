@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -45,15 +45,15 @@ PyObject* K_CONVERTER::setBCDataInGhostCellsStruct(PyObject* self,
   char* varString; char* eltType;
   vector<E_Float*> fields; vector<E_Int> locs;
   vector<E_Int*> cn;
-  E_Int res = K_PYTREE::getFromZone(zone, 0, locI, varString, fields, locs, im0, jm0, km0, 
-                                    cn, cnSize, cnNfld, eltType, hook, GridCoordinates, 
-                                    FlowSolutionNodes, FlowSolutionCenters);
+  K_PYTREE::getFromZone(zone, 0, locI, varString, fields, locs, im0, jm0, km0, 
+                        cn, cnSize, cnNfld, eltType, hook, GridCoordinates, 
+                        FlowSolutionNodes, FlowSolutionCenters);
   E_Int dim = 3;
   if (km == 1) dim = 2; 
   if (jm == 1) dim = 1;
   E_Int img = im+2*d;
   E_Int jmg = jm+2*d;
-  E_Int kmg = km+2*d;
+  //E_Int kmg = km+2*d;
 
   E_Int imgjmg = img*jmg;
   // DataSetInfo : extract list

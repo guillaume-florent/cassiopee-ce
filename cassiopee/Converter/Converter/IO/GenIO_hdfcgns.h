@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -20,6 +20,14 @@
 #include "GenIO.h"
 #include "kcore.h"
 #include "hdf5.h"
+#include <map>
+
+// For now, force output of v1.8 of HDF
+#if H5_VERSION_GE(1,10,2)
+#define KHDFVERSION H5F_LIBVER_V18
+#else
+#define KHDFVERSION H5F_LIBVER_LATEST
+#endif
 
 //# define CGNSMAXLABEL 33
 # define CGNSMAXLABEL 128
@@ -91,22 +99,25 @@ class GenIOHdf
 {
   public:
     /* Load one with depth deep */
-    PyObject* loadOne(PyObject* tree, int depth, PyObject* dataShape=NULL);
+    PyObject* loadOne(PyObject* tree, int depth, 
+                      PyObject* dataShape=NULL, PyObject* links=NULL);
 
     /* get* of a current HDFObject */
     hid_t* getChildren(hid_t);
     char*  getName(double node);
     char*  getLabel(double node);
     void   getType(double node, char* type, int dim, int* dims);
+    bool   isAnodeToSkip();
 
     /* Create HDF Method */
-    PyObject* createNode(hid_t& node, PyObject* dataShape=NULL);
+    PyObject* createNode(hid_t& node, PyObject* dataShape=NULL, PyObject* links=NULL);
     PyObject* createNodePartial(hid_t& node);
     PyObject* createNodePartialContigous(hid_t& node, int iField, int &nField, PyObject* data);
 
-    /* Get HDF Method */
+    /* Write HDF Method */
     hid_t writeNode(hid_t node, PyObject* tree);
     hid_t writeNodePartial(hid_t node, PyObject* tree);
+    hid_t modifyNode(hid_t node, PyObject* tree);
     hid_t openGroupWithLinks(hid_t start, char* path);
 
     /* Method to getSingle in HDF */
@@ -146,14 +157,13 @@ class GenIOHdf
 
     /* Method to setPartialArray in HDF */
     hid_t setArrayPartial(hid_t node, void* data, int idim, int* idims,
-                          hid_t    DataType,
-                          char    *CGNSType);
+                          hid_t DataType, char *CGNSType);
 
     /* DataSpace Fill */
     void fillDataSpaceWithFilter(PyObject* Filter);
 
     /* Full dump of a tree */
-    PyObject* dumpOne(PyObject* tree);
+    PyObject* dumpOne(PyObject* tree, int depth, PyObject* links=NULL);
     hid_t ADF_to_HDF_datatype(const char *tp);
 
   /* Constructor */
@@ -191,6 +201,7 @@ class GenIOHdf
   public:
     std::list<hid_t> _fatherStack;
     std::list<std::string> _stringStack;
+    std::map<std::string, bool> _skipTypes;
     hid_t _NATIVE_FLOAT;
     hid_t _NATIVE_DOUBLE;
     hid_t _NATIVE_INT;

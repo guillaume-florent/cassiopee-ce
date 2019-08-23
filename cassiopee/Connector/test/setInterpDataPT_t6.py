@@ -11,7 +11,7 @@ a = G.cartNGon((0,0,-0.2),(0.01,0.01,0.1),(101,101,5))
 
 # receiver
 pts = D.circle((0.5,0.5,0),0.05,N=20)
-pts = C.initVars(pts, 'centers:cellN=2')
+C._initVars(pts, 'centers:cellN', 2)
 
 pts2 = X.setInterpData(pts, a, order=3,
                        nature=1, loc='centers', storage='direct', hook=None,

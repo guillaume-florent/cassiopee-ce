@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -37,17 +37,17 @@ PyObject* K_GENERATOR::gapfixer(PyObject* self, PyObject* args)
   K_FLD::IntArray* cn1, *cn2;
 
   // Check the contour
-  E_Int res = K_ARRAY::getFromArray(arrB0, varString, fB0, ni, nj, nk,
-                                    cn1, eltType);
+  E_Int res1 = K_ARRAY::getFromArray(arrB0, varString, fB0, ni, nj, nk,
+                                     cn1, eltType);
 
-  if (res != 1 && res != 2)
+  if (res1 != 1 && res1 != 2)
   {
     PyErr_SetString(PyExc_TypeError,
                     "gapfixer: invalid array.");
     return NULL;
   }
   
-  if (res == 1) 
+  if (res1 == 1) 
   {
     if (ni != 1 && nj != 1 && nk != 1)
     {
@@ -57,12 +57,12 @@ PyObject* K_GENERATOR::gapfixer(PyObject* self, PyObject* args)
       return NULL;
     }
   }
-  if (res == 2) 
+  if (res1 == 2) 
   {
     if (strcmp(eltType, "TRI") != 0 && 
-	strcmp(eltType, "QUAD") != 0 &&
-	strcmp(eltType, "NODE") != 0 &&
-	strcmp(eltType, "BAR") != 0)
+        strcmp(eltType, "QUAD") != 0 &&
+        strcmp(eltType, "NODE") != 0 &&
+        strcmp(eltType, "BAR") != 0)
     {
       delete fB0; delete cn1;
       PyErr_SetString(PyExc_TypeError,
@@ -79,17 +79,17 @@ PyObject* K_GENERATOR::gapfixer(PyObject* self, PyObject* args)
   if ((posx == -1) || (posy == -1) || (posz == -1))
   {
     delete fB0;
-    if (res == 2) delete cn1;
+    if (res1 == 2) delete cn1;
     PyErr_SetString(PyExc_TypeError,
                     "gapfixer: can't find coordinates in array.");
     return NULL;
   }
 
   // Check the cloud.
-  res = K_ARRAY::getFromArray(arrC, varString, fC, ni, nj, nk,
-                              cn2, eltType);
+  E_Int res2 = K_ARRAY::getFromArray(arrC, varString, fC, ni, nj, nk,
+                                     cn2, eltType);
 
-  if (res != 1) 
+  if (res2 != 1) 
   {
     PyErr_SetString(PyExc_TypeError,
                     "gapfixer: invalid array. Must be structured.");
@@ -117,7 +117,7 @@ PyObject* K_GENERATOR::gapfixer(PyObject* self, PyObject* args)
   if ((posx == -1) || (posy == -1) || (posz == -1))
   {
     delete fC; 
-    if ( res == 2 ) delete cn2;
+    if (res2 == 2) delete cn2;
     PyErr_SetString(PyExc_TypeError,
                     "gapfixer: can't find coordinates in array.");
     return NULL;
@@ -129,7 +129,7 @@ PyObject* K_GENERATOR::gapfixer(PyObject* self, PyObject* args)
   {
     K_FLD::IntArray* cndum;
     E_Int nidum, njdum, nkdum;
-    res = K_ARRAY::getFromArray(arrHP, varString, fHP, nidum, njdum, nkdum, cndum, eltType);
+    E_Int res = K_ARRAY::getFromArray(arrHP, varString, fHP, nidum, njdum, nkdum, cndum, eltType);
     if (res != -1)
     {
       posx = K_ARRAY::isCoordinateXPresent(varString);
@@ -164,6 +164,8 @@ PyObject* K_GENERATOR::gapfixer(PyObject* self, PyObject* args)
                                       false);
   delete fB0;
   delete fC;
+  if (res1 == 2) delete cn1; 
+  if (res2 == 2) delete cn2;
   return tpl;
 }
 

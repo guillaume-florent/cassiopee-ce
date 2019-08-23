@@ -1,5 +1,6 @@
 # - mesh smoother -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -12,8 +13,7 @@ import Post.PyTree as P
 import CPlot.iconics as iconics
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def setConstraint():
@@ -100,7 +100,7 @@ def smooth():
     try:
         A = C.convertArray2Tetra(zones)
         A = T.join(A); A = G.close(A)
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: smooth')
         CTK.TXT.insert('START', 'Some zones are invalid for smoothing.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
@@ -111,15 +111,15 @@ def smooth():
     if dims[3] == 'TRI': pbDim = 2
         
     # Keep external faces
-    if (VARS[3].get() == 1 or pbDim == 3): 
+    if VARS[3].get() == 1 or pbDim == 3: 
         try: ext = P.exteriorFaces(A)
         except: ext = []
-    if (VARS[3].get() == 1 and ext != []): fixedConstraints.append(ext)
+    if VARS[3].get() == 1 and ext != []: fixedConstraints.append(ext)
 
     # Keep sharp edges
     if VARS[5].get() == 1:
         angle = CTK.varsFromWidget(VARS[6].get(), type=1)
-        if (len(angle) != 1):
+        if len(angle) != 1:
             CTK.TXT.insert('START', 'Sharp edges angle is incorrect.\n')
             CTK.TXT.insert('START', 'Error: ', 'Error'); return
         angle = angle[0]
@@ -157,7 +157,7 @@ def smooth():
                                  projConstraints=projConstraints, 
                                  delta=strength)
                 zones = T.projectOrtho(zones, [projSurf])
-    except Exception, e:
+    except Exception as e:
         fail = True
         Panels.displayErrors([0,str(e)], header='Error: smooth')
 
@@ -173,7 +173,7 @@ def smooth():
         CTK.TXT.insert('START', 'Smooth fails.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
 
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -187,7 +187,7 @@ def createApp(win):
                            text='tkSmooth', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Smooth meshes.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=0)
@@ -207,30 +207,30 @@ def createApp(win):
     # - VARS -
     # -0- Smoother niter -
     V = TK.StringVar(win); V.set('10'); VARS.append(V)
-    if CTK.PREFS.has_key('tkSmoothIter'): V.set(CTK.PREFS['tkSmoothIter'])
+    if 'tkSmoothIter' in CTK.PREFS: V.set(CTK.PREFS['tkSmoothIter'])
     # -1- Constraint
     V = TK.StringVar(win); V.set(''); VARS.append(V)
     # -2- Constraint strength
     V = TK.StringVar(win); V.set('0.1'); VARS.append(V)
-    if CTK.PREFS.has_key('tkSmoothConsStrength'): 
+    if 'tkSmoothConsStrength' in CTK.PREFS: 
         V.set(CTK.PREFS['tkSmoothConsStrength'])
     # -3- Constraint external faces
     V = TK.IntVar(win); V.set(1); VARS.append(V)
     # -4- smooth eps
     V = TK.StringVar(win); V.set('0.5'); VARS.append(V)
-    if CTK.PREFS.has_key('tkSmoothEps'): 
+    if 'tkSmoothEps' in CTK.PREFS: 
         V.set(CTK.PREFS['tkSmoothEps'])
     # -5- Constraint sharp edges
     V = TK.IntVar(win); V.set(0); VARS.append(V)
     # -6- Sharp edges detection angle
     V = TK.StringVar(win); V.set('30.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkSmoothSharpAngle'): 
+    if 'tkSmoothSharpAngle' in CTK.PREFS: 
         V.set(CTK.PREFS['tkSmoothSharpAngle'])
     # -7- Project on surface
     V = TK.IntVar(win); V.set(0); VARS.append(V)
     # -8- Type de smoothing
     V = TK.StringVar(win); V.set('Volume'); VARS.append(V)
-    if CTK.PREFS.has_key('tkSmoothType'): 
+    if 'tkSmoothType' in CTK.PREFS: 
         V.set(CTK.PREFS['tkSmoothType'])
 
     # - Smoother power -
@@ -330,11 +330,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

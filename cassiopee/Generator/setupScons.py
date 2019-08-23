@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
-import os, sys
+import os
 
 #=============================================================================
 # Generator requires:
@@ -26,7 +26,7 @@ from KCore.config import *
 prod = os.getenv("ELSAPROD")
 if prod is None: prod = 'xx'
 libraryDirs = ["build/"+prod, kcoreLibDir]
-libraries = ["generator", "generator2", "kcore"]
+libraries = ["generator", "generator2", "generator3", "kcore"]
 (ok, libs, paths) = Dist.checkFortranLibs([], additionalLibPaths)
 libraryDirs += paths; libraries += libs
 (ok, libs, paths) = Dist.checkCppLibs([], additionalLibPaths)
@@ -40,14 +40,14 @@ listExtensions.append(
               include_dirs=["Generator"]+additionalIncludePaths+[numpyIncDir, kcoreIncDir],
               library_dirs=additionalLibPaths+libraryDirs,
               libraries=libraries+additionalLibs,
-              extra_compile_args=Dist.getCppArgs(),
+              extra_compile_args=Dist.getCArgs(),
               extra_link_args=Dist.getLinkArgs()
               ) )
 
 # setup =======================================================================
 setup(
     name="Generator",
-    version="2.5",
+    version="2.9",
     description="*Cassiopee* module of mesh generation.",
     author="Onera",
     package_dir={"":"."},

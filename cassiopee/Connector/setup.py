@@ -22,12 +22,11 @@ Dist.writeSetupCfg()
 
 # Compilation des fortrans ===================================================
 from KCore.config import *
-if (f77compiler == "None"):
-    print "Error: a fortran 77 compiler is required for compiling Connector."
+if f77compiler == "None":
+    print("Error: a fortran 77 compiler is required for compiling Connector.")
     sys.exit()
 args = Dist.getForArgs(); opt = ''
-for c in xrange(len(args)):
-    opt += 'FOPT'+str(c)+'='+args[c]+' '
+for c, v in enumerate(args): opt += 'FOPT'+str(c)+'='+v+' '
 os.system("make -e FC="+f77compiler+" WDIR=Connector/Fortran "+opt)
 prod = os.getenv("ELSAPROD")
 if prod is None: prod = 'xx'
@@ -46,7 +45,7 @@ listExtensions = []
 listExtensions.append(
     Extension('Connector.connector',
               sources=['Connector/connector.cpp']+srcs.cpp_srcs,
-              include_dirs=["Connector"]+additionalIncludePaths+[numpyIncDir, kcoreIncDir],
+              include_dirs=["Connector", "Connector/CMP/include"]+additionalIncludePaths+[numpyIncDir, kcoreIncDir],
               library_dirs=additionalLibPaths+libraryDirs,
               libraries=libraries+additionalLibs,
               extra_compile_args=Dist.getCppArgs(),
@@ -56,7 +55,7 @@ listExtensions.append(
 # setup ======================================================================
 setup(
     name="Connector",
-    version="2.5",
+    version="2.9",
     description="Connector for *Cassiopee* modules.",
     author="Onera",
     package_dir={"":"."},

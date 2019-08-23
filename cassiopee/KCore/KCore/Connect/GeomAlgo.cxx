@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -27,6 +27,7 @@
 #include <assert.h>
 #include "Connect/MeshTool.h"
 #include "Fld/ArrayWriter.h"
+#include "Nuga/include/macros.h"
 
 #ifdef DEBUG_GEOM_ALGO
 #include "IO/io.h"
@@ -372,10 +373,14 @@ inline void GeomAlgo<K_MESH::Triangle>::get_swapE
   size_t j;
   K_FLD::IntArray::const_iterator pSn;
   E_Int Ni, Nj, Nk, Nl;
+  
+  std::vector<bool> frozen(connect.cols(), false); //one swapping edge per element (otherwise swapE entries get inconsistent)
       
   for (E_Int i=0; i < connect.cols(); ++i)
   {
     pS = connect.col(i);
+    
+    if (frozen[i]) continue;
     
     Ni = *(pS);
     Nj = *(pS+1);
@@ -392,6 +397,8 @@ inline void GeomAlgo<K_MESH::Triangle>::get_swapE
       Sn = neighbors(j, i);
       if (Sn == E_IDX_NONE)
         continue;
+      
+      if (frozen[Sn]) continue;
       
       Ni = *(pS+j);
       Nj = *(pS+(j+1)%3);
@@ -436,6 +443,8 @@ inline void GeomAlgo<K_MESH::Triangle>::get_swapE
     // and the min
     if (MIN2(q21, q22) < MIN2(q11,q12))
       continue;
+
+    frozen[i]=frozen[Sn]=true;
     
     swapE.push_back(std::make_pair(i,j)); 
   } 
@@ -446,25 +455,44 @@ template <typename ElementType>
 inline E_Float GeomAlgo<ElementType>::angle_measure
 (const E_Float* ni, const E_Float* nj, const E_Float* E0, const E_Float* E1)
 {
-  
+  //
   E_Float nk[3];
   K_FUNC::crossProduct<3>(ni, nj, nk);
-  
-  E_Float E0E1[3];
-  K_FUNC::diff<3>(E1, E0, E0E1);
-  
-  E_Float K2 = -K_FUNC::dot<3>(E0E1, nk);
-  E_Int signK2 = zSIGN(K2);
-  
-  if (signK2 == 0) // 4 points are coplanar
-    return K_CONST::E_PI;
-  
-  E_Float s2 = K_FUNC::sqrNorm<3>(nk);
   E_Float c = K_FUNC::dot<3>(ni, nj);
-  E_Float alpha = ::atan2(::sqrt(s2), c); 
-  alpha = K_CONST::E_PI - signK2*alpha;
   
-  return alpha;
+  E_Int s = zSIGN(::fabs(c) - 1., ZERO_M);
+  
+  if (s != 0) // non-degn case
+  {
+    E_Float E0E1[3];
+    K_FUNC::diff<3>(E1, E0, E0E1);
+    K_FUNC::normalize<3>(E0E1);
+    E_Float K2 = - K_FUNC::dot<3>(E0E1, nk);
+    E_Int signK2 = zSIGN(K2, ZERO_M);
+    
+    E_Float s2 = K_FUNC::sqrNorm<3>(nk);
+    
+#ifdef DEBUG_GEOM_ALGO
+    if (signK2 == 0) std::cout << "ERROR : GeomAlgo::angle_measure : inconsistence between s and c" << std::endl;
+    assert (signK2 != 0);
+#endif
+    
+    E_Float alpha = ::atan2(::sqrt(s2), c); 
+    alpha = K_CONST::E_PI - signK2*alpha;
+  
+    return alpha; 
+  }
+  else // (s == 0) : ni and nj are nearly colinear : 0, Pi or 2Pi
+  {
+    if (c > 0.) return K_CONST::E_PI;
+    
+#ifdef DEBUG_GEOM_ALGO
+    std::cout << "ERROR : GeomAlgo::angle_measure : 0 or 2Pi ?" << std::endl;
+    assert (false);
+#endif
+    return 2.*K_CONST::E_PI; //error : either 0 or 2Pi are wrong. return one of them as an arbitray choice.
+  }
+  
 }
 
 ///

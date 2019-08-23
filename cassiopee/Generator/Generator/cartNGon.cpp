@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -353,8 +353,10 @@ PyObject* K_GENERATOR::cartNGon(PyObject* self, PyObject* args)
   }
 
   // index
-  E_Int* indPG = cn->getIndPG();
-  E_Int* indPH = cn->getIndPH();
+  if (api == 2) // array2
+  {
+   E_Int* indPG = cn->getIndPG();
+   E_Int* indPH = cn->getIndPH();
 #pragma omp parallel
   {
     #pragma omp for
@@ -362,9 +364,9 @@ PyObject* K_GENERATOR::cartNGon(PyObject* self, PyObject* args)
     #pragma omp for
     for (E_Int i = 0; i < ncells; i++) indPH[i] = 7*i;    
   }
+  }
   //RELEASESHAREDU(tpl, f, cn);
-  delete f;
-  delete cn;
+  delete f; delete cn;
   Py_DECREF(PyList_GetItem(tpl,1)); Py_DECREF(PyList_GetItem(tpl,2));
   return tpl;
 }

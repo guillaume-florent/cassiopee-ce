@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -30,14 +30,13 @@ PyObject* K_CONNECTOR::applyBCOverlapStruct(PyObject* self, PyObject* args)
 {
   PyObject *array;
   E_Int imin, imax, jmin, jmax, kmin, kmax;
-  E_Int depth; E_Int loc;
-
+  E_Int depth; E_Int loc; E_Int cellNInterpValue;
+  char* cellNName;
   if (!PYPARSETUPLEI(args,
-                    "O(lll)(lll)ll", "O(iii)(iii)ii",
-                    &array, &imin, &jmin, &kmin, &imax, &jmax, &kmax, &depth, &loc))
-  {
-      return NULL;
-  }
+                    "O(lll)(lll)llls", "O(iii)(iii)iiis",
+                    &array, &imin, &jmin, &kmin, &imax, &jmax, &kmax, 
+                    &depth, &loc, &cellNInterpValue, &cellNName))
+    return NULL;
   
   E_Int shift = 0;
   if (loc == 0) shift = 1; // loc='nodes'
@@ -45,17 +44,19 @@ PyObject* K_CONNECTOR::applyBCOverlapStruct(PyObject* self, PyObject* args)
   E_Int im, jm, km;
   FldArrayF* f; FldArrayI* cn;
   char* varString; char* eltType;
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, im, jm, km, 
-                                    cn, eltType, true);
+  E_Int res = K_ARRAY::getFromArray2(array, varString, f, im, jm, km, 
+                                     cn, eltType);
   if (res != 1) 
   {    
     PyErr_SetString(PyExc_TypeError, 
                     "applyBCOverlapStruct: 1st argument must be structured.");
     RELEASESHAREDB(res, array, f, cn); return NULL;
   }
-  
+
+  E_Float interpolatedValue = cellNInterpValue;
+
   // verif cellN 
-  E_Int posc = K_ARRAY::isCellNatureField2Present(varString);
+  E_Int posc = K_ARRAY::isNamePresent(cellNName,varString);
   if (posc == -1) 
   {
     PyErr_SetString(PyExc_TypeError,
@@ -83,10 +84,6 @@ PyObject* K_CONNECTOR::applyBCOverlapStruct(PyObject* self, PyObject* args)
     }
   }
   E_Int npts = f->getSize(); E_Int nfld = f->getNfld();
-  PyObject* tpl = K_ARRAY::buildArray(nfld, varString, im, jm, km);
-  E_Float* foutp = K_ARRAY::getFieldPtr(tpl);
-  FldArrayF fout(npts, nfld, foutp, true); fout = *f;
-  E_Float* cellNt = fout.begin(posc);
   
   if (imin == imax)
   {
@@ -112,30 +109,38 @@ PyObject* K_CONNECTOR::applyBCOverlapStruct(PyObject* self, PyObject* args)
   else {kmax = kmax-1+shift;}
 
   E_Int imjm = im*jm;
-  E_Int ind;
-  for (E_Int k = kmin; k <= kmax; k++)
-    for (E_Int j = jmin; j <= jmax; j++)
-      for (E_Int i = imin; i <= imax; i++)
-      {
-        ind = (i-1) + (j-1)* im + (k-1)*imjm;
-        if (cellNt[ind] != 0.) cellNt[ind] = 2.;
-      }
+  E_Float* cellNt = f->begin(posc);
+#pragma omp parallel default(shared)
+  {
+    E_Int ind;
+# pragma omp for
+    for (E_Int k = kmin; k <= kmax; k++)
+      for (E_Int j = jmin; j <= jmax; j++)
+        for (E_Int i = imin; i <= imax; i++)
+        {
+          ind = (i-1) + (j-1)* im + (k-1)*imjm;
+          if (cellNt[ind] != 0.) cellNt[ind] = interpolatedValue;
+        }
+  }
   RELEASESHAREDS(array, f);
-  return tpl;
+  Py_INCREF(Py_None);
+  return Py_None;
 }
 
 //=============================================================================
 /* Met le cellN a 2 pour les centres des elements dans un voisinage de depth 
-   elements d une face definissant une frontiere overlap 
+   elements d'une face definissant une frontiere overlap 
 */
 //=============================================================================
 PyObject* K_CONNECTOR::applyBCOverlapsNG(PyObject* self, PyObject* args)
 {
   PyObject *array, *faceList;
-  E_Int depth; E_Int loc;
+  E_Int depth; E_Int loc; E_Int cellNInterpValue;
+  char* cellNName;
   if (!PYPARSETUPLEI(args,
-                    "OOll", "OOii",
-                    &array, &faceList, &depth, &loc))
+                    "OOllls", "OOiiis",
+                    &array, &faceList, &depth, &loc, 
+                    &cellNInterpValue, &cellNName))
   {
       return NULL;
   }
@@ -154,7 +159,7 @@ PyObject* K_CONNECTOR::applyBCOverlapsNG(PyObject* self, PyObject* args)
   }
   
   // verif cellN 
-  E_Int posc = K_ARRAY::isCellNatureField2Present(varString);
+  E_Int posc = K_ARRAY::isNamePresent(cellNName,varString);
   if (posc == -1) 
   {
     PyErr_SetString(PyExc_TypeError,
@@ -172,6 +177,8 @@ PyObject* K_CONNECTOR::applyBCOverlapsNG(PyObject* self, PyObject* args)
                     "applyBCOverlaps: 2nd arg must be a numpy array of ints.");
     RELEASESHAREDU(array, f, cn); return NULL;
   }
+
+  E_Float interpolatedValue = cellNInterpValue;
   
   PyObject* tpl;
   E_Int csize, nfldout, npts, nelts, sizeFN, nov1, dummy;
@@ -222,7 +229,7 @@ PyObject* K_CONNECTOR::applyBCOverlapsNG(PyObject* self, PyObject* args)
       for (E_Int nov = 0; nov < ptrfn[0]; nov++)
       {
         nov1 = ptrfn[nov+1];
-        cellNp[nov1-1] = 2.;
+        cellNp[nov1-1] = interpolatedValue;
         voisins.push_back(nov1-1);
       }
     }
@@ -246,7 +253,7 @@ PyObject* K_CONNECTOR::applyBCOverlapsNG(PyObject* self, PyObject* args)
           for (E_Int novv = 0; novv < nvertexV; novv++)
           {
             nov1 = vertexN[novv]-1;
-            cellNp[nov1] = 2.;
+            cellNp[nov1] = interpolatedValue;
             voisinsL.push_back(nov1);
           }
         }
@@ -310,7 +317,7 @@ PyObject* K_CONNECTOR::applyBCOverlapsNG(PyObject* self, PyObject* args)
           for (E_Int vv = 0; vv < neltsV; vv++)
           {
             etv = eltsV[vv];
-            cellNp[etv] = 2.;
+            cellNp[etv] = interpolatedValue;
             voisinsL.push_back(etv);
           }
         }

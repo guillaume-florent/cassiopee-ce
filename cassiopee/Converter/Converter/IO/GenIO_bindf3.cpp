@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -82,7 +82,7 @@ E_Int K_IO::GenIO::df3write(
   FldArrayF& density = *d;
 
   // Build Adt for all blocks
-  vector<K_INTERP::InterpAdt*> adts;
+  vector<K_INTERP::InterpData*> adts;
   vector<void*> a1; vector<void*> a2; vector<void*> a3; vector<void*> a4;
   E_Int isBuilt;
   for (E_Int n = 0; n < s; n++)

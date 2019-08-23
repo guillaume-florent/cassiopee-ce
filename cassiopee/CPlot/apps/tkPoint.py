@@ -1,5 +1,6 @@
 # - an applet for creating points -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -36,7 +37,7 @@ def createPoint(event=None):
     a = D.point((point[0], point[1], point[2]))
     CTK.add(CTK.t, nob, -1, a)
     CTK.TXT.insert('START', 'Point '+VARS[0].get()+' created.\n')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -85,7 +86,7 @@ def createApp(win):
                            text='tkPoint', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Generate points.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=4)
     Frame.columnconfigure(1, weight=4)
@@ -140,7 +141,7 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

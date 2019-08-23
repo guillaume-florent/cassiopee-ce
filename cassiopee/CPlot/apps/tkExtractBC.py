@@ -1,5 +1,6 @@
 # - extract BCs in a pyTree -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -25,7 +26,7 @@ def updateFamilyBCNameList(event=None):
 def updateFamilyBCNameList2(event=None):
     if CTK.t == []: return
     varsp = ['-All BC-']+getAllDefinedBC(CTK.t)
-    if WIDGETS.has_key('BC'): WIDGETS['BC']['values'] = varsp
+    if 'BC' in WIDGETS: WIDGETS['BC']['values'] = varsp
 
 #==============================================================================
 def setBC2Recover():
@@ -79,18 +80,18 @@ def extract(event=None):
         (Zp, BCNames, BCTypes) = C.getBCs(zones)
         Z = []
         for i in Zp: Z += i
-        for i in xrange(len(Z)): Internal._createChild(Z[i], 'BCType', 'UserDefine_t', BCTypes[i])
+        for i, z in enumerate(Z): Internal._createChild(z, 'BCType', 'UserDefined_t', BCTypes[i])
 
     nob = C.getNobOfBase(base, CTK.t)
     for i in Z:
         i[0] = C.getZoneName(i[0])
         CTK.add(CTK.t, nob, -1, i)
-    CTK.t = C.fillMissingVariables(CTK.t) # a cause du BC data set
+    #C._fillMissingVariables(CTK.t) # a cause du BC data set
     CTK.TXT.insert('START', 'BCs of type %s extracted.\n'%BCtype)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
-    CTK.TKPLOTXY.updateApp()
+    if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
     
 #==============================================================================
 # Recover the BCs on zones
@@ -118,7 +119,7 @@ def recover(event=None):
                     BCNames.append(r[1])
                     n = Internal.getNodeFromName1(z, 'BCType')
                     if n is not None: BCTypes.append(Internal.getValue(n))
-                    else: BCTypes.append('BCUserDefined')
+                    else: BCTypes.append('UserDefined')
     CTK.saveTree()
     nzs = CPlot.getSelectedZones()
     if CTK.__MAINTREE__ <= 0 or nzs == []:
@@ -151,7 +152,7 @@ def createApp(win):
                            text='tkExtractBC', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Extract boundary conditions.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=2)
     Frame.columnconfigure(1, weight=2)
@@ -169,7 +170,7 @@ def createApp(win):
     # - VARS -
     # - 0 - Type de BC -
     V = TK.StringVar(win); V.set('-All BC-'); VARS.append(V)
-    if CTK.PREFS.has_key('tkExtractBCType'): 
+    if 'tkExtractBCType' in CTK.PREFS: 
         V.set(CTK.PREFS['tkExtractBCType'])
     # - 1 - List of zoneBCs to recover
     V = TK.StringVar(win); V.set(''); VARS.append(V)
@@ -231,7 +232,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

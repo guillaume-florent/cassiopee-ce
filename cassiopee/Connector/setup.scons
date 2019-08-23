@@ -40,6 +40,9 @@ if mpi:
     libraryDirs.append(mpiLibDir)
     includeDirs.append(mpiIncDir)
     ADDITIONALCPPFLAGS = ['-D_MPI']
+else:	       
+    ADDITIONALCPPFLAGS = []
+
 if mpi: libraries.append('mpi')
 
 # Env =========================================================================
@@ -47,17 +50,16 @@ import srcs
 if Dist.getSystem()[0] == 'mingw': tools = ['mingw']
 else: tools = None
 AR = Dist.getAR()
-env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CCFLAGS=[], CXXFLAGS=[],
+env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CPPFLAGS=[],
                   FORTRAN=f77compiler,
                   LIBPATH=additionalLibPaths+libraryDirs,
                   LIBS=libraries+additionalLibs,
                   CPPPATH=includeDirs,
-                  CPPFLAGS=Dist.getCppArgs(),
+                  CFLAGS=Dist.getCArgs()+ADDITIONALCPPFLAGS,
+                  CXXFLAGS=Dist.getCppArgs()+ADDITIONALCPPFLAGS,
                   SHLIBSUFFIX=so_ext, SHLIBPREFIX='',
                   LINKFLAGS=Dist.getLinkArgs(),
-                  ENV={'PATH': Dist.getenv('PATH'),
-                       'LD_LIBRARY_PATH': Dist.getenv('LD_LIBRARY_PATH'),
-                       'LM_LICENSE_FILE': Dist.getenv('LM_LICENSE_FILE')})
+                  ENV=Dist.getEnvForScons())
 
 env = Dist.createFortranBuilder(env, [kcoreIncDir, './Connector/Fortran'])
 ppf = Dist.createFortranFiles(env, srcs)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, sys
+import os
 from distutils.core import setup, Extension
 import KCore.config
 
@@ -27,13 +27,13 @@ Dist.writeSetupCfg()
 (kcoreVersion, kcoreIncDir, kcoreLibDir) = Dist.checkKCore()
 
 mySystem = Dist.getSystem()
-if (mySystem[0] == 'mingw' and mySystem[1] == '32'):
+if mySystem[0] == 'mingw' and mySystem[1] == '32':
     libraries = ["cplot", "kcore", "wsock32", "winmm", "gdi32"]
     libGL = ['opengl32', 'glu32']
-elif (mySystem[0] == 'mingw' and mySystem[1] == '64'):
+elif mySystem[0] == 'mingw' and mySystem[1] == '64':
     libraries = ["cplot", "kcore", "wsock32", "winmm", "gdi32"]
     libGL = ['opengl32', 'glu32']
-elif (mySystem[0] == 'Darwin'):
+elif mySystem[0] == 'Darwin':
     libraries = ["kcore", "X11", "Xmu", "cplot"]
     libGL = ['GL', 'GLU'] 
 else:
@@ -41,12 +41,22 @@ else:
     libGL = ['GL', 'GLU']
 
 from KCore.config import *
-if not UseOSMesa: libraries += libGL
-
 prod = os.getenv("ELSAPROD")
 if prod is None: prod = 'xx'
 libraryDirs = ["build/"+prod]
 includeDirs = [numpyIncDir, kcoreIncDir]
+
+# Test if OSMesa exists =======================================================
+if UseOSMesa:
+    (OSMesa, OSMesaIncDir, OSMesaLibDir, libname) = Dist.checkOSMesa(additionalLibPaths,
+                                                                     additionalIncludePaths)
+else: OSMesa = False
+
+if not OSMesa: libraries += libGL
+else: 
+  libraries += [libname]+libGL
+  libraryDirs += [OSMesaLibDir]
+  includeDirs += [OSMesaIncDir]
 
 (ok, libs, paths) = Dist.checkCppLibs([], additionalLibPaths)
 libraryDirs += paths; libraries += libs
@@ -66,27 +76,14 @@ if png:
 (mpeg, mpegIncDir, mpegLib) = Dist.checkMpeg(additionalLibPaths,
                                              additionalIncludePaths)
 if mpeg:
-    libraries += ["avcodec"]
+    libraries += ["avcodec", "avutil"]
     libraryDirs += [mpegLib]
     includeDirs += [mpegIncDir]
-
-# Test if OSMesa exists =======================================================
-# Put this to True for using CPlot in batch mode
-if UseOSMesa:
-    (OSMesa, OSMesaIncDir, OSMesaLib) = Dist.checkOSMesa(additionalLibPaths,
-                                                         additionalIncludePaths)
-    if OSMesa:
-        libraries += ["OSMesa", "GL", "GLU"]
-        libraryDirs += [OSMesaLib]
-        includeDirs += [OSMesaIncDir]
-else: OSMesa = False
     
 libraryDirs += [kcoreLibDir]
 
 # Extensions =================================================================
-import KCore.installPath
 EXTRA = ['-D__SHADERS__']
-
 if OSMesa: EXTRA += ['-D__MESA__']
 
 EXTRA += Dist.getCppArgs()
@@ -105,7 +102,7 @@ extensions = [
 # Setup ======================================================================
 setup(
     name="CPlot",
-    version="2.5",
+    version="2.9",
     description="A plotter for *Cassiopee* Modules.",
     author="Onera",
     package_dir={"":"."},

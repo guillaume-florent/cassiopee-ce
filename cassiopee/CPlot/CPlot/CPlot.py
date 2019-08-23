@@ -1,24 +1,26 @@
 """Plotter functions.
 """
-__version__ = '2.5'
+__version__ = '2.9'
 __author__ = "Christophe Benoit, Stephanie Peron, Pascal Raud, Matthieu Soismier, Bertrand Michel"
 #
 # Plotter for arrays
 #
-import cplot
+from . import cplot
 import time
 __timeStep__ = 0.02
 __slot__ = None
 
+try: range = xrange
+except: pass
+
 #==============================================================================
-def configure(use_render):
+def configure(useRender):
     """
-    Configure CPlot pour soit un rendering direct (cplot.useDirect),
-    utiliser les Display Lists (cplot.useDL)
-    soit les VBO (cplt.useVBO)
+    Configure CPlot for direct rendering (cplot.useDirect),
+    display Lists (cplot.useDL)
+    or VBO (cplot.useVBO)
     """
-    # Plus tard, cplt.useImg egalement ?
-    cplot.configure(use_render)
+    cplot.configure(useRender)
 
 #==============================================================================
 # -- display --
@@ -34,6 +36,12 @@ def display(arrays,
             solidStyle=-1,
             scalarStyle=-1,
             vectorStyle=-1,
+            vectorScale=-1.,
+            vectorDensity=-1.,
+            vectorNormalize=-1,
+            vectorShowSurface=-1,
+            vectorShape=-1,
+            vectorProjection=-1,
             colormap=-1,
             niso=-1,
             isoEdges=-1,
@@ -63,7 +71,8 @@ def display(arrays,
         displayNew__(arrays, dim, mode, scalarField, vectorField1,
                      vectorField2, vectorField3, displayBB, displayInfo,
                      displayIsoLegend, meshStyle, solidStyle,
-                     scalarStyle, vectorStyle, colormap,
+                     scalarStyle, vectorStyle, vectorScale, vectorDensity, vectorNormalize, 
+                     vectorShowSurface, vectorShape, vectorProjection, colormap,
                      niso, isoEdges, isoScales, win,
                      posCam, posEye, dirCam, viewAngle, bgColor,
                      shadow, dof, stereo, stereoDist,
@@ -73,7 +82,8 @@ def display(arrays,
         displayAgain__(arrays, dim, mode, scalarField, vectorField1,
                        vectorField2, vectorField3, displayBB, displayInfo,
                        displayIsoLegend, meshStyle, solidStyle,
-                       scalarStyle, vectorStyle,
+                       scalarStyle, vectorStyle, vectorScale, vectorDensity, vectorNormalize,
+                       vectorShowSurface, vectorShape, vectorProjection,
                        colormap, niso, isoEdges, isoScales, win,
                        posCam, posEye, dirCam, viewAngle, bgColor,
                        shadow, dof, stereo, stereoDist,
@@ -98,12 +108,12 @@ def add(arrays, no, array, zoneName=None, renderTag=None):
     """Add one zone to plotter.
     Usage: add(arrays, no, array, zoneName, renderTag)"""
     nzs = 0; nzu = 0
-    for i in xrange(no):
+    for i in range(no):
         if len(arrays[i]) == 5: nzs += 1
         else: nzu += 1
     arrays.insert(no, array)
     if __slot__ is None:
-        if (no == -1): no = len(arrays)
+        if no == -1: no = len(arrays)
         arrays.insert(no, array)
         if len(arrays) == 1:
             display(arrays, zoneNames=[zoneName], renderTags=[renderTag])
@@ -119,8 +129,8 @@ def replace(arrays, no, array, zoneName=None, renderTag=None):
     if len(zone) == 5: oldType = 1
     else: oldType = 2
     nzs = 0; nzu = 0
-    for i in xrange(no):
-        if (len(arrays[i]) == 5): nzs += 1
+    for i in range(no):
+        if len(arrays[i]) == 5: nzs += 1
         else: nzu += 1
     arrays[no] = array
     if __slot__ is None:
@@ -140,7 +150,7 @@ def display1D(arrays, slot=0, gridPos=(0,0), gridSize=(-1,-1),
     if len(arrays) > 0:
         if isinstance(arrays[0], numpy.ndarray): # numpy [x,y]
             if len(arrays) < 2:
-                raise ValueError, 'display1D: requires at least two numpys [x,y]'
+                raise ValueError('display1D: requires at least two numpys [x,y]')
             x = arrays[0]; y = arrays[1]
             n = x.size
             array = Converter.array(var1+','+var2,n,1,1)
@@ -242,6 +252,12 @@ def setState(dim=-1,
              solidStyle=-1,
              scalarStyle=-1,
              vectorStyle=-1,
+             vectorScale=-1.,
+             vectorDensity=-1.,
+             vectorNormalize=-1,
+             vectorShowSurface=-1,
+             vectorShape=-1,
+             vectorProjection=-1,
              colormap=-1,
              niso=-1,
              isoEdges=-1,
@@ -255,6 +271,8 @@ def setState(dim=-1,
              bgColor=-1,
              shadow=-1,
              dof=-1, dofPower=-1,
+             gamma=-1,
+             sobelThreshold=-1,
              ghostifyDeactivatedZones=-1,
              edgifyActivatedZones=-1,
              edgifyDeactivatedZones=-1,
@@ -268,22 +286,26 @@ def setState(dim=-1,
              timer=-1,
              selectionStyle=-1,
              activateShortCuts=-1,
-             billBoards=None):
+             billBoards=None,
+             billBoardSize=-1,
+             materials=None, bumpMaps=None):
     """Set CPlot state.
     Usage: setState(posCam=(12,0,0))"""
     cplot.setState(dim, mode, scalarField, vectorField1, vectorField2,
                    vectorField3, displayBB, displayInfo, displayIsoLegend,
                    meshStyle, solidStyle, scalarStyle,
-                   vectorStyle, colormap,
+                   vectorStyle, vectorScale, vectorDensity, vectorNormalize, 
+                   vectorShowSurface, vectorShape, vectorProjection, colormap,
                    niso, isoEdges, isoScales, win,
                    posCam, posEye, dirCam, viewAngle, lightOffset,
-                   bgColor, shadow, dof, dofPower,
+                   bgColor, shadow, dof, dofPower, gamma, sobelThreshold,
                    ghostifyDeactivatedZones, edgifyActivatedZones,
                    edgifyDeactivatedZones,
                    export, exportResolution, continuousExport,
                    envmap, message,
                    stereo, stereoDist, cursor, gridSize, timer, selectionStyle,
-                   activateShortCuts, billBoards)
+                   activateShortCuts, billBoards, billBoardSize, 
+                   materials, bumpMaps)
 
 def setMode(mode):
     """Set CPlot display mode.
@@ -351,9 +373,11 @@ def fitView():
     Usage: fitView()"""
     cplot.fitView()
 
-def finalizeExport(t=0):
+def finalizeExport(action=0):
     """Finalize export for continuous export."""
-    cplot.finalizeExport(t)
+    while (cplot.isDisplayRunning() == 0):
+        pass
+    cplot.finalizeExport(action)
 
 def hide():
     """Hide window."""
@@ -366,23 +390,119 @@ def show():
 #==============================================================================
 # camera
 #==============================================================================
-def moveCamera(checkPoints, moveEye=False, N=100, speed=0.001):
-    import Geom
-    N = max(N, 3)
-    p = Geom.polyline(checkPoints)
-    if len(checkPoints) == 2: d = Geom.spline(p, 2, N)
-    else: d = Geom.spline(p, 3, N)
-    i = 0
-    while i < N-1:
+def moveCamera(posCams, posEyes=None, dirCams=None, moveEye=False, N=100, speed=1., pos=-1):
+    """Move posCam and posEye following check points."""
+    # Set d, array of posCams and N nbre of points
+    import KCore; import Geom; import KCore.Vector as Vector
+    if len(posCams) == 5 and isinstance(posCams[0], str): # input struct array
+      N = posCams[2]
+      d = posCams
+      pinc = KCore.isNamePresent(posCams, 'incEye')
+      if pinc >= 0: pinc = posCams[1][pinc]
+      else: pinc = None
+    else: # list
+      N = max(N, 3)
+      Np = len(posCams)
+      pOut = []
+      P0 = posCams[0]
+      pOut.append(P0)
+      for i in range(1,Np):
+        P1 = posCams[i]
+        sub = Vector.sub(P1,P0)
+        if Vector.norm(sub)>1.e-10:
+            pOut.append(P1)
+        P0 = P1
+      if len(pOut) == 1:
+        d = Geom.polyline(pOut*N)
+      elif len(pOut) == 2:
+        p = Geom.polyline(pOut)
+        d = Geom.spline(p, 2, N)
+      else:
+        p = Geom.polyline(pOut) 
+        d = Geom.spline(p, 3, N)
+      pinc = None
+
+    # Set e, array of posEye of N pts
+    if posEyes is not None:
+      if len(posEyes) == 5 and isinstance(posEyes[0], str): # input struct array
+        Neye = posEyes[2]
+        if Neye != N:
+          import Generator
+          dis = Geom.getDistribution(d)
+          posEyes = Generator.map(posEyes, dis, 1)
+        e = posEyes
+      else: # list
+        Np = len(posEyes)
+        pOut = []
+        P0 = posEyes[0]
+        pOut.append(P0)
+        for i in range(1,Np):
+            P1 = posEyes[i]
+            sub = Vector.sub(P1,P0)
+            if Vector.norm(sub)>1.e-10:
+                pOut.append(P1)
+            P0 = P1
+        if len(pOut) == 1:
+            e = Geom.polyline(pOut*N)
+        elif len(pOut) == 2:
+            p = Geom.polyline(pOut)
+            e = Geom.spline(p, 2, N)
+        else:
+            p = Geom.polyline(pOut)
+            e = Geom.spline(p, 3, N)
+    else: e = None
+
+    # Set dc, array of dirCams of N pts
+    if dirCams is not None:
+      if len(dirCams) == 5 and isinstance(dirCams[0], str): # input struct array
+        Ndc = dirCams[2]
+        if Ndc != N: 
+          import Generator
+          dis = Geom.getDistribution(d)
+          dirCams = Generator.map(dirCams, dis, 1)
+        dc = dirCams
+      else: # list
+        p = Geom.polyline(dirCams)
+        if len(dirCams) == 2: dc = Geom.spline(p, 2, N)
+        else: dc = Geom.spline(p, 3, N)
+    else: dc = None
+
+    if pos == -1:
+      i = 0
+      while i < N-1:
         time.sleep(__timeStep__*speed*0.06)
         if i > N-11: inc = N-i-1
         else: inc = 10
         posCam = (d[1][0,i],d[1][1,i],d[1][2,i])
-        if moveEye: 
-            posEye = (d[1][0,i+inc],d[1][1,i+inc],d[1][2,i+inc])
+        if e is not None:
+          posEye = (e[1][0,i],e[1][1,i],e[1][2,i])
+          if dc is not None:
+            dirCam = (dc[1][0,i],dc[1][1,i],dc[1][2,i])
+            setState(posCam=posCam, posEye=posEye, dirCam=dirCam)
+          else:
             setState(posCam=posCam, posEye=posEye)
+        elif moveEye:
+          posEye = (d[1][0,i+inc],d[1][1,i+inc],d[1][2,i+inc])
+          setState(posCam=posCam, posEye=posEye)
         else: setState(posCam=posCam)
         i += 1
+    else:
+      i = pos; i = min(pos, N-1)
+      if pinc is not None: inc = int(pinc[i])
+      else: inc = 10
+      inc = min(inc, N-i-1)
+      posCam = (d[1][0,i],d[1][1,i],d[1][2,i])
+      if e is not None:
+          posEye = (e[1][0,i],e[1][1,i],e[1][2,i])
+          if dc is not None:
+            dirCam = (dc[1][0,i],dc[1][1,i],dc[1][2,i])
+            setState(posCam=posCam, posEye=posEye, dirCam=dirCam)
+          else:
+            setState(posCam=posCam, posEye=posEye)
+      elif moveEye:
+        posEye = (d[1][0,i+inc],d[1][1,i+inc],d[1][2,i+inc])
+        setState(posCam=posCam, posEye=posEye)
+      else: setState(posCam=posCam)
 
 def travelRight(xr=0.1, N=100):
     import KCore.Vector as Vector
@@ -405,6 +525,7 @@ def travelRight(xr=0.1, N=100):
     moveCamera(checkPoints, N=N)
 
 def travelLeft(xr=0.1, N=100):
+    """Travel posCam left."""
     import KCore.Vector as Vector
     posCam = getState('posCam')
     posEye = getState('posEye')
@@ -487,6 +608,8 @@ def setFileName__(name):
 def displayNew__(arrays, dim, mode, scalarField, vectorField1, vectorField2,
                  vectorField3, displayBB, displayInfo, displayIsoLegend,
                  meshStyle, solidStyle, scalarStyle, vectorStyle,
+                 vectorScale, vectorDensity, vectorNormalize, vectorShowSurface,
+                 vectorShape, vectorProjection,
                  colormap, niso, isoEdges, isoScales, win,
                  posCam, posEye, dirCam, viewAngle, bgColor,
                  shadow, dof, stereo, stereoDist,
@@ -498,7 +621,9 @@ def displayNew__(arrays, dim, mode, scalarField, vectorField1, vectorField2,
                           vectorField2, vectorField3, displayBB, displayInfo,
                           displayIsoLegend,
                           meshStyle, solidStyle, scalarStyle,
-                          vectorStyle, colormap, niso, isoEdges, isoScales,
+                          vectorStyle, vectorScale, vectorDensity, vectorNormalize,
+                          vectorShowSurface, vectorShape, vectorProjection, colormap, 
+                          niso, isoEdges, isoScales,
                           win, posCam, posEye, dirCam, viewAngle, bgColor,
                           shadow, dof, stereo, stereoDist,
                           export, exportResolution,
@@ -509,6 +634,8 @@ def displayNew__(arrays, dim, mode, scalarField, vectorField1, vectorField2,
 def displayAgain__(arrays, dim, mode, scalarField, vectorField1, vectorField2,
                    vectorField3, displayBB, displayInfo, displayIsoLegend,
                    meshStyle, solidStyle, scalarStyle, vectorStyle,
+                   vectorScale, vectorDensity, vectorNormalize, vectorShowSurface,
+                   vectorShape, vectorProjection,
                    colormap, niso, isoEdges, isoScales,
                    win, posCam, posEye, dirCam, viewAngle, bgColor,
                    shadow, dof, stereo, stereoDist,
@@ -517,6 +644,8 @@ def displayAgain__(arrays, dim, mode, scalarField, vectorField1, vectorField2,
                        vectorField2, vectorField3, displayBB, displayInfo,
                        displayIsoLegend,
                        meshStyle, solidStyle, scalarStyle, vectorStyle,
+                       vectorScale, vectorDensity, vectorNormalize, vectorShowSurface, 
+                       vectorShape, vectorProjection,
                        colormap, niso, isoEdges, isoScales,
                        win, posCam, posEye, dirCam, viewAngle, bgColor,
                        shadow, dof, stereo, stereoDist,

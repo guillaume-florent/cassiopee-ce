@@ -1,4 +1,32 @@
 ===============================================================================
+Post 2.9 [06/2019]
+Requires: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.9
+Optional: usurp function requires f90 compiler
+Optional: PyTree interface requires Converter 2.9
+Optional: extraction functions features require Generator, Transform 2.9
+===============================================================================
+Post 2.8 [12/2018]
+Requires: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.8
+Optional: usurp function requires f90 compiler
+Optional: PyTree interface requires Converter 2.8
+Optional: extraction functions features require Generator, Transform 2.8
+- Post: computeDiv
+- Post: computeDiv2
+===============================================================================
+Post 2.7 [07/2018]
+Requires: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.7
+Optional: usurp function requires f90 compiler
+Optional: PyTree interface requires Converter 2.7
+Optional: extraction functions features require Generator, Transform 2.7
+- doc sphinx
+- computDiv2: calcul direct de la divergence d'un champ
+===============================================================================
+Post 2.6 [03/2018]
+Requires: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.6
+Optional: usurp function requires f90 compiler
+Optional: PyTree interface requires Converter 2.6
+Optional: extraction functions features require Generator, Transform 2.6
+===============================================================================
 Post 2.5 [20/09/2017]
 Requires: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.5
 Optional: usurp function requires f90 compiler

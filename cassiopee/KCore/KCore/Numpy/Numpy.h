@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -20,10 +20,9 @@
 
 #ifndef _KCORE_NUMPY_H_
 #define _KCORE_NUMPY_H_
-#include "Python.h"
+#include "kPython.h"
 #include "Def/DefTypes.h"
 #include "Def/DefCplusPlusConst.h"
-
 #include "Numpy/importNumpy.h"
 #include <numpy/arrayobject.h>
 #include "Fld/FldArray.h"
@@ -45,12 +44,12 @@ namespace K_NUMPY
      o est incrementee
      Si shared=false, le tableau est une copie du numpy.
      Retourne 0 (FAIL), 1 (SUCCESS) */
-  E_Int getFromNumpyArray(PyObject* o, FldArrayI*& f, E_Boolean shared=false);
-  E_Int getFromNumpyArray(PyObject* o, FldArrayF*& f, E_Boolean shared=false);
+  E_Int getFromNumpyArray(PyObject* o, FldArrayI*& f, E_Boolean shared=false, E_Boolean inverse=true);
+  E_Int getFromNumpyArray(PyObject* o, FldArrayF*& f, E_Boolean shared=false, E_Boolean inverse=true);
   E_Int getFromNumpyArray(PyObject* o, E_Int*& f, E_Int& size, E_Int& nfld,
-                          E_Boolean shared=false);
+                          E_Boolean shared=false, E_Boolean inverse=true);
   E_Int getFromNumpyArray(PyObject* o, E_Float*& f, E_Int& size, E_Int& nfld,
-                          E_Boolean shared=false);
+                          E_Boolean shared=false, E_Boolean inverse=true);
 
   /* Construit un numpy array a partir d'un FldArray (copie) 
      IN: field: fld array 

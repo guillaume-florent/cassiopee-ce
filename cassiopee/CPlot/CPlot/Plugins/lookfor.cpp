@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -48,7 +48,9 @@ void lookForActiveZone(Data* data)
   if (nz == 0)
   {
     // global fit 
-    data->initCam(); data->farClipping(); return;
+    data->initCam(); 
+    data->ptrState->farClip = 1; 
+    return;
   }
   
   // Calcul la BB de l'ensemble de la selection
@@ -98,7 +100,7 @@ void lookForActiveZone(Data* data)
     view.xeye = 0.5*(xmax + xmin);
     view.yeye = 0.5*(ymax + ymin);
     view.zeye = 0.5*(zmax + zmin);
-    data->farClipping();
+    data->ptrState->farClip = 1;
   }
   else
   {
@@ -115,7 +117,7 @@ void lookForActiveZone(Data* data)
     view.xcam = view.xeye + k*( xcam-xeye );
     view.ycam = view.yeye + k*( ycam-yeye );
     view.zcam = view.zeye + k*( zcam-zeye );
-    data->farClipping();
+    data->ptrState->farClip = 1;
   }
 
   if (suiviDir > 0) // cam doit suivre
@@ -136,7 +138,6 @@ void lookForActiveZone(Data* data)
         break;
     }
   }
-
   // Ajouter le choix du cote par rapport a la BB globale?
 }
 
@@ -253,7 +254,7 @@ void lookForMaxValue(Data* data)
   view.ycam = view.yeye + kfact*( ycam-yeye );
   view.zcam = view.zeye + kfact*( zcam-zeye );
 
-  data->farClipping();
+  data->ptrState->farClip = 1;
 }
 
 //=============================================================================
@@ -370,5 +371,5 @@ void lookForMinValue(Data* data)
   view.ycam = view.yeye + kfact*( ycam - yeye );
   view.zcam = view.zeye + kfact*( zcam - zeye );
 
-  data->farClipping();
+  data->ptrState->farClip = 1;
 }

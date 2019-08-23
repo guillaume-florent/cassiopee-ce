@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -35,7 +35,6 @@
 void DataDL::createGPURes()
 {
   int zone, zonet;
-
   ptrState->lockDisplay();
   // - Solid -
   zone = 0;
@@ -56,7 +55,12 @@ void DataDL::createGPURes()
     if (zImpl._GPUResUse == 1 && zImpl._DLsolid == 0)
     {
       zonet = zone + _numberOfStructZones;
+      if ( not z->_is_high_order)
       { createGPUUSolidZone(z, zone, zonet); goto end; }
+      else
+      {
+        createGPUUSolidHOZone(z, zone, zonet); goto end;
+      }
     }
     zone++;
   }
@@ -85,8 +89,22 @@ void DataDL::createGPURes()
     }
     zone++;
   }
+#else
+  zone = 0;
+  while (zone < _numberOfUnstructZones)
+  {
+    UnstructZone* z = _uzones[zone];
+    ZoneImplDL& zImpl = *static_cast<ZoneImplDL*>(z->ptr_impl);
+    if (zImpl._GPUResUse == 1 && zImpl._DLmesh == 0 && z->_is_high_order == true )
+    {
+      zonet = zone + _numberOfStructZones;
+      { createGPUUMeshZone(z, zone, zonet); goto end; }
+    }
+    zone++;
+  }
 #endif
- end: ptrState->unlockDisplay();
+ end: ;
+ ptrState->unlockDisplay();
 }
 
 //=============================================================================

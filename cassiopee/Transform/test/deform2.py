@@ -1,10 +1,7 @@
 # - deform2 (array) -
 import Converter as C
 import Generator as G
-import Geom as D
 import Transform as T
-import CPlot
-import Post as P
 import time
 
 # Cas 1
@@ -12,9 +9,9 @@ import time
 # C.convertArrays2File([a], 'out1.plt')
 # #n = G.getNormalMap(a)
 # #n = C.center2Node(n); n[1] = n[1]*10
-# sx = C.initVars(a, 'sx={x}*{x}')
-# sy = C.initVars(a, 'sy={y}')
-# sz = C.initVars(a, 'sz=1.')
+# sx = C.initVars(a, '{sx}={x}*{x}')
+# sy = C.initVars(a, '{sy}={y}')
+# sz = C.initVars(a, 'sz', 1.)
 # n = C.addVars([sx,sy,sz])
 # n = C.extractVars(n, ['sx','sy','sz'])
 # b = T.transform.deform2(a, n)
@@ -58,7 +55,7 @@ a = T.reorder(a, (+1,))
 ainit = C.copy(a)
 
 out = [ainit]
-for i in xrange(4):
+for i in range(4):
     n = G.getNormalMap(a)
     n = C.center2Node(n)
     n = C.normalize(n, ['sx','sy','sz'])

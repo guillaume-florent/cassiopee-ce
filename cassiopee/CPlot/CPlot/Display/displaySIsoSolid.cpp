@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -28,7 +28,7 @@
 //============================================================================
 void DataDL::displaySIsoSolid()
 {
-  // TO DO : Surement une grande partie du code à factoriser entre les VBOs et les DLs
+  // TO DO : Surement une grande partie du code a factoriser entre les VBOs et les DLs
   if (_numberOfStructZones == 0) return;
   int zone;
 
@@ -47,8 +47,8 @@ void DataDL::displaySIsoSolid()
     if (_texColormap == 0) createColormapTexture();
     fillColormapTexture((int)_pref.colorMap->varName[0]-48);
     glBindTexture(GL_TEXTURE_1D, _texColormap);
-    int s = 10;
-    if (ptrState->scalarStyle == 2 || ptrState->scalarStyle == 3) s = 29;
+    int s = _shaders.shader_id(shader::iso_banded_colormap);
+    if (ptrState->scalarStyle == 2 || ptrState->scalarStyle == 3) s = _shaders.shader_id(shader::iso_colored_lines);
     
     if (_shaders.currentShader() != s) _shaders.activate((short unsigned int)s);
     _shaders[s]->setUniform("colormap", (int)1);
@@ -78,12 +78,41 @@ void DataDL::displaySIsoSolid()
   }
   else
   { // shader pour les isos vectoriels
-    if (_shaders.currentShader() != 27) _shaders.activate((short unsigned int)27);
-    _shaders[27]->setUniform("lightOn", (int)0);
-    _shaders[27]->setUniform("shadow", (int)ptrState->shadow);
-    _shaders[27]->setUniform("ShadowMap", (int)0);
+    int s = _shaders.shader_id(shader::vector_rgb);
+    if (ptrState->vectorStyle == 1) s = _shaders.shader_id(shader::vector_arrow);
+    else if (ptrState->vectorStyle == 2) s = _shaders.shader_id(shader::vector_line);
+    
+    if (_shaders.currentShader() != s) _shaders.activate((short unsigned int)s);
+    if (s == _shaders.shader_id(shader::vector_rgb))
+    {
+      _shaders[s]->setUniform("lightOn", (int)0);
+      _shaders[s]->setUniform("shadow", (int)ptrState->shadow);
+      _shaders[s]->setUniform("ShadowMap", (int)0);
+    }
+    else
+    {
+      _shaders[s]->setUniform("lightOn", (int)0);
+      _shaders[s]->setUniform("shadow", (int)ptrState->shadow);
+      _shaders[s]->setUniform("ShadowMap", (int)0);
+      double diag = 0.01*sqrt((xmax-xmin)*(xmax-xmin)+(ymax-ymin)*(ymax-ymin)+(zmax-zmin)*(zmax-zmin));
+      double sc = ptrState->vectorScale/100.;
+      double ed = sqrt( (_view.xcam-_view.xeye)*(_view.xcam-_view.xeye)+(_view.ycam-_view.yeye)*(_view.ycam-_view.yeye)+(_view.zcam-_view.zeye)*(_view.zcam-_view.zeye) )*0.1;
+      _shaders[s]->setUniform("scale", float(sc*ed));
+      _shaders[s]->setUniform("fix_length", (int)ptrState->vectorNormalize);
+      _shaders[s]->setUniform("density", float(ptrState->vectorDensity/diag));
+      glActiveTexture(GL_TEXTURE1);
+      if (_texColormap == 0) createColormapTexture();
+      fillColormapTexture((int)_pref.colorMap->varName[0]-48);
+      _shaders[s]->setUniform("colormap", (int)1);
+      if ( s == _shaders.shader_id(shader::vector_arrow) )
+      {
+        _shaders[s]->setUniform("show_surface", ptrState->vectorShowSurface);
+        _shaders[s]->setUniform("project_vectors", (int)ptrState->vector_projection);
+        _shaders[s]->setUniform("style_arrow", (int)ptrState->vectorShape);
+      }
+    }
   }
-#endif 
+#endif
 
   // lumiere
   if (ptrState->isoLight == 1 && ptrState->dim == 3)
@@ -92,11 +121,17 @@ void DataDL::displaySIsoSolid()
 #ifdef __SHADERS__
     if (ptrState->mode == SCALARFIELD)
     {
-      int s = 10;
-      if (ptrState->scalarStyle == 2 || ptrState->scalarStyle == 3) s = 29;
+      int s = _shaders.shader_id(shader::iso_banded_colormap);
+      if (ptrState->scalarStyle == 2 || ptrState->scalarStyle == 3) s = _shaders.shader_id(shader::iso_colored_lines);
       _shaders[s]->setUniform("lightOn", (int)1);
     }
-    else _shaders[27]->setUniform("lightOn", (int)1);
+    else
+    {
+	    int s = _shaders.shader_id(shader::vector_rgb);
+      if (ptrState->vectorStyle == 1) s = _shaders.shader_id(shader::vector_arrow);
+      else if (ptrState->vectorStyle == 2) s = _shaders.shader_id(shader::vector_line);
+  	  _shaders[s]->setUniform("lightOn", (int)1);
+    }
 #endif
   }
 
@@ -153,7 +188,7 @@ void DataDL::displaySIsoSolid()
            (zonep->active == 0 && ptrState->ghostifyDeactivatedZones == 1))
           && isInFrustum(zonep, _view) == 1)
       {
-	displaySMeshZone(zonep, zone);
+       displaySMeshZone(zonep, zone);
       }
       zone++;
     }

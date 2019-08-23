@@ -1,5 +1,6 @@
 # - slice -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import Converter.Internal as Internal
@@ -19,8 +20,8 @@ DELTA = 0.1
 def fit():
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []): bb = G.bbox(CTK.t)
-    elif len(nzs) > 1:
+    if CTK.__MAINTREE__ <= 0 or nzs == []: bb = G.bbox(CTK.t)
+    else:
         sel = []
         for nz in nzs:
             nob = CTK.Nb[nz]+1
@@ -28,21 +29,6 @@ def fit():
             z = CTK.t[2][nob][2][noz]
             sel.append(z)
         bb = G.bbox(sel)
-    else: # point
-        nob = CTK.Nb[0]+1
-        noz = CTK.Nz[0]
-        z = CTK.t[2][nob][2][noz]
-        bb = G.bbox(z)
-        point = CPlot.getActivePoint()
-        dx = 0.5*(bb[3] - bb[0])
-        dy = 0.5*(bb[4] - bb[1])
-        dz = 0.5*(bb[5] - bb[2])
-        bb[0] = point[0] - dx
-        bb[1] = point[1] - dy
-        bb[2] = point[2] - dz
-        bb[3] = point[0] + dx
-        bb[4] = point[1] + dy
-        bb[5] = point[2] + dz
         
     xmin = bb[0]; ymin = bb[1]; zmin = bb[2]
     xmax = bb[3]; ymax = bb[4]; zmax = bb[5]
@@ -71,8 +57,7 @@ def fit():
         VARS[4].set(str(delta))
         x = 0.5*(zmax+zmin)
         VARS[1].set(str(x))
-    view()
-
+    
 #==============================================================================
 def movePlus():
     pos = float(VARS[1].get())
@@ -89,6 +74,10 @@ def moveMoins():
     VARS[1].set(str(pos))
     view()
     
+#==============================================================================
+def unselect(event=None):
+    CPlot.unselectAllZones()
+
 #==============================================================================
 def view(event=None):
     if CTK.t == []: return
@@ -117,8 +106,8 @@ def view(event=None):
         active = []
         tp = Internal.appendBaseName2ZoneName(CTK.t, updateRef=False, 
                                               separator=Internal.SEP1)
-        zones = Internal.getZones(tp)
-        for z in CTK.__MAINACTIVEZONES__: active.append(zones[z])
+        for z in CTK.__MAINACTIVEZONES__: active.append(tp[2][CTK.Nb[z]+1][2][CTK.Nz[z]])
+
         temp = C.newPyTree(['Base']); temp[2][1][2] += active
         if plane == 'X' and algo == 'Slice1':
             p = P.isoSurfMC(active, 'CoordinateX', pos)
@@ -155,10 +144,10 @@ def view(event=None):
         elif algo == 'Slice2': CTK.dt[2][1][2] += [p]
         else: CTK.dt[2][1][2] += p[2][1][2]
         CTK.display(CTK.dt, mainTree=CTK.SLICE)
-        CTK.TKPLOTXY.updateApp()
+        if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
     except ValueError:
         CTK.TXT.insert('START', 'Intersection is empty.\n'); return
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: slice')
         CTK.TXT.insert('START', 'Slice failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error') ; return    
@@ -234,15 +223,15 @@ def extract(event=None):
             p = C.deleteEmptyZones(p)
             for i in p[2][1][2]: i[0] = C.getZoneName(i[0])
             base[2] += p[2][1][2]
-        CTK.t = C.fillMissingVariables(CTK.t)
+        #C._fillMissingVariables(CTK.t)
         CTK.TXT.insert('START', 'Slice extracted.\n')
         (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
         CTK.TKTREE.updateApp()
         CTK.display(CTK.t)
-        CTK.TKPLOTXY.updateApp()
+        if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
     except ValueError:
         CTK.TXT.insert('START', 'Intersection is empty.\n'); return
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: slice')
         CTK.TXT.insert('START', 'Slice failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
@@ -256,7 +245,7 @@ def createApp(win):
                            text='tkSlice', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Visualize/extract slices.\nCtrl+c to close applet.', btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -276,13 +265,15 @@ def createApp(win):
     V = TK.StringVar(win); V.set('X'); VARS.append(V)
     # -1- position
     V = TK.StringVar(win); V.set('0'); VARS.append(V)
+    #V.trace_add("write", unselect)
+    V.trace("w", lambda name, index, mode, V=V: unselect(V))
     # -2- epsilon for 2D slices
     V = TK.StringVar(win); V.set('1.e-6'); VARS.append(V)
     # -3- Order
     V = TK.StringVar(win); V.set('2'); VARS.append(V)
     # -4- Delta pour le move
     V = TK.StringVar(win); V.set('0.1'); VARS.append(V)
-    if CTK.PREFS.has_key('tkSliceStep'): V.set(CTK.PREFS['tkSliceStep'])
+    if 'tkSliceStep' in CTK.PREFS: V.set(CTK.PREFS['tkSliceStep'])
     # -5- slice algorithm
     V = TK.StringVar(win); V.set('Slice1'); VARS.append(V)
 
@@ -319,7 +310,7 @@ def createApp(win):
     BB = CTK.infoBulle(parent=B, text='Slice direction.')
     B = TTK.Entry(Frame, textvariable=VARS[1], background='White', width=3)
     B.grid(row=1, column=2, sticky=TK.EW)
-    B.bind('<Return>', view)
+    B.bind('<Return>', unselect)
     BB = CTK.infoBulle(parent=B, text='Plane position.\nTaken from selection or set it here with no selection.')
 
     # - Extract / view -
@@ -364,11 +355,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

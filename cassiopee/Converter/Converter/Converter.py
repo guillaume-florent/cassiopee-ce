@@ -1,49 +1,75 @@
 """Conversion module for Cassiopee package.
 """
-__version__ = '2.5'
+from numpy import *
+__version__ = '2.9'
 __author__ = "Stephanie Peron, Christophe Benoit, Gaelle Jeanfaivre, Pascal Raud, Benoit Rodriguez, Simon Verley, Bruno Maugars, Thomas Renaud"
 #
 # Python Interface for conversion between  array / file / CGNS
 #
+try: range = xrange
+except: pass
+
 import numpy
-import converter
+try: from . import converter
+except: import converter
 import KCore
 
-# -- Create an array --
+__all__ = ['array', 'addVars', '_addVars', 'addVars2', 'center2ExtCenter', 'center2Node', 'conformizeNGon', 
+    'convertArray2Hexa', 'convertArray2NGon', 'convertArray2Node', 'convertArray2Tetra',
+    'convertArrays2File', 'convertBAR2Struct', 'convertFile2Arrays', 'convertTri2Quad', 'copy', 
+    'createGlobalHook', 'createHook', 
+    'createGlobalIndex', '_createGlobalIndex', 'recoverGlobalIndex', '_recoverGlobalIndex',
+    'createSockets', 'diffArrays', 'extCenter2Node', 'extractVars', 
+    'freeHook', 'getArgMax', 'getArgMin', 'getMaxValue', 'getMeanRangeValue', 'getMeanValue', 'getMinValue', 
+    'getNCells', 'getNPts', 'getValue', 'getVarNames', 'identifyElements', 'identifyFaces', 'identifyNodes', 
+    'identifySolutions', 'initVars', '_initVars', 'isNamePresent', 'listen', 'magnitude', 
+    'nearestElements', 'nearestFaces', 'nearestNodes', 'node2Center', 'node2ExtCenter', 'normL0', 'normL2', 
+    'normalize', '_normalize', 'randomizeVar', 'rmVars', 'send', 'setPartialFields', 'setValue', 'addGhostCellsNGon',
+    'checkFileType', 'convertHO2LO', 'convertLO2HO']
+
+# -- Create an array -- 
 # Les champs sont mis a zero, sauf si pour les champs cellN et cellNF
-def array(vars, n1, n2, sub):
+def array(vars, n1, n2, sub, api=1):
     """Create a structured or unstructured array.
     Usage: array(vars, ni, nj, nk)
     or array(vars, npoints, nelts, eltType)"""
     if isinstance(sub, str):
-        return arrayNS(vars, n1, n2, sub)
+        return arrayNS(vars, n1, n2, sub, api)
     else:
-        return arrayS(vars, n1, n2, sub)
+        return arrayS(vars, n1, n2, sub, api)
 
-# -- Create a structured array --
-def arrayS(vars, ni, nj, nk):
+# -- Create a structured array -- 
+def arrayS(vars, ni, nj, nk, api=1):
     """Create a structured array.
     Usage: array(vars, ni, nj, nk)"""
     ni = int(ni); nj = int(nj); nk = int(nk)
     vars = vars.replace(' ','')
     l = len(vars)
-    if (vars[l-1] == ',' or vars[0] == ','):
-        print "Warning: array: your var string is suspicious."
+    if vars[l-1] == ',' or vars[0] == ',':
+        print("Warning: array: your var string is suspicious.")
     vl = vars.split(','); v = len(vl)
-    a = numpy.zeros((v, ni*nj*nk), numpy.float64)
-    for i in xrange(v):
-        if (vl[i] == 'cellN' or vl[i] == 'cellNF'): a[i,:] = 1.
+    if api == 1:
+        a = numpy.zeros((v, ni*nj*nk), numpy.float64)
+        for i in range(v):
+            if vl[i] == 'cellN' or vl[i] == 'cellNF': a[i,:] = 1.
+    else:
+        a = []
+        for i in range(v):
+            if vl[i] == 'cellN' or vl[i] == 'cellNF':
+                a.append(numpy.ones((ni*nj*nk), numpy.float64))
+            else: 
+                a.append(numpy.zeros((ni*nj*nk), numpy.float64))
     return [vars, a, ni, nj, nk]
 
 # -- Create an unstructured array --
-def arrayNS(vars, npoints, nelts, eltType, sizeFN=0, sizeEF=0):
+def arrayNS(vars, npoints, nelts, eltType, api=1):
     """Create a unstructured array.
     Usage: array(vars, npoints, nelts, eltType)"""
     npoints = int(npoints); nelts = int(nelts)
     vars = vars.replace(' ','')
     l = len(vars)
-    if (vars[l-1] == ',' or vars[0] == ','):
-        print "Warning: array: your var string is suspicious."
+    if vars[l-1] == ',' or vars[0] == ',':
+        print("Warning: array: your var string is suspicious.")
     vl = vars.split(','); v = len(vl)
     if eltType == 'NODE' or eltType == 'NODE*': nt = 1
     elif eltType == 'BAR' or eltType == 'BAR*': nt = 2
@@ -59,13 +85,33 @@ def arrayNS(vars, npoints, nelts, eltType, sizeFN=0, sizeEF=0):
         raise ValueError("array: wrong element type: %s."%eltType)
 
     if eltType[len(eltType)-1] == '*':
-        a = numpy.zeros((v, nelts), numpy.float64)
+        if api == 1:
+            a = numpy.zeros((v, nelts), numpy.float64)
+            for i in range(v):
+                if vl[i] == 'cellN' or vl[i] == 'cellNF': a[i,:] = 1.
+        else:
+            a = []
+            for i in range(v):
+                if vl[i] == 'cellN' or vl[i] == 'cellNF':
+                    a.append(numpy.ones((nelts), numpy.float64))
+                else: 
+                    a.append(numpy.zeros((nelts), numpy.float64))
     else:
-        a = numpy.zeros((v, npoints), numpy.float64)
-    for i in xrange(v):
-        if vl[i] == 'cellN' or vl[i] == 'cellNF': a[i,:] = 1.
+        if api == 1:
+            a = numpy.zeros((v, npoints), numpy.float64)
+            for i in range(v):
+                if vl[i] == 'cellN' or vl[i] == 'cellNF': a[i,:] = 1.
+        else:
+            a = []
+            for i in range(v):
+                if vl[i] == 'cellN' or vl[i] == 'cellNF':
+                    a.append(numpy.ones((npoints), numpy.float64))
+                else: 
+                    a.append(numpy.zeros((npoints), numpy.float64))
 
-    c = numpy.ones((nt, nelts), numpy.int32)
+    if api == 1: c = numpy.ones((nt, nelts), numpy.int32)
+    else: c = [numpy.ones((nelts, nt), numpy.int32)]
+
     return [vars, a, c, eltType]
 
 # -- Get the number of points of an array --
@@ -82,8 +128,9 @@ def getNPts__(a):
     if len(a) == 5: # structure
         npts = a[2]*a[3]*a[4]
     elif len(a) == 4: # non structure
-        if a[3][-1] != '*':
-            npts = a[1].shape[1]
+        if a[3][-1] != '*': 
+            if isinstance(a[1], list): npts = a[1][0].size
+            else: npts = a[1].shape[1]
         else: npts = 0 # don't know
     return npts
 
@@ -103,10 +150,15 @@ def getNCells__(a):
         nic = max(nic, 1); njc = max(njc, 1); nkc = max(nkc, 1)
         ncells = nic*njc*nkc
     elif len(a) == 4: # non structure
-        if (a[3] == 'NGON' or a[3] == 'NGON*'):
-            offset = a[2][0,1]
-            ncells = a[2][0,offset+2]
-        else: ncells = a[2].shape[1]
+        if isinstance(a[1], list):
+            if a[3] == 'NGON' or a[3] == 'NGON*':
+                ncells = a[2][3].size
+            else: ncells = a[2][0].shape[0]
+        else:
+            if a[3] == 'NGON' or a[3] == 'NGON*':
+                offset = a[2][0,1]
+                ncells = a[2][0,offset+2]
+            else: ncells = a[2].shape[1]
     return ncells
 
 # -- Copy an array --
@@ -145,8 +197,7 @@ def rmVars__(a, var):
         for v in vs:
             present = False
             for w in var:
-                if v == w:
-                    present = True; break
+                if v == w: present = True; break
             if not present: eVars.append(v)
     else:
         for v in vs:
@@ -178,11 +229,11 @@ def extractVars(array, vars):
         return converter.extractVars(array, varsi)
 
 # -- Add variables --
-def addVars(array, add=''):
+def addVars(array, add=None):
     """Add variables to an array.
     Usage: a = addVars(array, 'varString')
     or: a = addVars([a1, a2, a3])"""
-    if add != '':
+    if add is not None:
         if isinstance(array[0], list):
             b = []
             for i in array: b.append(addVar(i, add))
@@ -196,8 +247,7 @@ def addVars(array, add=''):
                 if l == 0: l = len(i)
                 elif len(i) != l:
                     raise ValueError("addVars: can not add variables.")
-            c = 0
-            b = []
+            c = 0; b = []
             for i in array[0]:
                 l = []
                 for i in array: l.append(i[c])
@@ -213,7 +263,7 @@ def addVar(array, vars):
     Usage: a = addVar(array, vars)"""
     if isinstance(vars, list):
         a = array
-        for i in vars: a = converter.addVar(a, i)
+        for i in vars: a = converter.addVar(a, i) # super cher
         return a
     else:
         return converter.addVar(array, vars)
@@ -224,6 +274,76 @@ def addVars1(arrays):
     defined on the same grid.
     Usage: a = addVars(arrays)"""
     return converter.addVars(arrays)
+
+# -- Nouvelle version (array1/array2) --
+def addVars2(a, varNames=None):
+    if varNames is None: # concat une liste
+        b = list(a)
+        b[0] = copy(b[0])
+    else: b = copy(a)
+    _addVars(b, varNames)
+    if varNames is None: return b[0]
+    else: return b
+
+def _addVars(a, varNames=None):
+    if varNames is None and isinstance(a[0][0], list):
+        c = 0
+        for i in a[0]:
+            _addVars2__([i, a[1][c]]); c += 1
+    elif varNames is None: _addVars2__(a)
+    else:
+        if isinstance(a[0], list):
+            for i in a: _addVars__(i, varNames)
+        else: _addVars__(a, varNames)
+    return None
+
+# add a list of varnames
+def _addVars__(a, varNames):
+    if isinstance(varNames, str): varNames = [varNames]
+    if isinstance(a[1], list): # array2
+        for v in varNames:
+            if KCore.isNamePresent(a, v) == -1:
+                a[0] += ','+v
+                s = a[1][0].shape
+                a[1].append(numpy.zeros(s, dtype=numpy.float64))
+    else: # array1
+        lg = 0
+        for v in varNames:
+            if KCore.isNamePresent(a, v) == -1:
+                a[0] += ','+v
+                lg += 1
+        s = a[1].shape[1]
+        nfld = a[1].shape[0]
+        n = numpy.zeros((nfld+lg, s), dtype=numpy.float64)
+        for i in range(nfld): n[i,:] = a[1][i,:]        
+        a[1] = n
+    return None
+
+# a est une liste d'arrays qu'il faut concatener dans le premier
+# modifie le premier array in place
+def _addVars2__(a):
+    if isinstance(a[0][1], list): # array2
+        a0 = a[0]
+        rest = a[1:]
+        for i in rest: a0[0] += ','+i[0]
+        for i in rest: a0[1] += i[1]
+    else: # array1
+        a0 = a[0]
+        rest = a[1:]
+        for i in rest: a0[0] += ','+i[0]
+        nfld = a0[1].shape[0]
+        for i in rest: nfld += i[1].shape[0]
+        n = numpy.empty((nfld,a0[1].shape[1]), dtype=numpy.float64)
+        nfld = a0[1].shape[0]
+        for j in range(nfld):
+            n[j,:] = a0[1][j,:]
+        for i in rest:
+            nfld2 = i[1].shape[0]
+            for j in range(nfld2):
+                n[nfld+j,:] = i[1][j,:]
+            nfld += nfld2
+        a0[1] = n
+    return None
 
 # -- randomize a variable --
 def randomizeVar(array, var, deltaMin, deltaMax):
@@ -237,109 +357,114 @@ def randomizeVar(array, var, deltaMin, deltaMax):
         return converter.randomizeVar(array, var, deltaMin, deltaMax)
 
 # -- Init variables --
-def initVars(array, varNameString, val1=[], val2=[]):
-    """Init variables defined by VarNameString.
-    Usage: a = initVars(array, varNameString, val)
-    or: a = initVars(array, varNameString, F, [strings])"""
-    if val1 == []:
-        if isinstance(array[0], list):
-            b = []
-            for i in array:
-                b.append(initVarByEq(i, varNameString))
-            return b
-        else: return initVarByEq(array, varNameString)
+def initVars(a, var, v1=[], v2=[]):
+    """Initialize a variable by a value or a formula."""
+    b = copy(a)
+    _initVars(b, var, v1, v2)
+    return b
 
-    elif callable(val1):
-        if isinstance(array[0], list):
-            b = []
-            for i in array:
-                posvar = KCore.isNamePresent(i, varNameString)
-                if posvar == -1: i = addVar(i, varNameString)
-                b.append(initVar(i, varNameString, val1, val2))
-            return b
-        else:
-            posvar = KCore.isNamePresent(array, varNameString)
-            if posvar == -1:
-                array = addVar(array, varNameString)
-            return initVar(array, varNameString, val1, val2)
+def _initVars(a, var, v1=[], v2=[]):
+    if isinstance(a[0], list):
+        for i in a: _initVars__(i, var, v1, v2)
+    else: _initVars__(a, var, v1, v2)
+    return None
+
+def _initVars__(a, var, v1, v2):
+    if v1 == []:
+        _initVarByEq__(a, var)
+    elif callable(v1):
+        _initVarByFunction__(a, var, v1, v2)
     else:
-        if isinstance(array[0], list):
-            b = []
-            for i in array:
-                posvar = KCore.isNamePresent(i, varNameString)
-                if posvar == -1:
-                    i = addVar(i, varNameString)
-                b.append(converter.initVars(i, varNameString, val1))
-            return b
-        else:
-            posvar = KCore.isNamePresent(array, varNameString)
-            if posvar == -1:
-                array = addVar(array, varNameString)
-            return converter.initVars(array, varNameString, val1)
+        _initVarByConst__(a, var, v1)
+    return None
 
-# -- Init variable by eq --
-def initVarByEq(array, eq):
-    a = copy(array)
+def _initVarByConst__(a, var, val):
+    varp = KCore.isNamePresent(a, var)
+    if varp == -1: 
+        _addVars(a, var); varp = KCore.isNamePresent(a, var)
+    if not isinstance(a[1], list): # array1
+        a[1][varp,:] = val
+    else:
+        a[1][varp][:] = val
+    return None
+
+def _initVarByFunction__(a, var, F, vars):
+    posvar = KCore.isNamePresent(a, var)
+    if posvar == -1:
+        _addVars(a, var); posvar = KCore.isNamePresent(a, var)
+    pos = []
+    for i in vars:
+        p = KCore.isNamePresent(a, i)
+        if p == -1:
+            raise TypeError("initVars: can't find %s in array."%i)
+        else: pos.append(p)
+
+    n = a[1]; l = len(vars)
+    if not isinstance(a[1], list): # array1
+        nsize = n.shape[1]
+        if l == 0:
+            for i in range(nsize):
+                n[posvar,i] = F()
+        else:
+            for i in range(nsize):
+                x = [n[pos[j],i] for j in range(l)]
+                n[posvar,i] = F(*x)
+    else: # array2
+        nvar = n[posvar]
+        nsize = nvar.size
+        if l == 0:
+            nvar1 = nvar.ravel(order='K')
+            for i in range(nsize): nvar1[i] = F()
+        else:
+            npos = [n[pos[j]].ravel(order='K') for j in range(l)]
+            nvar1 = n[posvar].ravel(order='K')
+            for i in range(nsize):
+                x = [npos[j][i] for j in range(l)]
+                nvar1[i] = F(*x)
+    return None
+                
+def _initVarByEq__(a, eq):
+    #import expression as expr
     # Extrait les variables de a
     varstring = a[0]
     vars = varstring.split(',')
 
     eq = eq.replace('centers:', '')
+    eq = eq.replace('nodes:', '') 
 
     # Split suivant ; si plusieurs formules sont definies
     eq = eq.split(';')
 
-    from numpy import *
     for eq0 in eq:
+        #ast_eq = expr.ast(eq0)
         # Extrait la variable a initialiser de eq
-        s = eq0.split('=')
-        if len(s) != 2:
-            print 'Error: initVars: equation is incorrect.'; return a
+        s = eq0.split('=', 1)
+        #if len(s) != 2:
+        #    print('Error: initVars: equation is incorrect.'); return None
 
         var = s[0]; var = var.replace('{', ''); var = var.replace('}', '')
         var = var.lstrip(); var = var.rstrip()
         varp = KCore.isNamePresent(a, var)
         if varp == -1:
-            a = addVars(a, var); varp = KCore.isNamePresent(a, var)
+            _addVars(a, var); varp = KCore.isNamePresent(a, var)
+
+        #ast_eq.run(a)
 
         # Initialisation de la variable
-        ap = a[1]
-        loc = s[1]
-        c = 0
-        for v in vars:
-            loc = loc.replace('{%s}'%v, 'ap[%d,:]'%c); c += 1
-
-        # Evaluation
-        ap[varp,:] = eval(loc)
-    return a
-
-# -- Init variable with a function --
-def initVar(array, varNameString, F, strings):
-    """Init variables to the value val in array containing
-    their name in the array.
-    Usage: a = initVar(array, varNameString, F, strings)"""
-    b = copy(array)
-    posvar = KCore.isNamePresent(b, varNameString)+1
-
-    pos = []
-    for i in strings:
-        p = KCore.isNamePresent(b, i)+1
-        if p == 0:
-            raise TypeError("initVar: can't find %s in array."%i)
-        else: pos.append(p)
-
-    n = b[1]
-    nsize = n.shape[1]
-    l = len(strings)
-
-    if l == 0:
-        for i in xrange(nsize):
-            n[posvar-1,i] = F()
-    else:
-        for i in xrange(nsize):
-            x = [ n[pos[j]-1,i] for j in xrange(l)]
-            n[posvar-1,i] = F(*x)
-    return b
+        if not isinstance(a[1], list): # array1
+            loc = s[1]; c = 0
+            for v in vars:
+                loc = loc.replace('{%s}'%v, 'ap[%d,:]'%c); c += 1
+            ap = a[1]
+            ap[varp,:] = eval(loc)
+        else: # array2
+            loc = s[1]; ap = a[1]
+            ap1 = [ ap[c].ravel(order='K') for c in range(len(ap)) ]
+            c = 0
+            for v in vars:
+                loc = loc.replace('{%s}'%v, 'ap1[%d][:]'%c); c += 1
+            ap1[varp][:] = eval(loc)
+    return None
 
 # Converti l'extension en nom de format
 def convertExt2Format__(fileName):
@@ -360,7 +485,7 @@ def convertExt2Format__(fileName):
     elif extension == '.svg': format = 'fmt_svg'
     elif extension == '.pov': format = 'fmt_pov'
     elif extension == '.cgns': format = 'bin_cgns'
-    elif extension == '.adf': format = 'bin_cgns'
+    elif extension == '.adf': format = 'bin_adf'
     elif extension == '.hdf': format = 'bin_hdf'
     elif extension == '.hdf5': format = 'bin_hdf'
     elif extension == '.pickle': format = 'bin_pickle'
@@ -391,8 +516,9 @@ def convertFile2Arrays(fileName, format=None, nptsCurve=20, nptsLine=2,
     except: raise IOError("convertFile2Arrays: file %s not found."%fileName)
     file.close()
     if format == 'bin_pickle':
-        import cPickle as pickle
-        print 'Reading \''+fileName+'\'...',
+        try: import cPickle as pickle
+        except: import pickle
+        print('Reading \''+fileName+'\'...'),
         try:
             file = open(fileName, 'rb')
             a = pickle.load(file)
@@ -400,16 +526,16 @@ def convertFile2Arrays(fileName, format=None, nptsCurve=20, nptsLine=2,
         except:
             raise TypeError("convertFile2Arrays: file %s can not be read."%fileName)
         else:
-            print 'done.'
+            print('done.')
             return a
     elif format == 'fmt_iges':
         try: import OCC
         except: raise ImportError("convertFile2Arrays: IGES reader requires OCC module.")
         a = OCC.convertIGES2Arrays(fileName, h=0., chordal_err=0.)
-        for c in xrange(len(a)): zoneNames.append('zone%d'%c)
+        for c in range(len(a)): zoneNames.append('zone%d'%c)
         return a
     elif format == 'fmt_free':
-        print 'Reading '+fileName+' (fmt_free)...',
+        print('Reading '+fileName+' (fmt_free)...'),
         try:
             file = open(fileName, 'r')
             f = file.read()
@@ -425,14 +551,14 @@ def convertFile2Arrays(fileName, format=None, nptsCurve=20, nptsLine=2,
             nv = len(line)
             # varstring
             varString = ''
-            for i in xrange(nv-1): varString += 'v%d,'%(i+1)
+            for i in range(nv-1): varString += 'v%d,'%(i+1)
             if nv > 0: varString += 'v%d'%nv
             a = array(varString, np, 1, 1)
             pt = a[1]
-            for i in xrange(np):
+            for i in range(np):
                 line = f[i]; line = line.split(' ')
-                for n in xrange(len(line)): pt[n,i] = float(line[n])
-            print 'done.'
+                for n in range(len(line)): pt[n,i] = float(line[n])
+            print('done.')
             zoneNames.append('zone0')
             return [a]
         except:
@@ -471,7 +597,7 @@ def convertArrays2File(arrays, fileName, format=None, isize=4, rsize=8,
     if arrays != [] and not isinstance(arrays[0], list): arrays = [arrays]
     znames = []
     if len(zoneNames) == 0:
-        for iz in xrange(len(arrays)): znames.append('Zone%d'%(iz+1))
+        for iz in range(len(arrays)): znames.append('Zone%d'%(iz+1))
     else:
         znames = zoneNames
         if len(zoneNames) != len(arrays):
@@ -479,28 +605,29 @@ def convertArrays2File(arrays, fileName, format=None, isize=4, rsize=8,
     if format is None:
         format = convertExt2Format__(fileName)
     if format == 'bin_pickle':
-        import cPickle as pickle
+        try: import cPickle as pickle
+        except: import pickle
         file = open(fileName, 'wb')
-        print 'Writing \''+fileName+'\'...',
+        print('Writing \''+fileName+'\'...'),
         pickle.dump(arrays, file, protocol=pickle.HIGHEST_PROTOCOL); file.close()
-        print 'done.'
+        print('done.')
     elif format == 'fmt_free':
         file = open(fileName, 'w')
-        print 'Writing %s (fmt_free)...'%fileName,
+        print('Writing %s (fmt_free)...'%fileName),
         for a in arrays:
             out = ''
             pt = a[1]
             nv = pt.shape[0]
             s = pt.shape[1]
-            for i in xrange(s):
-                for n in xrange(nv-1):
+            for i in range(s):
+                for n in range(nv-1):
                     out += dataFormat%(pt[n,i])
                     out += ' '
                 out += dataFormat%(pt[nv-1,i])
                 out += '\n'
             file.write(out)
         file.close()
-        print 'done.'
+        print('done.')
     else:
         converter.convertArrays2File(arrays, fileName, format, isize, rsize,
                                      endian, colormap, dataFormat,
@@ -528,7 +655,7 @@ def getValue(array, ind):
 
     n = array[1]; nfld = n.shape[0]
     v = []
-    for nf in xrange(nfld): v.append(n[nf, index])
+    for nf in range(nfld): v.append(n[nf, index])
     return v
 
 def setValue(array, ind, values):
@@ -553,7 +680,7 @@ def setValue(array, ind, values):
     nf = ar.shape[0]
     nf2 = len(values)
     if nf2 != nf: raise ValueError("setValue: values is badly dimensioned.")
-    for i in xrange(nf): ar[i, index] = values[i]
+    for i in range(nf): ar[i, index] = values[i]
     return None
 
 def getArgMin(array, varName):
@@ -624,7 +751,9 @@ def getMeanValue(array, varName):
         for i in array:
             pos2 = KCore.isNamePresent(i, varName)
             a = converter.getMeanValue(i, varName)
-            la = i[1].shape[1]*1.
+            if isinstance(i[1], list): # array2
+               la = i[1][0].size * 1.
+            else: la = i[1].shape[1] * 1.
             b = lb*b + la*a
             lb = lb + la
             b = b / lb
@@ -642,7 +771,9 @@ def getMeanRangeValue(array, varName, rmin, rmax):
         for i in array:
             pos2 = KCore.isNamePresent(i, varName)
             a = converter.getMeanRangeValue(i, varName, rmin, rmax)
-            la = i[1].shape[1]*1.*(rmax-rmin)
+            if isinstance(i[1], list): # array2
+                la = i[1][0].size*1.*(rmax-rmin)
+            else: la = i[1].shape[1]*1.*(rmax-rmin)
             b = lb*b + la*a
             lb = lb + la
             b = b / lb
@@ -669,7 +800,9 @@ def normL2(array, varName):
     if isinstance(array[0], list):
         norm = 0.; nsize = 0
         for i in array:
-            nsize0 = i[1].shape[1]
+            if isinstance(i[1], list): # array2
+                nsize0 = i[1][0].size
+            else: nsize0 = i[1].shape[1]
             nsize += nsize0
             norm0 = converter.normL2(i, varName)
             norm += norm0*norm0*nsize0
@@ -678,16 +811,20 @@ def normL2(array, varName):
     else:
         return converter.normL2(array, varName)
 
-def normalize(array, vars):
+def normalize(a, vars):
     """Get the normalisation of the fields defined by vars in the array.
-    Usage: normalize(array, vars)"""
-    if isinstance(array[0], list):
-        b = []
-        for i in array:
-            b.append(converter.normalize(i, vars))
-        return b
+    Usage: normalize(a, vars)"""
+    b = copy(a)
+    _normalize(b, vars)
+    return b
+
+def _normalize(a, vars):
+    if isinstance(a[0], list):
+        for i in a:
+            converter.normalize(i, vars)
     else:
-        return converter.normalize(array, vars)
+        converter.normalize(a, vars)
+    return None
 
 def magnitude(array, vars):
     """Get the magnitude of the fields defined by vars in the array.
@@ -797,7 +934,7 @@ def convertArray2Tetra1__(array, arrayC=[], split='simple'):
             if arrayC == []:
                 return converter.convertStruct2TetraBary(array)
             else:
-                return converter.convertStruct2TetraBaryBoth(array,arrayC)
+                return converter.convertStruct2TetraBaryBoth(array, arrayC)
 
         elif t == 'HEXA' or t == 'QUAD' or t == 'PENTA' or t == 'PYRA' or t == 'BAR':
             if arrayC == []:
@@ -910,7 +1047,7 @@ def center2Node(array, cellNType=0):
         b = []
         for i in array:
             b.append(converter.center2Node(i, cellNType))
-        for nob in xrange(len(b)):
+        for nob in range(len(b)):
             if len(b[nob]) == 4:
                 eltType = b[nob][3]
                 b[nob][3] = eltType.split('*')[0]
@@ -974,7 +1111,7 @@ def addGhostCellsNGon(arrayN, arrayC=[],depth=2):
         b = []
         nzones = len(arrayN); nzonesC = len(arrayC)
         if nzones == nzonesC:
-            for noz in xrange(nzones):
+            for noz in range(nzones):
                 if arrayN[noz] != [] and arrayC[noz] == []:
                     res = converter.addGhostCellsNGonNodes(arrayN[noz],depth)
                     b.append(res)
@@ -985,7 +1122,7 @@ def addGhostCellsNGon(arrayN, arrayC=[],depth=2):
                     res = converter.addGhostCellsNGonBoth(arrayN[noz], arrayC[noz],depth)
                     b.append(res)
         else:
-            for noz in xrange(nzones):
+            for noz in range(nzones):
                 b.append(converter.addGhostCellsNGon(arrayN[noz],depth))
         return b
     else:
@@ -993,14 +1130,14 @@ def addGhostCellsNGon(arrayN, arrayC=[],depth=2):
         elif arrayN == [] and arrayC != []: return converter.addGhostCellsNGonCenters(arrayC,depth)
         else: return converter.addGhostCellsNGonBoth(arrayN, arrayC, depth)
 
-def rmGhostCellsNGon(arrayN, arrayC = [], depth=2):
+def rmGhostCellsNGon(arrayN, arrayC=[], depth=2):
     """Delete depth layers of cells at exterior borders of a NGON mesh.
     Usage: rmGhostCellsNGon(arrayN, arrayC, depth)"""
     if isinstance(arrayN[0], list):
         b = []
         nzones = len(arrayN); nzonesC = len(arrayC)
         if nzones == nzonesC:
-            for noz in xrange(nzones):
+            for noz in range(nzones):
                 if arrayN[noz] != [] and arrayC[noz] == []:
                     res = converter.rmGhostCellsNGonNodes(arrayN[noz],depth)
                     b.append(res)
@@ -1011,7 +1148,7 @@ def rmGhostCellsNGon(arrayN, arrayC = [], depth=2):
                     res = converter.rmGhostCellsNGonBoth(arrayN[noz], arrayC[noz],depth)
                     b.append(res)
         else:
-            for noz in xrange(nzones):
+            for noz in range(nzones):
                 b.append(converter.rmGhostCellsNGon(arrayN[noz],depth))
         return b
     else:
@@ -1087,29 +1224,29 @@ def createHook(a, function='None'):
 # Fonctions de preconditionement (hook)
 # IN: function: le nom de la fonction qui va utiliser le hook
 # IN: a: liste des zones utilisees pour faire le preconditionnement global
-# IN: extended: 0: pas d indirection sur les zones
-#               1: sauvegarde de indirZones:
-#                   indirection sur le no de la zone pour chq pt du hook
+# IN: indir: 0: pas d'indirection sur les zones
+#            1: sauvegarde de indirZones:
+#               indirection sur le no de la zone pour chq pt du hook
 # OUT: hook(,indirZones)
 #===============================================================================
-def createGlobalHook(a, function='None', extended=0):
-    """Create a hook for a given function.
+def createGlobalHook(a, function='None', indir=0):
+    """Create a hook for a set of zones and for a given function.
     Usage: hook = createGlobalHook(a, function)"""
     if function == 'None': return None
     elif function == 'faceCenters': # 0
         # Retourne un KDT pour les centres des faces
-        if not isinstance(a[0],list): return converter.registerAllFaces([a],extended)
-        else: return converter.registerAllFaces(a,extended)
+        if not isinstance(a[0],list): return converter.registerAllFaces([a], indir)
+        else: return converter.registerAllFaces(a, indir)
     elif function == 'nodes': # 2
         # Retourne un KDT pour les noeuds
-        if not isinstance(a[0],list): return converter.registerAllNodes([a],extended)
-        else: return converter.registerAllNodes(a,extended)
+        if not isinstance(a[0],list): return converter.registerAllNodes([a], indir)
+        else: return converter.registerAllNodes(a, indir)
     elif function == 'elementCenters': # 3
         # Retourne un KDT pour les centres des elements
-        if not isinstance(a[0],list): return converter.registerAllElements(convertArray2NGon([a]),extended)
-        else: return converter.registerAllElements(convertArray2NGon(a),extended)
+        if not isinstance(a[0],list): return converter.registerAllElements(convertArray2NGon([a]), indir)
+        else: return converter.registerAllElements(convertArray2NGon(a), indir)
     elif function == 'extractMesh': # 1
-        print 'function=extractMesh not implemented for global hook.'
+        print('function=extractMesh not implemented for global hook.')
     else: raise ValueError("function is invalid.")
 
 #==============================================================================
@@ -1151,19 +1288,19 @@ def identifyElements(hook, a, tol=1.e-11):
     if isinstance(a[0], list):
         b = []
         for i in a:
-            if len(i) == 5: i = convertArray2Hexa(i)
+            # if len(i) == 5: i = convertArray2Hexa(i)
             b.append(converter.identifyElements(hook, i, tol))
         return b
     else:
-        if len(a) == 5: a = convertArray2Hexa(a)
+        # if len(a) == 5: a = convertArray2Hexa(a)
         return converter.identifyElements(hook, a, tol)
 
 #=============================================================================
-def identifySolutions(coordsRcv, solDnr, hookDnr, vars = [], tol=1.e-13):
+def identifySolutions(coordsRcv, solDnr, hookDnr, vars=[], tol=1.e6):
     """Identify points in a hook to mesh points and set the solution if donor
     and receptor points are distant from tol.
     Usage: identifySolutions(coordsRcv, solDnr, hookDnr, vars, tol)"""
-    if vars != []: solDnr = extractVars(solDnr,vars)
+    if vars != []: solDnr = extractVars(solDnr, vars)
 
     if isinstance(coordsRcv[0], list): # receptor is a list of zones
         if isinstance(solDnr[0], list):
@@ -1216,6 +1353,52 @@ def nearestElements(hook, a):
         if len(a)==5: a = convertArray2Hexa(a)
         return converter.nearestElements(hook, a)
 
+# Create global index
+def createGlobalIndex(a, start=0):
+    """Create the global index field."""
+    b = copy(a)
+    _createGlobalIndex(b, start)
+    return b
+
+def _createGlobalIndex(a, start=0):
+    """Create the global index field."""
+    _initVars(a, 'globalIndex', 0)
+    if isinstance(a[0], list):
+        for i in a: converter.createGlobalIndex(i, start)
+        return a
+    else:
+        converter.createGlobalIndex(a, start)
+        return a
+
+def recoverGlobalIndex(a, b):
+    """Recover fields of b in a following the global index field."""
+    c = copy(a)
+    _recoverGlobalIndex(c, b)
+    return c
+
+def _recoverGlobalIndex(a, b):
+    """Recover fields of b in a following the global index field."""
+    if isinstance(b[0], list):
+        for i in b:
+            variables = getVarNames(i); _addVars(a, variables)
+    else:
+        variables = getVarNames(b); _addVars(a, variables)
+    if isinstance(b[0], list):
+        if isinstance(a[0], list):
+            for bi in b:
+                for ai in a:
+                    converter.recoverGlobalIndex(bi, ai)
+        else:
+            for bi in b:
+                converter.recoverGlobalIndex(bi, a)
+    else:
+        if isinstance(a[0], list):
+            for ai in a:
+                converter.recoverGlobalIndex(b, ai)
+        else:
+            converter.recoverGlobalIndex(b, a)
+    return None
+
 # Retourne -1: la variable n'est presente dans aucun array
 # Retourne 0: la variable est presente dans au moins un array
 # Retourne 1: la variable est presente dans tous les arrays
@@ -1234,6 +1417,32 @@ def isNamePresent(a, varname):
         if p == -1: return -1
         else: return 1
 
+# convert to low order mesh
+def convertHO2LO(a, mode=0):
+    """Convert a HO mesh to a low order mesh.
+    Usage: convertHO2LO(a, mode)"""
+    if isinstance(a[0], list):
+        out = []
+        for i in a:
+            out.append(converter.convertHO2LO(i, mode))
+        return out
+    else:
+        b = converter.convertHO2LO(a, mode)
+        return b
+
+# convert to high order mesh
+def convertLO2HO(a, mode=0):
+    """Convert a LO mesh to a high order mesh.
+    Usage: convertLO2HO(a, mode)"""
+    if isinstance(a[0], list):
+        out = []
+        for i in a:
+            out.append(converter.convertLO2HO(i, mode))
+        return out
+    else:
+        b = converter.convertLO2HO(a, mode)
+        return b
+
 #==============================================================================
 # Client/Server - send
 #==============================================================================
@@ -1242,21 +1451,21 @@ def send(data, host='localhost', rank=0, port=15555):
     import socket; import Compressor
     port = port+rank; sizeBuf = 1024
 
-    #print 'connecting to port',port
+    #print('connecting to port', port)
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
     except:
-        print 'Send: can not connect to %s [%d]. Nothing sent.'%(host,port)
+        print('Send: can not connect to %s [%d]. Nothing sent.'%(host,port))
         return
 
-    data = Compressor.pack(data) # serialize
+    data = Compressor.pack(data, method=0) # serialize
     size = len(data)
 
     # Blocks
     header = (size,sizeBuf)
-    #print 'sending', header
-    header = Compressor.pack(header)
+    #print('sending', header)
+    header = Compressor.pack(header, method=0)
     header = header.ljust(255)
     
     s.send(header)
@@ -1266,7 +1475,7 @@ def send(data, host='localhost', rank=0, port=15555):
             nbytes += s.send(data[nbytes:nbytes+sizeBuf])
         else: 
             nbytes += s.send(data[nbytes:])
-        #print 'send',nbytes,size
+        #print('send',nbytes,size)
     s.close()
 
 #==============================================================================
@@ -1276,7 +1485,7 @@ def createSockets(nprocs=1, port=15555):
     """Create sockets for communication."""
     import socket
     sockets = []
-    for i in xrange(nprocs):
+    for i in range(nprocs):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(('', port+i))
         s.listen(5)
@@ -1298,8 +1507,8 @@ def listen(s):
         nb = client.recv(255)
         if nb != "":
             nb = nb.rstrip()
-            (size,sizeBuf) = Compressor.unpack(nb)
-            #print 'Received ',size
+            (size,sizeBuf) = Compressor.unpack(nb, method=0)
+            #print('Received ',size)
             data = ''
             nbytes = 0
             while nbytes < size:
@@ -1308,7 +1517,7 @@ def listen(s):
                 else:
                     received = client.recv(size-nbytes)
                 data += received; nbytes += len(received)
-            data = Compressor.unpack(data)
+            data = Compressor.unpack(data, method=0)
             client.close()
             return data
 
@@ -1317,102 +1526,80 @@ def listen(s):
 #=============================================================================
 def checkFileType(fileName):
   """Find file type."""
-  import binascii as b
   import os
-  eol = "0a"
-  inria = "MeshVersionUnformatted"
-  try: file = open(fileName, 'r')
+  try: file = os.open(fileName, os.O_RDONLY)
   except: raise IOError("checkFileType: file %s not found."%fileName)
+  #header = file.read(512)  # lecture des 512 premiers octets
+  header = os.read(file, 512)
+  os.close(file)
 
-  fileSize = os.path.getsize(fileName)
-  header = file.read(512)  #lecture des 512 premiers octets
-  file.seek(0)
+  if header[1:4] == b'HDF': return 'bin_hdf'
+  if header[4:7] == b'ADF': return 'bin_adf'
+  if header[0:5] == b'#!TDV': return 'bin_tp'
+  if header[0:5] == b'TITLE' or header[0:5] == b'title' or header[0:9] == b"VARIABLES" or header[0:9] == b"variables" or header[0:8] == b"FILETYPE" or header[0:8] == b"filetype":
+    return 'fmt_tp'
+  if header.find(b"MeshVersionUnformatted") != -1: return 'bin_mesh'
+  if header.find(b"MeshVersionFormatted") != -1: return 'fmt_mesh'
+  if header.find(b"NDIME=") != -1: return 'fmt_su2'
+  if header.find(b"DONNEES GENERALES") != -1 or header.find(b"--------") != -1: return 'fmt_cedre'
+  if header[0:8] == b'CEDRE_IO': return 'bin_cedre'
+  if header.find(b"solid") == 0: return 'fmt_stl'
+  if header.find(b"v ") != -1: return 'fmt_obj'
+  if header.find(b"$MeshFormat") != -1:
+    EndMesh = header.find(b"$EndMeshFormat")
+    if EndMesh == 20: return 'fmt_gmsh'
+    elif EndMesh == 25: return 'bin_gmsh'
+  if header.find(b"ply") != -1: return 'bin_ply'
+  if header.find(b"#FIG") == 0: return 'fmt_xfig'
+  if header.find(b"<svg") != -1: return 'fmt_svg'
+  if header.find(b"PNG") == 1: return 'bin_png'
+  import binascii as b
   beader = b.b2a_hex(header)
-  eolx1 = beader.find(eol, 0)
-  eolx2 = beader.find(eol, eolx1 + 1)
-  eol1 = (eolx1 +1)/2
-  eol2 = (eolx2 +1)/2
-  file.seek(0)
+  eol = b"0a"
+  if (beader[0:8] == b"04000000" or beader[0:8] == b"00000004") and (header[16:18] == b'va' or header[16:17] == b'x' or header[16:17] == b'y' or header[16:17] == b'z' or header[16:18] == b'VA' or header[16:17] == b'X' or header[16:17] == b'Y' or header[16:17] == b'Z'): 
+    return 'bin_v3d' 
+  if (beader[0:8] == b"08000000" or beader[0:8] == b"00000008") and (header[20:22] == b'va' or header[20:21] == b'x' or header[20:21] == b'y' or header[20:21] == b'z' or header[20:22] == b'VA' or header[20:21] == b'X' or header[20:21] == b'Y' or header[20:21] == b'Z'): 
+    return 'bin_v3d' 
+  if (beader[10:12] == eol and (beader[50:52] == b"78" or beader[50:52] == b"79" or beader[50:52] == b"80" or  beader[12:14] == b"78" or   beader[12:14] == b"79" or beader[12:14] == b"80"  or beader[50:52] == b"58" or beader[50:52] == b"59" or beader[50:52] == b"60" or  beader[12:14] == b"58" or beader[12:14] == b"59" or beader[12:14] == b"60" or beader[46:52] == b"766172" or beader[46:52] == b"564152" or beader[12:18] == b"766172" or beader[12:18] == b"564152")):
+    return 'fmt_v3d' 
+  if beader.find(b"4d4d") == 0: return 'bin_3ds'
   dt = numpy.dtype('<i4')
   ieader = numpy.fromfile(fileName,dtype=dt,count=128,sep="")
-  # Overflow sur ce clacul de sizet (uniquement util pour bin_stl)
-  #ntri = numpy.frombuffer(header[80:],dtype='i4',count=1)  # format bin_stl, nombre de triangles
-  #sizet = ntri[0]*50+84  #format bin_stl 80 octets d entete/nombre de triangles/50 octets par triangles
-  sizet = 0
-
-  if header[1:4] == 'HDF':
-    fileType = 'bin_hdf'
-  elif header[4:7] == 'ADF':
-    fileType = 'bin_adf'
-  elif header[0:5] == '#!TDV':
-    fileType = 'bin_tp'
-  elif header[0:5] == 'TITLE' or header[0:5] == 'title' or header[0:9] == "VARIABLES" or header[0:9] == "variables" or header[0:8] == "FILETYPE" or header[0:8] == "filetype":
-    fileType = 'fmt_tp'
-  elif ((beader[0:8] == "04000000" or beader[0:8] == "00000004") and (header[16:18] == 'va' or  header[16:17] == 'x' or header[16:17] == 'y' or header[16:17] == 'z' or header[16:18] == 'VA' or header[16:17] == 'X' or header[16:17] == 'Y' or header[16:17] == 'Z')): 
-    fileType = 'bin_v3d' 
-  elif ((beader[0:8] == "08000000" or beader[0:8] == "00000008") and (header[20:22] == 'va' or  header[20:21] == 'x' or header[20:21] == 'y' or header[20:21] == 'z' or header[20:22] == 'VA' or header[20:21] == 'X' or header[20:21] == 'Y' or header[20:21] == 'Z')): 
-    fileType = 'bin_v3d' 
-  elif (beader[10:12] == eol and (beader[50:52] == "78" or beader[50:52] == "79" or beader[50:52] == "80" or  beader[12:14] == "78" or   beader[12:14] == "79" or beader[12:14] == "80"  or beader[50:52] == "58" or beader[50:52] == "59" or beader[50:52] == "60" or  beader[12:14] == "58" or   beader[12:14] == "59" or beader[12:14] == "60" or beader[46:52] == "766172" or beader[46:52] == "564152" or beader[12:18] == "766172" or beader[12:18] == "564152")):
-    fileType = 'fmt_v3d' 
-  elif (header.find("MeshVersionUnformatted") != -1):
-    fileType = 'bin_mesh'
-  elif (header.find("MeshVersionFormatted") != -1):
-    fileType = 'fmt_mesh'
-  elif  (header.find("$MeshFormat") != -1):
-    EndMesh=header.find("$EndMeshFormat")
-    if EndMesh == 20:
-      fileType = 'fmt_gmsh'
-    elif EndMesh == 25:
-      fileType = 'bin_gmsh'
-  elif header.find("NDIME=") != -1:
-    fileType = 'fmt_su2'
-  elif header.find("DONNEES GENERALES") != -1 or header.find("--------") != -1:
-    fileType = 'fmt_cedre'
-  elif header[0:8] == 'CEDRE_IO':
-    fileType = 'bin_cedre'
-  elif fileSize == sizet:
-    fileType = 'bin_stl'
-  elif header.find("solid") == 0:
-    fileType = 'fmt_stl'
-  elif header.find("v ") != -1:
-    fileType = 'fmt_obj'
-  elif beader.find("4d4d") == 0:
-    fileType = 'bin_3ds'
-  elif header.find("ply") != -1:
-    fileType = 'bin_ply'
-  elif header.find("#FIG") == 0:
-    fileType = 'fmt_xfig'
-  elif header.find("<svg") != -1:
-    fileType = 'fmt_svg'
-  elif header.find("PNG") == 1:
-    fileType = 'bin_png'
-  elif ieader[0] == 4:
+  if ieader[0] == 4:
       ninjnk = ieader[1] * 3 * 4   # 3 pour ni,nj,nk, 4 pour 4 octets cas 3D multibloc
       ninj   = ieader[1] * 2 * 4 # 3 pour ni,nj, 4 pour 4 octets cas 2D multibloc
       if ieader[3] == ninjnk or ieader[3] == ninj: 
-        fileType = 'bin_plot3d'
-  elif ieader[0] == 12 or ieader[0] == 8:  # cas 2D ou 3d monobloc
-        fileType = 'bin_plot3d'
-  elif eol1 != 0:
+        return 'bin_plot3d'
+  if ieader[0] == 12 or ieader[0] == 8:  # cas 2D ou 3d monobloc
+    return 'bin_plot3d'
+
+  fileSize = os.path.getsize(fileName)
+  try: ntri = header[80:82]; ntri = int(ntri)
+  except: ntri = 0
+  sizet = ntri*50+84  #format bin_stl 80 octets d entete/nombre de triangles/50 octets par triangles
+  if fileSize == sizet: return 'bin_stl'
+
+  eolx1 = beader.find(eol, 0)
+  eolx2 = beader.find(eol, eolx1 + 1)
+  eol1 = (eolx1 +1)//2
+  eol2 = (eolx2 +1)//2
+  if eol1 != 0:
+      file = open(fileName, 'r')
       i = 0
       ligne0=[]
       ligne1=[]
       ninjnk_size = 0
       for line in file:
         if i == 0:
-          ligne0= line.split()
+          ligne0 = line.split()
           npi = int(ligne0[0])
         else:
           newline = line.split()
-          sfloat=newline[0].count(".")
-          if sfloat == 0: 
-             ligne1.extend(newline)
+          sfloat = newline[0].count(".")
+          if sfloat == 0: ligne1.extend(newline)
           else: break
         i += 1
-      ninjnk_size = ninjnk_size + len(ligne1)
-      if (ninjnk_size == 2 * npi or ninjnk_size == 3 * npi):
-        fileType = 'fmt_plot3d'
-      else: 
-        fileType = 'unknown'
-  file.close()
-  return fileType 
+      file.close()
+      ninjnk_size += len(ligne1)
+      if ninjnk_size == 2 * npi or ninjnk_size == 3 * npi: return 'fmt_plot3d'
+  return 'unknown'

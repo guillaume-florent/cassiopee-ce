@@ -1,5 +1,6 @@
 # - tkRenderSet -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import Converter.Internal as Internal
@@ -12,7 +13,8 @@ import CPlot.iconics as iconics
 WIDGETS = {}; VARS = []
 MATERIALS = ['Solid', 'Flat', 'Glass', 'Chrome',
              'Metal', 'Wood', 'Marble', 'Granite', 'Brick', 'XRay',
-             'Cloud', 'Gooch', 'Smoke', 'Sphere', 'Light']
+             'Cloud', 'Gooch', 'Smoke', 'Sphere', 'Light', 'Texmat']
+             
 #==============================================================================
 # Appele quand une couleur est selectionnee (optionMenu)
 def setColorVar(l):
@@ -38,12 +40,10 @@ def setColorVar2(event=None):
 def updateVarNameList(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
-        vars = C.getVarNames(CTK.t, excludeXYZ=True)
+    if CTK.__MAINTREE__ <= 0:
+        vars = C.getVarNames(CTK.dt, excludeXYZ=True, mode=1)
     else:
-        nob = CTK.Nb[0]+1
-        noz = CTK.Nz[0]
-        vars = C.getVarNames(CTK.t[2][nob][2][noz], excludeXYZ=True)
+        vars = C.getVarNames(CTK.t, excludeXYZ=True, mode=1)
     m = WIDGETS['colors'].children['menu']
     m.delete(0, TK.END)
     allvars = ['White', 'Black', 'Grey', 'Blue', 'Red', 'Green', 'Yellow',
@@ -60,25 +60,22 @@ def updateVarNameList(event=None):
 def updateVarNameList2(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
-        vars = C.getVarNames(CTK.t, excludeXYZ=True)
+    if CTK.__MAINTREE__ <= 0:
+        vars = C.getVarNames(CTK.dt, excludeXYZ=True, mode=1)
     else:
-        nob = CTK.Nb[0]+1
-        noz = CTK.Nz[0]
-        vars = C.getVarNames(CTK.t[2][nob][2][noz], excludeXYZ=True)
-    
+        vars = C.getVarNames(CTK.t, excludeXYZ=True, mode=1)
     allvars = ['White', 'Black', 'Grey', 'Blue', 'Red', 'Green', 'Yellow',
                'Orange', 'Brown', 'Magenta', 'Custom>']
     if len(vars) > 0:
         for v in vars[0]: allvars.append('Iso:'+v)
 
-    if WIDGETS.has_key('colors'):
+    if 'colors' in WIDGETS:
         WIDGETS['colors']['values'] = allvars
 
 #==============================================================================
 def setMaterial():
     if CTK.t == []: return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     material = VARS[0].get()
@@ -276,7 +273,7 @@ def createApp(win):
                            text='tkRenderSet', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Customize block rendering\n(render mode).\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)

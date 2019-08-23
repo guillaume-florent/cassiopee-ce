@@ -5,8 +5,8 @@ import KCore.test as test
 
 # Sur une zone structuree 3D + champ noeuds + champ en centres
 a = G.cart((0.,0.,0.), (0.1,0.1,0.2), (10,10,5))
-a = C.initVars(a, 'F={CoordinateX}')
-a = C.initVars(a, 'centers:G={CoordinateY}')
+a = C.initVars(a, '{F}={CoordinateX}')
+a = C.initVars(a, '{centers:G}={centers:CoordinateY}')
 a = C.addBC2Zone(a, 'wall1', 'BCWall', 'imin')
 a = C.convertArray2Tetra(a)
 t = C.newPyTree(['Base',a])
@@ -32,16 +32,16 @@ test.testT(t, 3)
 
 # Sur un HEXA
 a = G.cartHexa((0.,0.,0.), (0.1,0.1,0.2), (10,10,5))
-a = C.initVars(a, 'F={CoordinateX}')
-a = C.initVars(a, 'centers:G={CoordinateY}')
+a = C.initVars(a, '{F}={CoordinateX}')
+a = C.initVars(a, '{centers:G}={centers:CoordinateY}')
 a = C.convertArray2Tetra(a)
 t = C.newPyTree(['Base',a])
 test.testT(t, 4)
 
 # Sur un QUAD
 a = G.cartHexa((0.,0.,0.), (0.1,0.1,0.2), (10,10,1))
-a = C.initVars(a, 'F={CoordinateX}')
-a = C.initVars(a, 'centers:G={CoordinateY}')
+a = C.initVars(a, '{F}={CoordinateX}')
+a = C.initVars(a, '{centers:G}={centers:CoordinateY}')
 a = C.convertArray2Tetra(a)
 t = C.newPyTree(['Base',2]); t[2][1][2].append(a)
 test.testT(t, 5)

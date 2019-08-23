@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -19,6 +19,9 @@
 // conversion file / pyTrees
 
 #ifdef _MPI
+#if defined(_WIN64)
+#define __int64 long long
+#endif
 #include "mpi.h"
 #include "mpi4py/mpi4py.h"
 #endif
@@ -31,13 +34,16 @@
 // ============================================================================
 PyObject* K_CONVERTER::convertFile2PyTree(PyObject* self, PyObject* args)
 {
-  char* fileName;
-  char* format; PyObject* skeletonData;
-  PyObject* dataShape;
-  if (!PyArg_ParseTuple(args, "ssOO", &fileName, &format, &skeletonData, &dataShape))
+  char* fileName; char* format; 
+  PyObject* skeletonData; PyObject* dataShape; 
+  PyObject* links; PyObject* skipTypes;
+  if (!PyArg_ParseTuple(args, "ssOOOO", &fileName, &format, &skeletonData, 
+                        &dataShape, &links, &skipTypes))
     return NULL;
   
   if (dataShape == Py_None) { dataShape = NULL; }
+  if (links == Py_None) { links = NULL; }
+  if (skipTypes == Py_None) { skipTypes = NULL; }
 
   E_Int l = strlen(format);
   char* myFormat = new char [l+1]; strcpy(myFormat, format);
@@ -66,7 +72,8 @@ PyObject* K_CONVERTER::convertFile2PyTree(PyObject* self, PyObject* args)
   if (strcmp(myFormat, "bin_adf") == 0)
     ret = K_IO::GenIO::getInstance()->adfcgnsread(fileName, tree, skeleton, maxFloatSize, maxDepth);
   else if (strcmp(myFormat, "bin_hdf") == 0)
-    ret = K_IO::GenIO::getInstance()->hdfcgnsread(fileName, tree, dataShape, skeleton, maxFloatSize, maxDepth);
+    ret = K_IO::GenIO::getInstance()->hdfcgnsread(fileName, tree, dataShape, links, skeleton, maxFloatSize, 
+                                                  maxDepth, skipTypes);
   else
     ret = K_IO::GenIO::getInstance()->adfcgnsread(fileName, tree, skeleton, maxFloatSize, maxDepth);
   printf("done.\n");
@@ -117,12 +124,12 @@ PyObject* K_CONVERTER::convertPyTree2File(PyObject* self, PyObject* args)
   printf("Writing %s (%s)...", fileName, format);
   fflush(stdout);
 
-  if (strcmp(format, "bin_adf") == 0)
-    K_IO::GenIO::getInstance()->adfcgnswrite(fileName, t);
-  else if (strcmp(format, "bin_cgns") == 0)
-    K_IO::GenIO::getInstance()->adfcgnswrite(fileName, t);
-  else if (strcmp(format, "bin_hdf") == 0)
+  if (strcmp(format, "bin_cgns") == 0)
     K_IO::GenIO::getInstance()->hdfcgnswrite(fileName, t, links);
+  else if (strcmp(format, "bin_hdf") == 0)
+    K_IO::GenIO::getInstance()->hdfcgnswrite(fileName, t, links);  
+  else if (strcmp(format, "bin_adf") == 0)
+    K_IO::GenIO::getInstance()->adfcgnswrite(fileName, t);
   else
     K_IO::GenIO::getInstance()->hdfcgnswrite(fileName, t, links);
   printf("done.\n");
@@ -132,26 +139,19 @@ PyObject* K_CONVERTER::convertPyTree2File(PyObject* self, PyObject* args)
 }
 
 // ============================================================================
-/* Convert pyTree to file - hdf only */
+/* Lit des noeuds definis dans Filter (partiellement) - hdf only */
 // ============================================================================
 PyObject* K_CONVERTER::convertFile2PartialPyTree(PyObject* self, PyObject* args)
 {
-  /* ***************************************************** */
-  /* Declaration */
-  char*     fileName;
-  char*     format;
+  char* fileName;
+  char* format;
   PyObject* skeletonData;
   PyObject* mpi4pyObj;
-  PyObject* Filter;
-  /* ***************************************************** */
-  /* Verbose */
-  // printf("K_CONVERTER::convertFile2PartialPyTree\n");
-
+  PyObject* filter; // dictionnaire des slices
   if (!PyArg_ParseTuple(args, "ssOOO", &fileName, &format, &skeletonData,
-                        &mpi4pyObj, &Filter))
+                        &mpi4pyObj, &filter))
     return NULL;
 
-  /* MPI Context */
 #ifdef _MPI
   void* pt_comm;
   pt_comm = (void*)&(((PyMPICommObject*)mpi4pyObj)->ob_mpi);
@@ -159,30 +159,27 @@ PyObject* K_CONVERTER::convertFile2PartialPyTree(PyObject* self, PyObject* args)
 #else
   int comm = 0;
 #endif
-  // if(mpi4pyObj == Py_None)
-  // {
-  // int comm = 0;
-  // }
-
+  
   E_Int l = strlen(format);
   char* myFormat = new char [l+1]; strcpy(myFormat, format);
   if (strcmp(myFormat, "bin_cgns") == 0) strcpy(myFormat, "bin_hdf");
+  if (strcmp(myFormat, "bin_hdf") != 0)
+  { printf("convertFile2PartialPyTree: only for HDF.\n"); return NULL; }
 
-  if (skeletonData == Py_None) printf("Reading %s (%s)...", fileName, myFormat);
-  else printf("Reading %s (%s, skeleton)...", fileName, myFormat);
-  fflush(stdout);
+  //if (skeletonData == Py_None) printf("Reading %s (%s)...", fileName, myFormat);
+  //else printf("Reading %s (%s, skeleton)...", fileName, myFormat);
+  //fflush(stdout);
+  printf("Reading %s (%s, partial)...", fileName, myFormat);
 
-  PyObject* tree;
-  tree = K_IO::GenIO::getInstance()->hdfcgnsReadFromPathsPartial(fileName, Filter, &comm);
+  PyObject* ret;
+  ret = K_IO::GenIO::getInstance()->hdfcgnsReadFromPathsPartial(fileName, filter, &comm);
   printf("done.\n");
   delete [] myFormat;
-  printf("done.\n");
-
-  return tree;
+  return ret;
 }
 
 // ============================================================================
-/* Convert file to PartialpyTree - hdf only */
+/* Convert file to partial pyTree - hdf only */
 // ============================================================================
 PyObject* K_CONVERTER::convertPyTree2FilePartial(PyObject* self, PyObject* args)
 {
@@ -201,7 +198,7 @@ PyObject* K_CONVERTER::convertPyTree2FilePartial(PyObject* self, PyObject* args)
   if (!PyArg_ParseTuple(args, "OssOOO", &t, &fileName, &format, &skeletonData, &mpi4pyObj, &Filter)) return NULL;
 
   printf("Writing %s (%s)...", fileName, format);
-  fflush(stdout);
+  fflush(stdout); 
 
   if(skeletonData != Py_None){skeleton = 0;}
   else{skeleton = 1;}
@@ -211,7 +208,7 @@ PyObject* K_CONVERTER::convertPyTree2FilePartial(PyObject* self, PyObject* args)
   // > Transform in C form
   pt_comm       = (void*)&(((PyMPICommObject*)mpi4pyObj)->ob_mpi);
   MPI_Comm comm = *((MPI_Comm *) pt_comm);
-  int nRank, myRank;
+  // int nRank, myRank;
   // MPI_Comm_size(comm, &nRank);
   // MPI_Comm_rank(comm, &myRank);
   // printf("Converter:: Rank   : %d \n", nRank );
@@ -223,7 +220,6 @@ PyObject* K_CONVERTER::convertPyTree2FilePartial(PyObject* self, PyObject* args)
 
 #else
   E_Int comm = 0; // dummy
-
   /* En sequentielle */
   // skeleton = 1;
   K_IO::GenIO::getInstance()->hdfcgnsWritePathsPartial(fileName, t, Filter, skeleton, &comm);

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -35,7 +35,8 @@ namespace K_MESH
 class Polygon {
   
 public:
-  E_Int NB_NODES;
+  static const E_Int NB_NODES;
+public:
   typedef K_MESH::NO_Edge boundary_type;
   typedef K_FLD::ArrayAccessor<K_FLD::FloatArray> aDynCrd_t;
     
@@ -43,22 +44,35 @@ public:
   ///
   //Polygon(E_Int shift=0):_shift(shift),_nodes(0){}
   ///
-  Polygon(const E_Int* nodes, E_Int nb_nodes, E_Int shift=0):NB_NODES(nb_nodes), _nodes(new E_Int[nb_nodes]), _shift(shift){for (E_Int i=0; i < nb_nodes; ++i)_nodes[i]=nodes[i];}
+  Polygon(const E_Int* nodes, E_Int nb_nodes, E_Int shift=0):_nb_nodes(nb_nodes), _nodes(nodes), _shift(shift), _triangles(nullptr){}
   ///
-  ~Polygon(){delete _nodes;}
+  ~Polygon(){if (_triangles != nullptr) delete [] _triangles;}
   ///
   //void setNodes(const E_Int* nodes, E_Int nb_nodes){NB_NODES=nb_nodes; for (size_t i=0; i < nb_nodes; ++i)_nodes[i]=nodes[i];}
   inline E_Int node(E_Int i){return _nodes[i]+_shift;}
   ///
-  inline E_Int nbounds() { return NB_NODES;}
+  inline E_Int nb_nodes() { return _nb_nodes;}
+
+  inline E_Int nb_tris() { return (_triangles != nullptr) ? _nb_nodes - 2 : 0;}
   ///
-  const E_Int* begin() { return &_nodes[0];}
+  const E_Int* begin() const{ return &_nodes[0];}
   ///
   template <typename ConnectivityAcc>
   inline void set(const ConnectivityAcc& connect, E_Int K){connect.getEntry(K, _nodes);}
+  
+  template<typename box_t, typename CoordAcc>
+  void bbox(const CoordAcc& acrd, box_t&bb) const
+  {
+    bb.compute(acrd, _nodes, _nb_nodes, 1/*idx start*/);
+  }
   ///
   //template <typename TriangulatorType>
   //inline E_Int triangulate(const TriangulatorType& t, const K_FLD::FloatArray& coord, K_FLD::IntArray& connectT3);//WARNING : connectT3 is Apended (not cleared upon entry)
+  
+  ///
+  template <typename TriangulatorType, typename acrd_t>
+  E_Int triangulate (const TriangulatorType& dt, const acrd_t& acrd);
+
   ///
   template <typename TriangulatorType>
   static E_Int triangulate
@@ -66,9 +80,53 @@ public:
   
   ///
   template <typename TriangulatorType>
+  static E_Int triangulate_inplace
+  (const TriangulatorType& t, const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int index_start, E_Int* begin, bool do_no_shuffle = true, bool improve_qual = false);//WARNING : connectT3 is filled IN PLACE (not cleared upon entry)
+  
+  ///
+  template <typename TriangulatorType>
+  static E_Int triangulate_inplace
+  (const TriangulatorType& t, const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int index_start, E_Int* begin, E_Int* neigh, bool do_no_shuffle = true, bool improve_qual = false);//WARNING : connectT3 is filled IN PLACE (not cleared upon entry) and neighbor is not sync with begin
+  
+  
+  ///
+  template <typename TriangulatorType>
   static E_Int triangulate
   (const TriangulatorType& t, const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int index_start, K_FLD::IntArray& connectT3, K_FLD::IntArray& neighbors, bool do_no_shuffle = true, bool improve_qual = false);  
   
+  inline void triangle(E_Int i, E_Int* target)
+  {
+    assert (_triangles != nullptr);
+    const E_Int* p = &_triangles[i*3];
+    target[0] = *(p++);
+    target[1] = *(p++);
+    target[2] = *p;
+    
+  }
+  
+  ///
+  static inline void cvx_triangulate(const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int ibest, E_Int index_start, K_FLD::IntArray& connectT3)
+  {
+    ibest = (ibest != E_IDX_NONE) ? ibest : 0;
+    ibest = (ibest < nb_nodes && ibest > -1) ? ibest : 0;
+    
+    E_Int N0 = nodes[ibest] - index_start;
+    E_Int I((ibest+1)%nb_nodes);
+    E_Int nb_tris = nb_nodes - 2;
+    E_Int T[3];
+    T[0]=N0;
+    for (E_Int i=0; i < nb_tris; ++i)
+    {
+      T[1] = nodes[I] - index_start;
+      T[2] = nodes[(I+1)%nb_nodes] - index_start;
+      connectT3.pushBack(T, T+3);
+      I = (I+1)%nb_nodes;
+    }
+  }
+  
+  ///
+  E_Int shuffle_triangulation();
+
   ///
   static E_Int get_sharp_edges
     (const K_FLD::FloatArray& crd, const ngon_unit& PGS, const E_Int* first_pg, E_Int nb_pgs, const E_Int* orient, const ngon_unit& lneighbors,
@@ -107,9 +165,23 @@ public:
   //template <E_Int DIM>
   //static inline void center_of_mass(const K_FLD::FloatArray& crd, const E_Int* nodes, E_Int nb_nodes, E_Int index_start, E_Float* G);
   
-  inline void reverse() {std::reverse(&_nodes[0], &_nodes[0]+NB_NODES);}
+  void edge_length_extrema(const K_FLD::FloatArray& crd, E_Float& Lmin2, E_Float& Lmax2)
+  {
+    Lmin2 = K_CONST::E_MAX_FLOAT;
+    Lmax2 = -1.;
   
-  inline void getBoundary(E_Int n, boundary_type& b) const {b.setNodes(_nodes[n], _nodes[(n+1)%NB_NODES]);}
+    for (E_Int i=0; i < _nb_nodes; ++i)
+    {
+      const E_Float* Pi = crd.col(node(i));
+      const E_Float* Pj = crd.col(node((i+1)%_nb_nodes));
+      
+      E_Float L2 = K_FUNC::sqrDistance(Pi,Pj, 3);
+      Lmin2 = MIN(Lmin2, L2);
+      Lmax2 = MAX(Lmax2, L2);
+    }
+  }
+  
+  inline void getBoundary(E_Int n, boundary_type& b) const {b.setNodes(_nodes[n], _nodes[(n+1)%_nb_nodes]);}
   static void getBoundary(const Polygon&  T1, const Polygon&  T2, E_Int& i1, E_Int& i2) ;
   
   static E_Int get_boundary
@@ -154,7 +226,7 @@ public:
   // returns the worst reflex info (K0, n0)
   static bool is_convex
     (const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int index_start,
-    const E_Float* normal, E_Float convexity_tol, E_Int& iworst);
+    const E_Float* normal, E_Float convexity_tol, E_Int& iworst, E_Int& ibest);
 
   // predicate
   static bool is_convex
@@ -167,8 +239,10 @@ private:
   Polygon(const Polygon& orig);
  
 private:
-    E_Int* _nodes;
+    E_Int _nb_nodes;
+    const E_Int*_nodes;
     E_Int _shift;
+    E_Int* _triangles;
 
 };
 
@@ -181,6 +255,40 @@ E_Int Polygon::triangulate
   K_FLD::IntArray cM, neighbors;
   E_Int err = Polygon::triangulate(t, coord, nodes, nb_nodes, index_start, cM, neighbors, do_not_shuffle, improve_quality);
   if (!err) connectT3.pushBack(cM);
+  return err;
+}
+
+///
+template <typename TriangulatorType>
+E_Int Polygon::triangulate_inplace
+(const TriangulatorType& t, const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int index_start, E_Int* begin,
+ bool do_not_shuffle, bool improve_quality)
+{
+  K_FLD::IntArray cM, neighbors;
+  E_Int err = Polygon::triangulate(t, coord, nodes, nb_nodes, index_start, cM, neighbors, do_not_shuffle, improve_quality);
+  if (!err)
+  {
+    for (E_Int i=0; i < cM.cols(); ++i)
+      std::copy(cM.col(i), cM.col(i)+3, begin + 3*i);
+  }
+  return err;
+}
+
+///
+template <typename TriangulatorType>
+E_Int Polygon::triangulate_inplace
+(const TriangulatorType& t, const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int index_start, E_Int* begin, E_Int* neigh,
+ bool do_not_shuffle, bool improve_quality)
+{
+  K_FLD::IntArray cM, neighbors;
+  E_Int err = Polygon::triangulate(t, coord, nodes, nb_nodes, index_start, cM, neighbors, do_not_shuffle, improve_quality);
+  if (!err)
+  {
+    for (E_Int i=0; i < cM.cols(); ++i){
+      std::copy(cM.col(i), cM.col(i)+3, begin + 3*i);
+      std::copy(neighbors.col(i), neighbors.col(i)+3, neigh + 3*i);
+    }
+  }
   return err;
 }
 
@@ -278,13 +386,34 @@ E_Int Polygon::triangulate
   return err;
 }
 
+ ///
+template <typename TriangulatorType, typename acrd_t>
+E_Int Polygon::triangulate
+  (const TriangulatorType& dt, const acrd_t& acrd)
+{
+  if (_triangles != nullptr) return 0;
+  
+  E_Int ntris = _nb_nodes -2;
+  _triangles = new E_Int[ntris*3];
+    
+  E_Int err(0);
+    
+  const K_FLD::FloatArray& crd = acrd.array();
+ 
+  err = K_MESH::Polygon::triangulate_inplace(dt, crd, _nodes, _nb_nodes, -_shift/*index start*/, _triangles, false/*do_not_shuffle*/, false/*improve_quality*/);
+  
+  return err;
+  }
+
+
+///
 template <> inline
 void Polygon::iso_barycenter<K_FLD::FloatArray, 3>(const K_FLD::FloatArray& coord, E_Float* G)
 { 
   //
   for (size_t d=0; d < 3; ++d) G[d]=0.;
   
-  for (E_Int i=0; i < NB_NODES; ++i)
+  for (E_Int i=0; i < _nb_nodes; ++i)
   {
     for (size_t d=0; d < 3; ++d)
     {
@@ -293,7 +422,7 @@ void Polygon::iso_barycenter<K_FLD::FloatArray, 3>(const K_FLD::FloatArray& coor
     }
   }
   
-  E_Float k = 1./(E_Float)NB_NODES;
+  E_Float k = 1./(E_Float)_nb_nodes;
   
   for (size_t i = 0; i < 3; ++i) G[i] *= k;
   //std::cout << "G : " << G[0] << "/" << G[1] << "/" << G[2] << std::endl;
@@ -306,7 +435,7 @@ void Polygon::iso_barycenter(const CoordAcc& coord, E_Float* G)
   //
   for (size_t d=0; d < DIM; ++d) G[d]=0.;
   
-  for (E_Int i=0; i < NB_NODES; ++i)
+  for (E_Int i=0; i < _nb_nodes; ++i)
   {
     for (size_t d=0; d < DIM; ++d)
     {
@@ -315,7 +444,7 @@ void Polygon::iso_barycenter(const CoordAcc& coord, E_Float* G)
     }
   }
   
-  E_Float k = 1./(E_Float)NB_NODES;
+  E_Float k = 1./(E_Float)_nb_nodes;
   
   for (size_t i = 0; i < DIM; ++i) G[i] *= k;
   //std::cout << "G : " << G[0] << "/" << G[1] << "/" << G[2] << std::endl;
@@ -332,7 +461,6 @@ void Polygon::iso_barycenter(const CoordAcc& coord, const E_Int* nodes, E_Int nb
   {
     for (size_t d=0; d < DIM; ++d)
     {
-      //std::cout << "v : " << coord.getVal(node(i), d) << std::endl;
       G[d] += coord.getVal(nodes[i]-index_start, d);
     }
   }
@@ -370,7 +498,7 @@ template <typename CoordAcc, E_Int DIM> inline
 void Polygon::ndS(const CoordAcc& acrd, const E_Int* nodes, E_Int nb_nodes, E_Int index_start, E_Float* ndS)
 {
   E_Float G[3], Pi[3], Pj[3], V1[3], V2[3], w[3];
-  
+
   K_MESH::Polygon::iso_barycenter<CoordAcc, DIM >(acrd, nodes, nb_nodes, index_start, G);
   
   // Compute an approximate normal W to the contour's surface (oriented toward outside).

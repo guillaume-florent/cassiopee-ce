@@ -14,7 +14,7 @@ t = C.newPyTree(['Cart', bgm])
 t = C.convertArray2NGon(t)
 
 # celln init
-t = C.initVars(t, 'centers:cellN', 1.)
+C._initVars(t, 'centers:cellN', 1.)
 # Blanking with floating cellN computation
 t = XOR.XcellN(t, [[masking]], [])
 C.convertPyTree2File(t, 'out1.cgns')
@@ -31,7 +31,7 @@ bgm = G.cart((-5.,-5.,-5.), (0.8,0.8,0.8), (40,40,40))
 t = C.newPyTree(['Cart', bgm])
 t = C.convertArray2NGon(t)
 # celln init
-t = C.initVars(t, 'centers:cellN', 1.)
+C._initVars(t, 'centers:cellN', 1.)
 # Blanking
 t = XOR.XcellN(t, [[masking]], [])
 C.convertPyTree2File(t, 'out2.cgns')

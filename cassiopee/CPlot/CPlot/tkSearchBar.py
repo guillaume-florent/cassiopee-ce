@@ -1,7 +1,8 @@
 # Search BAR
-import Tkinter as TK
-import Ttk as TTK
-import Tk as CTK
+try: import Tkinter as TK
+except: import tkinter as TK
+from . import Ttk as TTK
+from . import Tk as CTK
 
 # Dictionaire Action->applet
 applet = {
@@ -29,6 +30,8 @@ applet = {
     # tkContainers
     'tkContainers':'tkContainers', 'My fields dont display!':'tkContainers',
     'Change FlowSolution': 'tkContainers',
+    # tkCamera
+    'tkCamera':'tkCamera', 'Camera position':'tkCamera', 'View position':'tkCamera',
     # tkRuler
     'tkRuler':'tkRuler', 'Measure distance': 'tkRuler',
     # tkFind
@@ -181,6 +184,7 @@ applet = {
     # tkBackground
     'tkBackground':'tkBackground', 'Add a background mesh':'tkBackground',
     # tkRender
+    'tkRenderTree':'tkRenderTree', 'Load textures':'tkRenderTree',
     'tkRenderSet':'tkRenderSet', 'Set surface material': 'tkRenderSet',
     'Set Chrome/Wood/Glass/Stone effect on surface':'tkRenderSet',
     'Set XRay/Metal/Gooch/Smoke effect on surface':'tkRenderSet',
@@ -192,7 +196,7 @@ applet = {
     'Use Red/Blue glasses':'tkStereo',
     # tkEffects
     'tkEffects':'tkEffects', 'Add shadow':'tkEffects', 'Change camera angle':'tkEffects',
-    'Add depth of field': 'tkEffects', 
+    'Add depth of field': 'tkEffects', 'Set gamma': 'tkEffects', 'Set camera angle': 'tkEffects',
     # tkDemo
     'tkDemo':'tkDemo', 'Automatic camera motion':'tkDemo'
     }
@@ -286,8 +290,7 @@ class AutocompleteEntry(TK.Entry):
         for a in askString:
             pattern.append(re.compile('.*' + a + '.*', re.IGNORECASE))
 
-        sol = []
-        for i in xrange(la): sol.append([])
+        sol = [[]]*la
 
         for w in self.lista:
             ma = 0
@@ -309,11 +312,11 @@ class AutocompleteEntry(TK.Entry):
 
     def enter(self, event=None):
         word = self.var.get()
-        if applet.has_key(word):
+        if word in applet:
             # Get applet name
             app = applet[word]
             # activate the APP
-            module = CTK.TKMODULES[app]
+            module = CTK.getModule(app)
             module.showApp()
             frame = None; menu = None
             from tkCassiopee import TREEAPPS, STATEAPPS, EDGEAPPS, SURFAPPS, MESHAPPS, BLOCKAPPS, BCAPPS, MOTIONAPPS, SOLVERAPPS, POSTAPPS, VISUAPPS, RENDERAPPS

@@ -14,40 +14,40 @@ d = G.cart((1,1,6), (1.,1.,1.), (4,Nj,3)); d[0]='cart4'
 a = T.reorder(a,(-2,1,3))
 b = T.reorder(b,(1,2,3))
 c = T.reorder(c,(3,1,2))
-#
+
 # init cellN
 a = C.initVars(a, 'centers:cellN', 1.)
 b = C.initVars(b, 'centers:cellN', 0.)
 c = C.initVars(c, 'centers:cellN', 1.)
 d = C.initVars(d, 'centers:cellN', 0.)
-#
+
 t = C.newPyTree(['Base',a,b,c,d])
-t = C.initVars(t, 'F=3*{CoordinateX}+2*{CoordinateY}')
-t = C.initVars(t, 'centers:G={centers:CoordinateZ}')
+t = C.initVars(t, '{F}=3*{CoordinateX}+2*{CoordinateY}')
+t = C.initVars(t, '{centers:G}={centers:CoordinateZ}')
 t = X.connectMatch(t,dim=3)
-t = C.fillEmptyBCWith(t,"wall",'BCWall')
+t = C.fillEmptyBCWith(t,'wall','BCWall')
 t = Internal.addGhostCells(t,t,2,adaptBCs=0,fillCorner=1)
 test.testT(t,1)
-#
+
 t = C.newPyTree(['Base',a,b,c,d])
-t = C.initVars(t, 'F=3*{CoordinateX}+2*{CoordinateY}')
-t = C.initVars(t, 'centers:G={centers:CoordinateZ}')
+t = C.initVars(t, '{F}=3*{CoordinateX}+2*{CoordinateY}')
+t = C.initVars(t, '{centers:G}={centers:CoordinateZ}')
 t = X.connectMatch(t,dim=3)
 t = C.fillEmptyBCWith(t,"wall",'BCWall')
 t = Internal.addGhostCells(t,t,2,adaptBCs=1,fillCorner=1)
 test.testT(t,2)
 # geometrical extrapolation of corner cells
 t = C.newPyTree(['Base',a,b,c,d])
-t = C.initVars(t, 'F=3*{CoordinateX}+2*{CoordinateY}')
-t = C.initVars(t, 'centers:G={centers:CoordinateZ}')
+t = C.initVars(t, '{F}=3*{CoordinateX}+2*{CoordinateY}')
+t = C.initVars(t, '{centers:G}={centers:CoordinateZ}')
 t = X.connectMatch(t,dim=3)
 t = C.fillEmptyBCWith(t,"wall",'BCWall')
 t = Internal.addGhostCells(t,t,2,adaptBCs=0,fillCorner=0)
 test.testT(t,3)
 # geometrical extrapolation of corner cells
 t = C.newPyTree(['Base',a,b,c,d])
-t = C.initVars(t, 'F=3*{CoordinateX}+2*{CoordinateY}')
-t = C.initVars(t, 'centers:G={centers:CoordinateZ}')
+t = C.initVars(t, '{F}=3*{CoordinateX}+2*{CoordinateY}')
+t = C.initVars(t, '{centers:G}={centers:CoordinateZ}')
 t = X.connectMatch(t,dim=3)
 t = C.fillEmptyBCWith(t,"wall",'BCWall')
 t = Internal.addGhostCells(t,t,2,adaptBCs=1,fillCorner=0)

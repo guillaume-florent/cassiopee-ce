@@ -38,6 +38,6 @@ if (count == 50) // blindage si au moins un pt newton ne converge pas: utau = ut
 #endif 
   for (E_Int noind = 0; noind < ifin-ideb; noind++)  // test pour imiter stephanie
   { 
-    if( K_FUNC::E_abs(utauv_vec[noind]) > newtoneps ) utau_vec[noind] = nutcible_vec[noind];  
+    if (K_FUNC::E_abs(utauv_vec[noind]) > newtoneps) utau_vec[noind] = nutcible_vec[noind];  
   }
 }

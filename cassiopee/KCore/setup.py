@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys
+import os
 from distutils.core import setup, Extension
 
 #=============================================================================
@@ -23,11 +23,10 @@ Dist.writeSetupCfg()
 (numpyVersion, numpyIncDir, numpyLibDir) = Dist.checkNumpy()
 
 # Fortran compilation ========================================================
-if (f77compiler == "None"):
-    print "Error: a fortran 77 compiler is required for compiling KCore."
+if f77compiler == "None":
+    print("Error: a fortran 77 compiler is required for compiling KCore.")
 args = Dist.getForArgs(); opt = ''
-for c in xrange(len(args)):
-    opt += 'FOPT%d=%s '%(c, args[c])
+for c, v in enumerate(args): opt += 'FOPT%d=%s '%(c, v)
 os.system("make -e FC="+f77compiler+" WDIR=KCore/Fld "+opt)
 os.system("make -e FC="+f77compiler+" WDIR=KCore/Interp "+opt)
 os.system("make -e FC="+f77compiler+" WDIR=KCore/Metric "+opt)
@@ -50,7 +49,7 @@ import srcs
 extensions = [
     Extension('KCore.kcore',
               sources=['KCore/kcore.cpp']+srcs.cpp_srcs,
-              include_dirs=["KCore"]+additionalIncludePaths+[numpyIncDir],
+              include_dirs=["KCore", "KCore/Metis"]+additionalIncludePaths+[numpyIncDir],
               library_dirs=additionalLibPaths+libraryDirs,
               libraries=libraries+additionalLibs,
               extra_compile_args=Dist.getCppArgs(),
@@ -61,7 +60,7 @@ extensions = [
 # Setup ======================================================================
 setup(
     name="KCore",
-    version="2.5",
+    version="2.9",
     description="Core for *Cassiopee* modules.",
     author="Onera",
     package_dir={"":"."},

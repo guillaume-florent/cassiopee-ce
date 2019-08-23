@@ -1,5 +1,6 @@
 # - simple transformations of mesh -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import Generator.PyTree as G
@@ -36,28 +37,28 @@ def symetrize():
     xmax = bb[3]; ymax = bb[4]; zmax = bb[5]
     if axis == 'around XY-':
         X = ((xmin+xmax)*0.5, (ymin+ymax)*0.5, zmin)
-        axe1 = (1,0,0); axe2 = (0,1,0)
+        axe1 = (1.,0.,0.); axe2 = (0.,1.,0.)
     elif axis == 'XY+':
         X = ((xmin+xmax)*0.5, (ymin+ymax)*0.5, zmax)
-        axe1 = (1,0,0); axe2 = (0,1,0)
+        axe1 = (1.,0.,0.); axe2 = (0.,1.,0.)
     elif axis == 'around XZ-':
         X = ((xmin+xmax)*0.5, ymin, (zmin+zmax)*0.5)
-        axe1 = (1,0,0); axe2 = (0,0,1)
+        axe1 = (1.,0.,0.); axe2 = (0.,0.,1.)
     elif axis == 'around XZ+':
         X = ((xmin+xmax)*0.5, ymax, (zmin+zmax)*0.5)
-        axe1 = (1,0,0); axe2 = (0,0,1)
+        axe1 = (1.,0.,0.); axe2 = (0.,0.,1.)
     elif axis == 'around YZ-':
         X = (xmin, (ymin+ymax)*0.5, (zmin+zmax)*0.5)
-        axe1 = (0,1,0); axe2 = (0,0,1)
+        axe1 = (0.,1.,0.); axe2 = (0.,0.,1.)
     elif axis == 'around YZ+':
         X = (xmax, (ymin+ymax)*0.5, (zmin+zmax)*0.5)
-        axe1 = (0,1,0); axe2 = (0,0,1)
+        axe1 = (0.,1.,0.); axe2 = (0.,0.,1.)
     elif axis == 'around view':
         X = CPlot.getState('posEye')
         Y = CPlot.getState('posCam')
         axe1 = (X[0]-Y[0], X[1]-Y[1], X[2]-Y[2])
         axe2 = CPlot.getState('dirCam')
-    else: X=(0,0,0); axe1 = (1,0,0); axe2 = (0,1,0)
+    else: X=(0.,0.,0.); axe1 = (1.,0.,0.); axe2 = (0.,1.,0.)
     
     CTK.saveTree()
     for nz in nzs:
@@ -82,14 +83,14 @@ def rotate(event=None):
     else: 
         CTK.TXT.insert('START', 'Invalid angle or angle+rotation center.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
-    if axis == 'around X': axe = (1,0,0)
-    elif axis == 'around Y': axe = (0,1,0)
-    elif axis == 'around Z': axe = (0,0,1)
+    if axis == 'around X': axe = (1.,0.,0.)
+    elif axis == 'around Y': axe = (0.,1.,0.)
+    elif axis == 'around Z': axe = (0.,0.,1.)
     elif axis == 'around view':
         pos = CPlot.getState('posCam')
         eye = CPlot.getState('posEye')
         axe = (eye[0]-pos[0], eye[1]-pos[1], eye[2]-pos[2])
-    else: axe = (0,0,1)
+    else: axe = (0.,0.,1.)
     try: angle = float(angle)
     except: angle = 0.
     
@@ -99,7 +100,7 @@ def rotate(event=None):
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
         
     CTK.saveTree()
-    if X == None:
+    if X is None:
         sel = []
         for nz in nzs:
             nob = CTK.Nb[nz]+1
@@ -247,7 +248,6 @@ def scale():
         X = [v[3],v[4],v[5]]
     else:
         X = G.barycenter(selection)
-    print X
     if len(v) == 1 and v[0] == 0.: # scale unitaire 
         bbox = G.bbox(selection)
         dx = bbox[3]-bbox[0]
@@ -286,7 +286,6 @@ def changeFrame():
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
     mode = VARS[7].get()
-    #print "Transform: apply({}): ".format(mode)
     assert(mode in dir(T))
 
     args = CTK.varsFromWidget(VARS[8].get(), type=1)
@@ -308,7 +307,7 @@ def changeFrame():
             func = getattr(T, mode)
             a = func(CTK.t[2][nob][2][noz], origin, axis)
             CTK.replace(CTK.t, nob, noz, a)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
 
     if not fail: CTK.TXT.insert('START', '{} done.\n'.format(mode))
@@ -328,7 +327,7 @@ def createApp(win):
                            text='tkTransform', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='General block transformations.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -387,7 +386,7 @@ def createApp(win):
     B.grid(row=2, column=1, sticky=TK.EW)
     B = TTK.Entry(Frame, textvariable=VARS[1], background='White', width=5)
     B.grid(row=2, column=2, sticky=TK.EW)
-    BB = CTK.infoBulle(parent=B, text='Scale factors: f or fx;fy;fz\nUse 0. for autoscale to 1.\nYou can also add center for scaling: cx;cy;cz.')
+    BB = CTK.infoBulle(parent=B, text='Scale factors (+ optionally center for scaling): uniform f value or fx;fy;fz (+ optionally cx;cy;cz)\nFor automatic adimensioning, use 0.')
 
     # - Rotate -
     B = TTK.Button(Frame, text="Rotate", command=rotate)
@@ -399,7 +398,7 @@ def createApp(win):
     B.grid(row=3, column=1, sticky=TK.EW)
     B = TTK.Entry(Frame, textvariable=VARS[3], background='White', width=5)
     B.grid(row=3, column=2, sticky=TK.EW)
-    BB = CTK.infoBulle(parent=B, text='angle (degrees) or \nangle; Xc;Yc;Zc (angle+rotation center)')
+    BB = CTK.infoBulle(parent=B, text='angle (degrees) or \nangle; Xc;Yc;Zc (angle+rotation center)\nIf center is not specified, rotate around barycenter of zones.')
 
     # - Symetrize -
     B = TTK.Button(Frame, text="Mirror", command=symetrize)
@@ -441,11 +440,11 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

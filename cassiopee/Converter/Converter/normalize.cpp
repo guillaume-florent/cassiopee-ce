@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -41,7 +41,8 @@ PyObject* K_CONVERTER::normalize(PyObject* self, PyObject* args)
   char* varString; char* eltType;
   FldArrayF* f; FldArrayI* cn;
   E_Int ni, nj, nk; // number of points of array
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, ni, nj, nk, cn, eltType, true);
+  E_Int res = K_ARRAY::getFromArray2(array, varString, 
+                                     f, ni, nj, nk, cn, eltType);
   
   if (res == -1)
   {
@@ -57,18 +58,29 @@ PyObject* K_CONVERTER::normalize(PyObject* self, PyObject* args)
   E_Int m;
   for (E_Int v  = 0 ; v < PyList_Size(varsO); v++)
   {
-    if (PyString_Check(PyList_GetItem(varsO, v)) == 0)
+    PyObject* l = PyList_GetItem(varsO, v);
+    if (PyString_Check(l))
     {
-      printf("Warning: normalize: invalid string for variable %d. Skipped...\n", v);
-    }
-    else
-    {
-      var = PyString_AsString(PyList_GetItem(varsO, v));
+      var = PyString_AsString(l);
       m = K_ARRAY::isNamePresent(var, varString);
       if (m == -1)
         printf("Warning: normalize: variable %d not present in array. Skipped...\n", v);
       else {m++; pos.push_back(m);}
     }
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(l))
+    {
+      var = PyBytes_AsString(PyUnicode_AsUTF8String(l));
+      m = K_ARRAY::isNamePresent(var, varString);
+      if (m == -1)
+        printf("Warning: normalize: variable %d not present in array. Skipped...\n", v);
+      else {m++; pos.push_back(m);}
+    }
+#endif
+    else
+    {
+      printf("Warning: normalize: invalid string for variable %d. Skipped...\n", v);
+    }  
   }
 
   n = pos.size();
@@ -78,29 +90,10 @@ PyObject* K_CONVERTER::normalize(PyObject* self, PyObject* args)
     printf("Warning: normalize: no variable in result.\n");;
     Py_INCREF(Py_None); return Py_None;
   }
-  E_Int npts = f->getSize(); E_Int nfld = f->getNfld();
-  PyObject* tpl;
+  E_Int npts = f->getSize();
 
-  if (res == 1)
-  {
-    tpl = K_ARRAY::buildArray(nfld, varString, 
-                              ni, nj, nk);
-  }
-  else //unstr
-  {
-    tpl = K_ARRAY::buildArray(nfld, varString,
-                              npts, cn->getSize(),
-                              -1, eltType, false, cn->getSize()*cn->getNfld());
-  }
-  E_Float* fnp = K_ARRAY::getFieldPtr(tpl);
-  FldArrayF fp(npts, nfld, fnp, true); fp = *f;
-  if (res == 2)
-  {
-    E_Int* cnnp = K_ARRAY::getConnectPtr(tpl);
-    K_KCORE::memcpy__(cnnp, cn->begin(), cn->getSize()*cn->getNfld());
-  }
-
-  E_Float* fpt0 = fp.begin(pos[0]);
+  FldArrayF fp(npts);
+  E_Float* fpt0 = fp.begin();
 
 #pragma omp parallel default(shared)
   {
@@ -120,16 +113,16 @@ PyObject* K_CONVERTER::normalize(PyObject* self, PyObject* args)
     for (E_Int v  = n-1; v >= 0; v--)
     {
       E_Float* ft = f->begin(pos[v]);
-      E_Float* fpt = fp.begin(pos[v]);
 #pragma omp for
       for (E_Int i = 0; i < npts; i++)
       {
-        fpt[i] = ft[i] * fpt0[i];
+        ft[i] = ft[i] * fpt0[i];
       }
     }
   }
 
   RELEASESHAREDB(res, array, f, cn);
-  return tpl;
+  Py_INCREF(Py_None);
+  return Py_None;
 } 
     

@@ -1,5 +1,6 @@
 # - tk interface for Dist2Walls -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -9,8 +10,7 @@ import Dist2Walls.PyTree as DTW
 import Converter.Internal as Internal
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def setSurfaces():
@@ -77,11 +77,11 @@ def compute():
             noz = CTK.Nz[nz]
             CTK.t[2][nob][2][noz] = tp[2][1][2][c]
             c += 1
-        CTK.t = C.fillMissingVariables(CTK.t)
+        #C._fillMissingVariables(CTK.t)
         CTK.TKTREE.updateApp()
         CTK.display(CTK.t)
         CTK.TXT.insert('START', 'Distance to walls computed.\n')
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: dist2Walls')
         CTK.TXT.insert('START', 'Distance to walls failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -95,7 +95,7 @@ def createApp(win):
                            text='tkDist2Walls', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Compute wall distance.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -112,17 +112,17 @@ def createApp(win):
     # - VARS -
     # -0- Type de distance -
     V = TK.StringVar(win); V.set('ortho'); VARS.append(V)
-    if CTK.PREFS.has_key('tkDist2WallsType'): 
+    if 'tkDist2WallsType' in CTK.PREFS: 
         V.set(CTK.PREFS['tkDist2WallsType'])
     # -1- Surfaces -
     V = TK.StringVar(win); V.set(''); VARS.append(V)
     # -2- Signed ou absolute -
     V = TK.StringVar(win); V.set('absolute'); VARS.append(V)
-    if CTK.PREFS.has_key('tkDist2WallsSigned'): 
+    if 'tkDist2WallsSigned' in CTK.PREFS: 
         V.set(CTK.PREFS['tkDist2WallsSigned'])
     # -3- Vars location -
     V = TK.StringVar(win); V.set('nodes'); VARS.append(V)
-    if CTK.PREFS.has_key('tkVariablesLoc'): 
+    if 'tkVariablesLoc' in CTK.PREFS: 
         V.set(CTK.PREFS['tkVariablesLoc'])
 
     # - Surfaces -
@@ -180,11 +180,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

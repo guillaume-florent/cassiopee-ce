@@ -27,7 +27,7 @@ a = G.cylinder((0.,0.,0.), 0.5, 1., 360., 0., 2., (50,50,3))
 # --- CL
 a = C.addBC2Zone(a,'wall','BCWall','jmin')
 # --- champ aux noeuds
-t = C.newPyTree(['Cylindre']); t[2][1][2].append(a)
+t = C.newPyTree(['Cylindre', a])
 # --- Equation state
 t[2][1] = C.addState(t[2][1], 'EquationDimension', 3)
 b = G.cylinder((1.5,0.,0.), 0.5, 1., 360., 0., 4., (50,50,3))
@@ -45,8 +45,8 @@ b5 = G.cart((-4.,-2.,3.),(0.4,0.4,1),(11,11,4))
 b6 = G.cart((2.,-2.,3.),(0.4,0.4,1),(11,11,4))
 #
 t = C.addBase2PyTree(t,'Cart');t[2][2][2] = [b1,b2,b3,b4,b5,b6]
-t = C.initVars(t, 'centers:cellN', 1.)
-t = C.initVars(t, 'Density', 2.)
+C._initVars(t, 'centers:cellN', 1.)
+C._initVars(t, 'Density', 2.)
 bases = Internal.getNodesFromType(t,'CGNSBase_t'); base = bases[0]
 doms = X.getCEBBTimeIntersectingDomains(base, F, bases, Funcs, 0, 6, dt, sameBase=1)
 test.testO(doms)

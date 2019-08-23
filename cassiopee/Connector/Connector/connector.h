@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -21,7 +21,6 @@
 #define _CONNECTOR_CONNECTOR_H_
 # include <locale>
 # include <cctype>
-# include "Python.h"
 # include "kcore.h"
 # include "KInterp/BlkInterp.h"
 
@@ -94,10 +93,22 @@
     RELEASESHAREDN(pyArrayPressure, pressF);            \
   if ( pyArrayDens != Py_None)                          \
     RELEASESHAREDN(pyArrayDens, densF);                 \
+  if ( pyArrayVx != Py_None)                            \
+    RELEASESHAREDN(pyArrayVx, vxF);                     \
+  if ( pyArrayVy != Py_None)                            \
+    RELEASESHAREDN(pyArrayVy, vyF);                     \
+  if ( pyArrayVz != Py_None)                            \
+    RELEASESHAREDN(pyArrayVz, vzF);                     \
   if ( pyArrayUtau != Py_None)                          \
     RELEASESHAREDN(pyArrayUtau, utauF);                 \
   if ( pyArrayYplus != Py_None)                         \
-    RELEASESHAREDN(pyArrayYplus, yplusF);
+    RELEASESHAREDN(pyArrayYplus, yplusF);                              
+
+
+extern "C"
+{
+  void spalart_1d_(E_Int& ithread, E_Float* y, E_Float* matm,E_Float* mat,E_Float* matp,E_Float* nutilde, E_Float* utble, E_Float& pdtc, E_Float& nu, E_Float& nutildeext, E_Int& jmax, E_Float& kappa);
+}  
 
 namespace K_CONNECTOR 
 {
@@ -426,7 +437,7 @@ namespace K_CONNECTOR
     std::vector<E_Int>& nit, std::vector<E_Int>& njt, std::vector<E_Int>& nkt,
     std::vector<K_FLD::FldArrayF*>& coords,
     std::vector<K_KINTERP::BlkInterpData*>& listOfInterpDatas, 
-    std::vector<K_FLD::FldArrayI*>& cellns, E_Int zid);
+    std::vector<K_FLD::FldArrayI*>& cellns, E_Int zid, E_Float cfMax);
 /* recherche des pts EX valides et calcule les coeff d interpolation 
    IN: interpPts: pts EX a interpoler 
    IN: nit, njt, nkt: dimensions des domaines d interpolation en noeuds
@@ -443,7 +454,7 @@ namespace K_CONNECTOR
     std::vector<E_Int>& nit, std::vector<E_Int>& njt, std::vector<E_Int>& nkt,
     std::vector<K_FLD::FldArrayF*>& coords,
     std::vector<K_KINTERP::BlkInterpData*>& listOfInterpDatas, 
-    std::vector<K_FLD::FldArrayI*>& cellns, E_Int zid);
+    std::vector<K_FLD::FldArrayI*>& cellns, E_Int zid, E_Float cfMax);
 
   /* calcul des transferts Chimere
    IN: lArraysDonor: liste des champs des domaines donneurs 
@@ -463,14 +474,14 @@ namespace K_CONNECTOR
                           K_KINTERP::BlkInterpData* blkInterpData,
                           E_Int ni, E_Int nj, E_Int nk, K_FLD::FldArrayI& cellN,
                           E_Float x, E_Float y, E_Float z, 
-                          E_Int testNature,
+                          E_Int testNature, E_Float cfMax,
                           K_FLD::FldArrayF& cf, K_FLD::FldArrayI& indExtrap, 
                           E_Int& ic, E_Int& jc, E_Int& kc);
   E_Float compInterpolatedNature(E_Int ni, E_Int nj, E_Int nk,
                                  E_Int indiSize, E_Int* indi,
                                  K_FLD::FldArrayF& cf, E_Int* cellNp,
                                  E_Int interpType);
-  /* changeWall basé sur la courbure : modifie le maillage z à partir 
+  /* changeWall basÃ© sur la courbure : modifie le maillage z Ã  partir 
      d'une liste de parois sur lesquelles projeter. Ne projette que des 
      points de cellN = 2
      IN: imc, jmc, kmc: dimensions du maillage z a projeter 
@@ -482,7 +493,7 @@ namespace K_CONNECTOR
      IN: hmaxw: hmax pour les pts de indicesw 
      IN: unstrF, cnt: maillages TRI des surfaces sur lesquelles projeter 
      IN: posxt, posyt, poszt: position de x, y et z dans ces maillages TRI
-     IN: xc, yc, zc: maillage à projeter en centres, les coordonnées sont modifiées si cellN = 2 
+     IN: xc, yc, zc: maillage Ã  projeter en centres, les coordonnÃ©es sont modifiÃ©es si cellN = 2 
      OUT: xc2, yc2, zc2 : maillage projete resultant */
   void changeWall(E_Int imc, E_Int jmc, E_Int kmc, E_Float* cellN, 
                   E_Int nbCentersW, E_Float* indicesw, E_Float* dirw1, E_Float* dirw2, E_Float* dirw3, E_Float* hmaxw, 
@@ -490,7 +501,8 @@ namespace K_CONNECTOR
                   std::vector<E_Int> posht, std::vector<E_Int> posct,
                   std::vector<K_FLD::FldArrayI*>& cnt, std::vector<K_FLD::FldArrayF*>& unstrF,
                   E_Float* xc, E_Float* yc, E_Float* zc,
-                  E_Float* xc2, E_Float* yc2, E_Float* zc2);
+                  E_Float* xc2, E_Float* yc2, E_Float* zc2,
+                  E_Float planartol=0.);
   
   void shiftAbovePoints(E_Int imc, E_Int jmc, E_Int kmc,
                         E_Int dir, E_Int indA, E_Int iA, E_Int jA, E_Int kA,
@@ -506,7 +518,8 @@ namespace K_CONNECTOR
                     E_Int nbCentersW, E_Float* indicesw, E_Float* dirw1, E_Float* dirw2, E_Float* dirw3, E_Float* hmaxw,
                     std::vector<E_Int> posxt, std::vector<E_Int> posyt, std::vector<E_Int> poszt, 
                     std::vector<E_Int> posht, std::vector<E_Int> posct,
-                    std::vector<K_FLD::FldArrayI*>& cnt, std::vector<K_FLD::FldArrayF*>& unstrF);
+                    std::vector<K_FLD::FldArrayI*>& cnt, std::vector<K_FLD::FldArrayF*>& unstrF,
+                    E_Float planartol=0.);
 
   /* Calcul du centre d interface au dessus du centre d interface dont le noeud min est indn
      IN: dirEX : direction du pt EX (interface i constante => 1)
@@ -570,9 +583,13 @@ namespace K_CONNECTOR
                                   E_Int* rcvPtsI, E_Int& nbRcvPts, E_Int& ideb, E_Int& ifin, E_Int& ithread,
                                   E_Float* xPC, E_Float* yPC, E_Float* zPC,
                                   E_Float* xPW, E_Float* yPW, E_Float* zPW,
-                                  E_Float* xPI, E_Float* yPI, E_Float* zPI, E_Float* densPtr, E_Float* pressPtr, E_Float* utauPtr, E_Float* yplusPtr,
+                                  E_Float* xPI, E_Float* yPI, E_Float* zPI, 
+                                  E_Float* densPtr, E_Float* pressPtr, 
+                                  E_Float* vxPtr, E_Float* vyPtr, E_Float* vzPtr, 
+                                  E_Float* utauPtr, E_Float* yplusPtr,
+                                  E_Float* d1, E_Float* d2, E_Float* d3, E_Float* d4, E_Float* d5,
                                   E_Float* tmp, E_Int&  size,
-                                  E_Float gamma, E_Float cv, E_Float muS, E_Float Cs, E_Float Ts,
+                                  E_Float gamma, E_Float cv, E_Float muS, E_Float Cs, E_Float Ts, E_Float Pr,
                                   std::vector<E_Float*>& WIn,
                                   std::vector<E_Float*>& WOut);
 
@@ -581,19 +598,28 @@ namespace K_CONNECTOR
                                   E_Int* rcvPtsI, E_Int& nbRcvPts, E_Int& ideb, E_Int& ifin, E_Int& ithread,
                                   E_Float* xPC, E_Float* yPC, E_Float* zPC,
                                   E_Float* xPW, E_Float* yPW, E_Float* zPW,
-                                  E_Float* xPI, E_Float* yPI, E_Float* zPI, E_Float* densPtr, E_Float* pressPtr, E_Float* utauPtr, E_Float* yplusPtr,
+                                  E_Float* xPI, E_Float* yPI, E_Float* zPI, 
+                                  E_Float* densPtr, E_Float* pressPtr, 
+                                  E_Float* vxPtr, E_Float* vyPtr, E_Float* vzPtr, 
+                                  E_Float* utauPtr, E_Float* yplusPtr,
+                                  E_Float* d1, E_Float* d2, E_Float* d3, E_Float* d4, E_Float* d5,
                                   E_Float* tmp, E_Int&  size,
-                                  E_Float gamma, E_Float cv, E_Float muS, E_Float Cs, E_Float Ts,
-                                  std::vector<E_Float*>& WIn, std::vector<E_Float*>& WOut);
+                                  E_Float gamma, E_Float cv, E_Float muS, E_Float Cs, E_Float Ts, E_Float Pr,
+                                  std::vector<E_Float*>& WIn, std::vector<E_Float*>& WOut, 
+                                  E_Int nbptslinelets=0, E_Float* linelets=NULL, E_Int* indexlinelets=NULL);
 
   /* Transferts IBC avec variables (ro,u,v,w,p) en entree/sortie */
   E_Int setIBCTransfersCommonVar3(E_Int bctype,
                                   E_Int* rcvPtsI, E_Int& nbRcvPts, E_Int& ideb, E_Int& ifin, E_Int& ithread,
                                   E_Float* xPC, E_Float* yPC, E_Float* zPC,
                                   E_Float* xPW, E_Float* yPW, E_Float* zPW,
-                                  E_Float* xPI, E_Float* yPI, E_Float* zPI, E_Float* densPtr, E_Float* pressPtr, E_Float* utauPtr, E_Float* yplusPtr,
+                                  E_Float* xPI, E_Float* yPI, E_Float* zPI, 
+                                  E_Float* densPtr, E_Float* pressPtr, 
+                                  E_Float* vxPtr, E_Float* vyPtr, E_Float* vzPtr,
+                                  E_Float* utauPtr, E_Float* yplusPtr, 
+                                  E_Float* d1, E_Float* d2, E_Float* d3, E_Float* d4, E_Float* d5,
                                   E_Float* tmp, E_Int&  size,
-                                  E_Float gamma, E_Float cv, E_Float muS, E_Float Cs, E_Float Ts,
+                                  E_Float gamma, E_Float cv, E_Float muS, E_Float Cs, E_Float Ts, E_Float Pr,
                                   std::vector<E_Float*>& WIn, std::vector<E_Float*>& WOut);
 
   /* For setInterpDataGC : a mettre dans KCore ? */
@@ -630,18 +656,21 @@ namespace K_CONNECTOR
   PyObject* optimizeOverlap(PyObject* self, PyObject* args);
   PyObject* maximizeBlankedCells( PyObject* self, PyObject* args );
   PyObject* blankCells( PyObject* self, PyObject* args);
+  PyObject* _blankCells( PyObject* self, PyObject* args);
   PyObject* blankCellsTetra( PyObject* self, PyObject* args);
   PyObject* createTetraMask( PyObject* self, PyObject* args);
   PyObject* deleteTetraMask( PyObject* self, PyObject* args); 
   PyObject* createTriMask( PyObject* self, PyObject* args);
   PyObject* deleteTriMask( PyObject* self, PyObject* args); 
   PyObject* maskXRay(PyObject* self, PyObject* args);
+  PyObject* getIntersectingDomainsAABB(PyObject* self, PyObject* args);
   PyObject* applyBCOverlapStruct(PyObject* self, PyObject* args);
   PyObject* applyBCOverlapsNG(PyObject* self, PyObject* args);
   PyObject* setDoublyDefinedBC(PyObject* self, PyObject* args);
-  PyObject* getBCOverlapInterpCellCenters(PyObject* self, PyObject* args);
   PyObject* getOversetHolesInterpCellCenters(PyObject* self, PyObject* args);
   PyObject* getOversetHolesInterpNodes(PyObject* self, PyObject* args);
+  PyObject* _getOversetHolesInterpCellCenters(PyObject* self, PyObject* args);
+  PyObject* _getOversetHolesInterpNodes(PyObject* self, PyObject* args);
   PyObject* getEXPoints(PyObject* self, PyObject* args);
   PyObject* setInterpolations(PyObject* self, PyObject* args);
   PyObject* setInterpData(PyObject* self, PyObject* args);
@@ -651,6 +680,7 @@ namespace K_CONNECTOR
   PyObject* setInterpDataCons(PyObject* self, PyObject* args);
   PyObject* writeCoefs(PyObject* self, PyObject* args);
   PyObject* chimeraTransfer(PyObject* self, PyObject* args);
+  PyObject* transferFields(PyObject* self, PyObject* args);
   PyObject* initNuma(PyObject* self, PyObject* args);
   PyObject* setInterpTransfers(PyObject* self, PyObject* args);// en pratique non appelee de PyTree
   PyObject* _setInterpTransfers(PyObject* self, PyObject* args);
@@ -659,8 +689,8 @@ namespace K_CONNECTOR
   PyObject* setInterpTransfersD(PyObject* self, PyObject* args);// en pratique non appelee de PyTree
   PyObject* _setInterpTransfersD(PyObject* self, PyObject* args);
   PyObject* __setInterpTransfersD(PyObject* self, PyObject* args);
-  PyObject* ___setInterpTransfersD(PyObject* self, PyObject* args);
   PyObject* getInterpolatedPoints(PyObject* self, PyObject* args);
+  PyObject* getInterpolatedPointsZ(PyObject* self, PyObject* args);
   PyObject* changeWall(PyObject* self, PyObject* args);
   PyObject* changeWallEX(PyObject* self, PyObject* args);
   PyObject* modifyBorders(PyObject* self, PyObject* args);
@@ -682,5 +712,8 @@ namespace K_CONNECTOR
   PyObject* _setIBCTransfersD(PyObject* self, PyObject* args);
   PyObject* getExtrapAbsCoefs(PyObject* self, PyObject* args);
   PyObject* _updateNatureForIBM(PyObject* self, PyObject* args);//on a zone, in place
+  PyObject* indiceToCoord2(PyObject* self, PyObject* args);//on a zone, in place
+  PyObject* correctCoeffList(PyObject* self, PyObject* args);//on a zone, in place
+  PyObject* _blankClosestTargetCells(PyObject* self, PyObject* args);
 }
 #endif

@@ -19,17 +19,18 @@ def point(P):
     a = Geom.point(P)
     return C.convertArrays2ZoneNode('point', [a])
 
-def naca(epaisseur, N=101):
+def naca(e, N=101, sharpte=True):
     """Create a naca profile of N points.
-    Usage: naca(epaisseur, N)"""
-    a = Geom.naca(epaisseur, N)
-    return C.convertArrays2ZoneNode('naca', [a])    
+    Usage: naca(e, N)"""
+    a = Geom.naca(e, N, sharpte)
+    zname = 'naca'
+    if isinstance(e, str): zname ='NACA'+e
+    return C.convertArrays2ZoneNode(zname, [a])    
     
 def line(P1, P2, N=100):
     """Create a line of N points. Usage: line( (x1,y1,z1), (x2,y2,z2), N )"""
     a = Geom.line(P1, P2, N)
     return C.convertArrays2ZoneNode('line', [a])
-
 
 def polyline(Pts):
     """Create a polyline of N points.
@@ -57,7 +58,7 @@ def spline(t, order=3, N=100, M=100, density=-1):
 def nurbs(t, weight='weight', order=3, N=100, M=100, density=-1):
     """Create a nurbs of N points.
     Usage: nurbs(ctrlPts, order, N)"""
-    w = C.getField(weight,t)[0]
+    w = C.getField(weight, t)[0]
     Pts = C.getFields(Internal.__GridCoordinates__, t)[0]
     Pts = Converter.addVars([Pts,w])
     surf = Geom.nurbs(Pts, weight, order, N, M, density)
@@ -82,23 +83,75 @@ def sphere(center, R, N=100):
     a = Geom.sphere(center, R, N)
     return C.convertArrays2ZoneNode('sphere', [a])
 
-def sphere6(center, R, N=100):
+def sphere6(center, R, N=100, ntype='STRUCT'):
     """Create a shpere of NxN points and of center C and radius R.
     Usage: sphere((xc,yc,zc), R, N)"""
-    A = Geom.sphere6(center, R, N)
-    return [C.convertArrays2ZoneNode('sphere-part1', [A[0]]),
-            C.convertArrays2ZoneNode('sphere-part2', [A[1]]),
-            C.convertArrays2ZoneNode('sphere-part3', [A[2]]),
-            C.convertArrays2ZoneNode('sphere-part4', [A[3]]),
-            C.convertArrays2ZoneNode('sphere-part5', [A[4]]),
-            C.convertArrays2ZoneNode('sphere-part6', [A[5]])]
+    A = Geom.sphere6(center, R, N, ntype)
+    if ntype == 'STRUCT':
+        return [C.convertArrays2ZoneNode('sphere-part1', [A[0]]),
+        C.convertArrays2ZoneNode('sphere-part2', [A[1]]),
+        C.convertArrays2ZoneNode('sphere-part3', [A[2]]),
+        C.convertArrays2ZoneNode('sphere-part4', [A[3]]),
+        C.convertArrays2ZoneNode('sphere-part5', [A[4]]),
+        C.convertArrays2ZoneNode('sphere-part6', [A[5]])]
+    else:
+        return C.convertArrays2ZoneNode('sphere', [A])
 
-def sphereYinYang(center, R, N=100):
+def sphereYinYang(center, R, N=100, ntype='STRUCT'):
     """Create a sphere of center C and radius R made of two overlapping zones.
     Usage: sphereYinYang((xc,yc,zc), R, N)"""
     A = Geom.sphereYinYang(center, R, N)
-    return [C.convertArrays2ZoneNode('sphere-part1', [A[0]]),
-            C.convertArrays2ZoneNode('sphere-part2', [A[1]])]
+    if ntype == 'STRUCT':
+        return [C.convertArrays2ZoneNode('sphere-part1', [A[0]]),
+        C.convertArrays2ZoneNode('sphere-part2', [A[1]])]
+    else:
+        return C.convertArrays2ZoneNode('sphere', [A])
+
+def disc(center, R, N=100, ntype='STRUCT'):
+    """Create a disc of center C and radius R.
+    Usage: disc((xc,yc,zc), R, N)"""
+    A = Geom.disc(center, R, N, ntype)
+    if ntype == 'STRUCT':
+        return [C.convertArrays2ZoneNode('disc-part1', [A[0]]),
+        C.convertArrays2ZoneNode('disc-part2', [A[1]]),
+        C.convertArrays2ZoneNode('disc-part3', [A[2]]),
+        C.convertArrays2ZoneNode('disc-part4', [A[3]]),
+        C.convertArrays2ZoneNode('disc-part5', [A[4]])]
+    else:
+        return C.convertArrays2ZoneNode('disc', [A])
+
+def box(Pmin, Pmax, N=100, ntype='STRUCT'):
+    """Create a box passing by Pmin and Pmax.
+    Usage: box(Pmin, Pmax, N)"""
+    A = Geom.box(Pmin, Pmax, N, ntype)
+    if ntype == 'STRUCT':
+        return [C.convertArrays2ZoneNode('box-part1', [A[0]]),
+        C.convertArrays2ZoneNode('box-part2', [A[1]]),
+        C.convertArrays2ZoneNode('box-part3', [A[2]]),
+        C.convertArrays2ZoneNode('box-part4', [A[3]]),
+        C.convertArrays2ZoneNode('box-part5', [A[4]]),
+        C.convertArrays2ZoneNode('box-part6', [A[5]])]
+    else:
+        return C.convertArrays2ZoneNode('box', [A])
+
+def cylinder(center, R, H, N=100, ntype='STRUCT'):
+    """Create a cylinder of center C, radius R and hieght H.
+    Usage: cylinder((xc,yc,zc), R, H, N)"""
+    A = Geom.cylinder(center, R, H, N, ntype)
+    if ntype == 'STRUCT':
+        return [C.convertArrays2ZoneNode('cyl-part1', [A[0]]),
+        C.convertArrays2ZoneNode('cyl-part2', [A[1]]),
+        C.convertArrays2ZoneNode('cyl-part3', [A[2]]),
+        C.convertArrays2ZoneNode('cyl-part4', [A[3]]),
+        C.convertArrays2ZoneNode('cyl-part5', [A[4]]),
+        C.convertArrays2ZoneNode('cyl-part6', [A[5]]),
+        C.convertArrays2ZoneNode('cyl-part7', [A[6]]),
+        C.convertArrays2ZoneNode('cyl-part8', [A[7]]),
+        C.convertArrays2ZoneNode('cyl-part9', [A[8]]),
+        C.convertArrays2ZoneNode('cyl-part10', [A[9]]),
+        C.convertArrays2ZoneNode('cyl-part11', [A[10]])]
+    else:
+        return C.convertArrays2ZoneNode('cyl', [A])
 
 def torus(center, R, r, alphas=0., alphae=360.,
           betas=0., betae=360., NR=100, Nr=100):
@@ -109,17 +162,28 @@ def torus(center, R, r, alphas=0., alphae=360.,
     a = Geom.torus(center, R, r, alphas, alphae, betas, betae, NR, Nr)
     return C.convertArrays2ZoneNode('torus', [a])
             
-def triangle(P1, P2, P3):
+def triangle(P1, P2, P3, N=0, ntype='TRI'):
     """Create a single triangle with points P1, P2, P3.
     Usage: triangle((x1,y,1,z1), (x2,y2,z2), (x3,y3,z3))"""
-    a = Geom.triangle(P1, P2, P3)
-    return C.convertArrays2ZoneNode('triangle', [a])
+    a = Geom.triangle(P1, P2, P3, N, ntype)
+    if ntype == 'STRUCT':
+        return [C.convertArrays2ZoneNode('tri-part1', [A[0]]),
+        C.convertArrays2ZoneNode('tri-part2', [A[1]]),
+        C.convertArrays2ZoneNode('tri-part3', [A[2]])]
+    else:
+        return C.convertArrays2ZoneNode('triangle', [a])
 
-def quadrangle(P1, P2, P3, P4):
+def quadrangle(P1, P2, P3, P4, N=0, ntype='QUAD'):
     """Create a single quadrangle with points P1, P2, P3, P4.
     Usage: quadrangle((x1,y,1,z1), (x2,y2,z2), (x3,y3,z3), (x4,y4,z4))"""
-    a = Geom.quadrangle(P1, P2, P3, P4)
-    return C.convertArrays2ZoneNode('quadrangle', [a])
+    a = Geom.quadrangle(P1, P2, P3, P4, N, ntype)
+    if ntype == 'STRUCT':
+        return [C.convertArrays2ZoneNode('quad-part1', [A[0]]),
+        C.convertArrays2ZoneNode('quad-part2', [A[1]]),
+        C.convertArrays2ZoneNode('quad-part3', [A[2]]),
+        C.convertArrays2ZoneNode('quad-part2', [A[3]])]
+    else:
+        return C.convertArrays2ZoneNode('quadrangle', [a])
 
 def surface(f, N=100):
     """Create a surface from a user defined parametric function.
@@ -215,17 +279,33 @@ def addSeparationLine(t, line0):
         zones.append(zone)
     return zones
 
+# Obsolete
 def lineGenerate(t, line):
+    return lineDrive(t, line)
+
+def lineDrive(t, line):
     """Generate a surface mesh by using 1D array (defining a mesh)
     and following the curve defined in line.
-    Usage: lineGenerate(t, line)"""
+    Usage: lineDrive(t, line)"""
     al = C.getFields(Internal.__GridCoordinates__, line)
     if len(al) == 1: al = al[0]
     al2 = Converter.node2Center(al)
     # Attention les coord. des centres ne sont pas justes! mais
     # elles ne sont pas utilisees dans la fonction
-    return C.TZAGC(t, 'both', 'both', Geom.lineGenerate,
-                   Geom.lineGenerate, al, al2)
+    return C.TZAGC(t, 'both', 'both', True, Geom.lineDrive,
+                   Geom.lineDrive, al, al2)
+
+def orthoDrive(t, line, mode=0):
+    """Generate a surface mesh by using 1D array (defining a mesh)
+    and following orthogonally the curve defined in line.
+    Usage: orthoDrive(t, line)"""
+    al = C.getFields(Internal.__GridCoordinates__, line)
+    if len(al) == 1: al = al[0]
+    al2 = Converter.node2Center(al)
+    # Attention les coord. des centres ne sont pas justes! mais
+    # elles ne sont pas utilisees dans la fonction
+    return C.TZAGC(t, 'both', 'both', True, Geom.orthoDrive,
+                   Geom.orthoDrive, al, mode, al2, mode)
 
 def axisym(t, center, axis, angle=360., Ntheta=360, rmod=None):
     """Create an axisymmetric mesh given an azimuthal surface mesh.
@@ -233,13 +313,13 @@ def axisym(t, center, axis, angle=360., Ntheta=360, rmod=None):
     # Attention en centres, les coord. des centres ne sont pas justes! mais
     # elles ne sont pas utilisees dans la fonction
     if rmod is not None: rmod = C.getFields(Internal.__GridCoordinates__, rmod)[0]
-    return C.TZAGC(t, 'both', 'both', Geom.axisym, Geom.axisym,
+    return C.TZAGC(t, 'both', 'both', True, Geom.axisym, Geom.axisym,
                    center, axis, angle, Ntheta, rmod,
                    center, axis, angle, Ntheta-1, rmod)
 
 def _axisym(t, center, axis, angle=360., Ntheta=360, rmod=None):
     if rmod is not None: rmod = C.getFields(Internal.__GridCoordinates__, rmod)[0]
-    return C._TZAGC(t, 'both', 'both', Geom.axisym, Geom.axisym,
+    return C._TZAGC(t, 'both', 'both', True, Geom.axisym, Geom.axisym,
                     center, axis, angle, Ntheta, rmod,
                     center, axis, angle, Ntheta-1, rmod)
 
@@ -286,3 +366,48 @@ def connect1D(curves, sharpness=0, N=10, lengthFactor=1.):
     a = C.getFields(Internal.__GridCoordinates__, curves)
     z = Geom.connect1D(a, sharpness, N, lengthFactor)
     return C.convertArrays2ZoneNode('connected', [z])
+
+def uniformize(a, N=100, h=-1, factor=-1., density=-1., sharpAngle=30.):
+    """Uniformize a 1D curve."""
+    ap = Internal.copyRef(a)
+    _uniformize(ap, N, h, factor, density, sharpAngle)
+    return ap
+
+def _uniformize(a, N=100, h=-1., factor=-1, density=-1, sharpAngle=30.):
+    C._deleteFlowSolutions__(a)
+    C._TZGC(a, 'nodes', Geom.uniformize, N, h, factor, density, sharpAngle)
+    return None
+
+def refine(a, N=10, factor=-1, sharpAngle=30.):
+    """Refine a 1D curve."""
+    ap = Internal.copyRef(a)
+    _refine(ap, N, factor, sharpAngle)
+    return ap
+
+def _refine(a, N=10, factor=-1, sharpAngle=30.):
+    C._deleteFlowSolutions__(a)
+    C._TZGC(a, 'nodes', Geom.refine, N, factor, sharpAngle)
+    return None
+
+def enforceh(a, N=100, h=-1.):
+    """Remesh a 1D curve with imposed steps."""
+    ap = Internal.copyRef(a)
+    _enforceh(ap, N, h)
+    return ap
+
+def _enforceh(a, N=100, h=-1.):
+    C._TZA(a, 'nodes', 'nodes', Geom.enforceh, None, N, h)
+    C._deleteFlowSolutions__(a)
+    return None
+
+def setH(a, ind, h):
+    zones = Internal.getZones(a)
+    for z in zones:
+        if C.isNamePresent(z, 'h') == -1: C._initVars(a, 'h', 0.)
+        C.setValue(a, 'h', ind, h)
+
+def setF(a, ind, f):
+    zones = Internal.getZones(a)
+    for z in zones:
+        if C.isNamePresent(z, 'f') == -1: C._initVars(a, 'f', 0.)
+        C.setValue(a, 'f', ind, f)

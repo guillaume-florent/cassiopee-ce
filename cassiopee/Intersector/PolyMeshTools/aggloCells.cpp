@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -18,126 +18,34 @@
 */
 
 
-# include <string>
-# include <sstream> 
 # include "intersector.h"
-# include "Fld/ngon_t.hxx"
-# include "Nuga/Delaunay/Triangulator.h"
-# include "Nuga/Boolean/Agglomerator.h"
-
-//#include <iostream>
-
-using namespace std;
-using namespace NUGA;
-
+# include "stub.h"
 
 //=============================================================================
-/* Agglomerate superfuous faces (overdefined polyhedra) */
+/* Agglomerate cells with a too high aspect ratio */
 //=============================================================================
 PyObject* K_INTERSECTOR::agglomerateSmallCells(PyObject* self, PyObject* args)
 {
-  PyObject *arr;
-  E_Float vmin(0.), vratio(1000.);
-  E_Int debug=0;
-
-  if (!PYPARSETUPLEF(args, "Odd", "Off",
-                     &arr, &vmin, &vratio)) return NULL;
-
-  K_FLD::FloatArray* f(0);
-  K_FLD::IntArray* cn(0);
-  char* varString, *eltType;
-  // Check array # 1
-  E_Int err = check_is_NGON(arr, f, cn, varString, eltType);
-  if (err) return NULL;
-    
-  K_FLD::FloatArray & crd = *f;
-  K_FLD::IntArray & cnt = *cn;
-  
-  //~ std::cout << "crd : " << crd.cols() << "/" << crd.rows() << std::endl;
-  //~ std::cout << "cnt : " << cnt.cols() << "/" << cnt.rows() << std::endl;
-  
-  typedef ngon_t<K_FLD::IntArray> ngon_type;
-  ngon_type ngi(cnt), ngo;
-
-  E_Int nb_aggs(0);
-  NUGA::Agglomerator::agglomerate_small_phs<DELAUNAY::Triangulator>(crd, ngi, vmin, vratio, ngo, nb_aggs);
-
-  PyObject *l(PyList_New(0)), *tpl;
-
-  {
-    // zone 1 : mesh
-    {
-      K_FLD::IntArray cnto;
-      ngo.export_to_array(cnto);
-      tpl = K_ARRAY::buildArray(crd, varString, cnto, -1, "NGON", false);
-      PyList_Append(l, tpl);
-      Py_DECREF(tpl);
-    }
-
-    if (debug)
-    {
-      for (E_Int i=0; i < nb_aggs; ++i)
-      {
-        ngon_unit ph;
-        ph.add(ngo.PHs.stride(i), ngo.PHs.get_facets_ptr(i));
-
-        ngon_type one_ph(ngo.PGs, ph);
-        std::vector<E_Int> pgnids, phnids;
-        one_ph.remove_unreferenced_pgs(pgnids, phnids);
-  
-        K_FLD::FloatArray cr(crd);
-        ngon_type::compact_to_used_nodes(one_ph.PGs, cr);
-
-        K_FLD::IntArray cnto;
-        one_ph.export_to_array(cnto);
-
-        tpl = K_ARRAY::buildArray(cr, varString, cnto, -1, "NGON", false);
-        PyList_Append(l, tpl);
-        Py_DECREF(tpl);
-      }
-    }
-  }
-
-  delete f; delete cn;
-  return l;
+  PyErr_SetString(PyExc_NotImplementedError, STUBMSG);
+  return NULL;
 }
 
 //=============================================================================
-/* Agglomerate XXX */
+/* Agglomerate cells with a too high aspect ratio */
 //=============================================================================
-// PyObject* K_INTERSECTOR::agglomerateUncomputableCells(PyObject* self, PyObject* args)
-// {
-//   PyObject *arr;
+PyObject* K_INTERSECTOR::agglomerateNonStarCells(PyObject* self, PyObject* args)
+{
+  PyErr_SetString(PyExc_NotImplementedError, STUBMSG);
+  return NULL;
+}
 
-//   if (!PyArg_ParseTuple(args, "O", &arr)) return NULL;
-
-//   K_FLD::FloatArray* f(0);
-//   K_FLD::IntArray* cn(0);
-//   char* varString, *eltType;
-//   // Check array # 1
-//   E_Int err = check_is_NGON(arr, f, cn, varString, eltType);
-//   if (err) return NULL;
-    
-//   K_FLD::FloatArray & crd = *f;
-//   K_FLD::IntArray & cnt = *cn;
-  
-//   //~ std::cout << "crd : " << crd.cols() << "/" << crd.rows() << std::endl;
-//   //~ std::cout << "cnt : " << cnt.cols() << "/" << cnt.rows() << std::endl;
-  
-//   typedef ngon_t<K_FLD::IntArray> ngon_type;
-//   ngon_type ngi(cnt), ngo;
-  
-//   NUGA::Agglomerator::agglomerate_uncomputable_phs<DELAUNAY::Triangulator>(crd, ngi, ngo);
-
-//   K_FLD::IntArray cnto;
-//   ngo.export_to_array(cnto);
-  
-//   PyObject* tpl = K_ARRAY::buildArray(crd, varString, cnto, -1, eltType, false);;
-  
-  
-//   delete f; delete cn;
-//   return tpl;
-// }
-
+//=============================================================================
+/* Agglomerate cells where polygons are specified */
+//=============================================================================
+PyObject* K_INTERSECTOR::agglomerateCellsWithSpecifiedFaces(PyObject* self, PyObject* args)
+{
+    PyErr_SetString(PyExc_NotImplementedError, STUBMSG);
+  return NULL;
+}
 
 //=======================  Intersector/PolyMeshTools/aggloFaces.cpp ====================

@@ -1,5 +1,6 @@
 # - mapping/remeshing -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -62,7 +63,7 @@ def mapCurvature():
             if dims[3] > 1:
                 zp = G.mapCurvature(zp, int(power*dims[3]), power2, 3)
         CTK.replace(CTK.t, nob, noz, zp)
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'MapCurvature done.\n')
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -117,7 +118,7 @@ def uniformize():
             if dims[3] > 1:
                 zp = uniformizeMesh(zp, power*dims[3], 3)
         CTK.replace(CTK.t, nob, noz, zp)
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'Uniformize done.\n')
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -163,7 +164,7 @@ def refine():
             z = G.refine(z, power, dir)
             CTK.replace(CTK.t, nob, noz, z)
 
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'Refine done.\n')
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -244,7 +245,7 @@ def enforceMesh(z, dir, N, width, ind, h):
             distrib = G.enforceX(distrib, valf, h/l, Nr, Nr)
     try:
         z1 = G.map(z, distrib, dir); return z1
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: enforce')
         return None
 
@@ -298,7 +299,7 @@ def enforce():
         CTK.TXT.insert('START', 'Stretch failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     else: CTK.TXT.insert('START', 'Stretch done.\n')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
 
@@ -316,7 +317,7 @@ def createApp(win):
                            text='tkStretch', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Stretch meshes locally.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -334,7 +335,7 @@ def createApp(win):
     # - VARS -
     # -0- enforced height -
     V = TK.StringVar(win); V.set('1.e-6'); VARS.append(V)
-    if CTK.PREFS.has_key('tkStretchHeight'):
+    if 'tkStretchHeight' in CTK.PREFS:
         V.set(CTK.PREFS['tkStretchHeight'])
     # -1- direction pour remap
     V = TK.StringVar(win); V.set('i-j-k indices'); VARS.append(V)
@@ -346,7 +347,7 @@ def createApp(win):
     V = TK.StringVar(win); V.set('1.'); VARS.append(V)
     # -5- power for mapCurvature
     V = TK.StringVar(win); V.set('0.5'); VARS.append(V)
-    if CTK.PREFS.has_key('tkStretchCurvPower'):
+    if 'tkStretchCurvPower' in CTK.PREFS:
         V.set(CTK.PREFS['tkStretchCurvPower'])
     # -6- Width of mesh info bulle
     V = TK.StringVar(win); V.set('Width of mesh concerned with remeshing (% of points).'); VARS.append(V)
@@ -435,11 +436,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -30,10 +30,11 @@ namespace DELAUNAY
     typedef K_CONT_DEF::int_vector_type  int_vector_type;
     typedef K_CONT_DEF::bool_vector_type bool_vector_type;
     
-    MeshData():pos(0), connectB(0){};
+    MeshData():pos(0), connectB(0), unsync_nodes(false){hnids.clear();};
 
-    MeshData(K_FLD::FloatArray& p, const K_FLD::IntArray& cB):pos(&p),connectB(&cB)
+    MeshData(K_FLD::FloatArray& p, const K_FLD::IntArray& cB):pos(&p),connectB(&cB), unsync_nodes(false)
     {
+      hnids.clear();
     }
     
     void clear()
@@ -46,11 +47,40 @@ namespace DELAUNAY
       colors.clear();
       metrics.clear();
       mask.clear();
+      hnids.clear();
+      unsync_nodes=false;
+    }
+    
+    ///
+    void sync_hards()
+    {
+      std::vector<E_Int> hN;
+      hN.reserve(hardNodes.size());
+      for (auto& Ni : hardNodes)
+      {
+        if (hnids[Ni] == Ni)hN.push_back(Ni);
+      }
+      hardNodes=hN;
+    
+      K_CONT_DEF::non_oriented_edge_set_type nHE;// = data.hardEdges;
+      for (auto& Ei : hardEdges)
+      { 
+        E_Int Ni = Ei.node(0);
+        Ni = (hnids[Ni] == Ni ) ? Ni : hnids[Ni];
+        E_Int Nj = Ei.node(1);
+        Nj = (hnids[Nj] == Nj ) ? Nj : hnids[Nj];
+      
+        if (Ni != Nj) nHE.insert(K_MESH::NO_Edge(Ni, Nj));
+      }
+      hardEdges = nHE;
     }
 
     K_FLD::FloatArray*         pos;
-    const K_FLD::IntArray*           connectB;
+    const K_FLD::IntArray*     connectB;
     int_vector_type            hardNodes;
+    bool                       unsync_nodes;
+    int_vector_type            hnids;
+  
     K_CONT_DEF::non_oriented_edge_set_type hardEdges;
     K_FLD::IntArray            connectM;
     K_FLD::IntArray            neighbors;

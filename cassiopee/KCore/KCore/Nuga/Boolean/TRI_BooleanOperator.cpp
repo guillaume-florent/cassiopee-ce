@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -255,11 +255,10 @@ TRI_BooleanOperator::check_sanity()
 E_Int
 TRI_BooleanOperator::compute_zones()
 {
-  E_Int                            ret(0), S0, i;
-  std::set<K_MESH::NO_Edge>         hXC;
+  E_Int                      ret(0), S0, i=0;
+  std::set<K_MESH::NO_Edge>  hXC;
   
   _hXCO.clear();
-
 
   // Computes the common boundary (intersection edges and overlap zones boundaries).
   ret = __compute_x_contour(hXC);
@@ -581,12 +580,23 @@ TRI_BooleanOperator::__reorient_x_contour
   {
     E_Int Ei[2];
     K_FLD::IntArray connectXB;
+    std::set<K_MESH::NO_Edge> tmp;
     for (std::set<K_MESH::Edge>::const_iterator i = hXCO.begin(); i != hXCO.end(); ++i)
     {
       Ei[0] = i->node(0);
       Ei[1] = i->node(1);
+      
+      if (Ei[0] == Ei[1])
+        std::cout << "degenrated" << std::endl;
+      
+      tmp.insert(K_MESH::NO_Edge(i->node(0), i->node(1)));
+      
       connectXB.pushBack(Ei, Ei+2);
     }
+
+    std::cout << "number of edges : " << hXCO.size() << std::endl;
+    std::cout << "number of oriented edges : " << tmp.size() << std::endl;
+    
     MIO::write("reoriented_xcontour.mesh", _coord, connectXB, "BAR");
   }
 #endif
@@ -613,21 +623,39 @@ TRI_BooleanOperator::__color_other_part
     colors.resize(connect.cols(), 0);
     return 0;
   }
+  
+#ifdef E_DEBUG_TRI_BOOLEANOPERATOR
+  {
+    K_FLD::IntArray tmp;
+    E_Int Ei[2];
+    for (K_CONT_DEF::non_oriented_edge_set_type::const_iterator i = hXC.begin(); i != hXC.end(); ++i)
+    {
+      Ei[0] = i->node(0);
+      Ei[1] = i->node(1);
+      tmp.pushBack(Ei, Ei+2);
+    }
+    MIO::write("hXC.mesh", _coord, tmp);
+  }
+#endif
 
   // Detect the different zones.
   std::vector< std::vector<E_Int> > scolors;
   ContourSplitter<K_MESH::Triangle, K_MESH::NO_Edge>::splitConnectivity(connect, hXC, scolors);
   
   // Loop through the zone and compare the boundary orientation with connectXB's.
-  for (size_t z = 0; z < scolors.size(); ++z)
+  E_Int nb_zones = scolors.size();
+  for (E_Int z = 0; z < nb_zones; ++z)
   {
-    //std::ostringstream o;
-    //o << "m_" << z << ".mesh";
-    //DynArrayIO::write(o.str().c_str(), _coord, cOuts[z]);
-
+    
     Ci.clear();
     for (size_t i = 0; i < scolors[z].size(); ++i)
       Ci.pushBack(connect.col(scolors[z][i]), connect.col(scolors[z][i])+3);
+    
+#ifdef E_DEBUG_TRI_BOOLEANOPERATOR
+    std::ostringstream o;
+    o << "m_" << z << ".mesh";
+    MIO::write(o.str().c_str(), _coord, Ci);
+#endif
 
     connectOut.pushBack(Ci);
 
@@ -638,6 +666,14 @@ TRI_BooleanOperator::__color_other_part
       K_CONNECT::MeshTool::getBoundary(Ci, connectbo);
       same_orient = opp_orient = false;
       col = C_NONE;
+      
+#ifdef E_DEBUG_TRI_BOOLEANOPERATOR
+      {
+        std::ostringstream o;
+        o << "zb_" << z << ".mesh";
+        MIO::write(o.str().c_str(), _coord, connectbo);
+      }
+#endif
 
       for (c = 0; (c<connectbo.cols()) && (col == C_NONE); ++c)
       {

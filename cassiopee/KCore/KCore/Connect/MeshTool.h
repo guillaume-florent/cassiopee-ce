@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -23,6 +23,7 @@
 #include "Search/KdTree.h"
 #include "Def/DefContainers.h"
 #include "MeshElement/Triangle.h"
+#include "MeshElement/Polygon.h"
 #include "Fld/ngon_unit.h"
 
 #include <deque>
@@ -44,6 +45,9 @@ class MeshTool
     typedef K_CONT_DEF::bool_vector_type bool_vector_type;
     typedef K_MESH::Triangle              element_type;
     typedef K_SEARCH::KdTree<>            tree_type;
+    
+    typedef std::map<E_Int, int_set_type >          id_to_ids_t;
+    typedef std::vector<std::deque<E_Int> >         idlists_t;
  
   public:
 
@@ -57,7 +61,7 @@ class MeshTool
     E_Int getContainingElements
       (const E_Float* point, const K_FLD::FloatArray& pos, const K_FLD::IntArray& connect,
        const K_FLD::IntArray& neighbors, const int_vector_type& ancestors, const bool_vector_type& mask, 
-       const tree_type& tree, OutputIterator out) const;
+       const tree_type& tree, OutputIterator out, size_type & N0) const;
 
     template <typename MetricType>
     void getIntersectionNodes(size_type Ni, size_type Nj, int_vector_type& Qis, std::vector<MetricType>& Mis){/*fixme*/Qis.push_back(Ni);Qis.push_back(Nj);}
@@ -91,9 +95,11 @@ class MeshTool
     static void build_node_arity(const std::set<K_MESH::NO_Edge>& edges, std::map<E_Int, E_Int>& node_to_count);
 
     static void computeNodeNormals(const K_FLD::FloatArray& pos, const K_FLD::IntArray& connect, K_FLD::FloatArray& normals);
-    static E_Int computeNodeNormals(const K_FLD::FloatArray& crd, const ngon_unit& pgs, K_FLD::FloatArray& normals);
+    static E_Int computeNodeNormals(const K_FLD::FloatArray& crd, const ngon_unit& pgs, K_FLD::FloatArray& normals, E_Int smooth_iters = 0);
     
     static E_Int computeNodeNormalsFromPGNormals (const K_FLD::FloatArray& PG_normals, const ngon_unit& pgs, K_FLD::FloatArray& node_normals);
+    
+    static E_Int smoothNodeNormals(const ngon_unit& pgs, K_FLD::FloatArray& normals, E_Int smooth_iters=1);
 
     static void compact_to_mesh(K_FLD::FloatArray& pos, K_FLD::IntArray& connect, std::vector<E_Int>& new_IDs, E_Int* N0 = 0);
     
@@ -156,6 +162,16 @@ class MeshTool
     static E_Int get_edges_lying_on_plane(const K_FLD::FloatArray& crd, E_Int index_start, const std::set<K_MESH::NO_Edge>& edges, E_Int Np, const E_Float* normal, E_Float tol_rel, std::set<K_MESH::NO_Edge>& lyingEs);
     static void burn_free_branches(std::set<K_MESH::NO_Edge>& edges, std::map<E_Int, E_Int>& node_to_count);
     static E_Float get_max_deviation (const K_FLD::FloatArray& crd, const K_FLD::IntArray& cT3, const K_FLD::IntArray& neighT3);
+    
+    template <typename Triangulator>
+  static void refine_T3s(const K_FLD::FloatArray& coord, K_FLD::IntArray& connectT3, 
+                         std::map<K_MESH::NO_Edge, Vector_t<E_Int> >& edge_to_refined_edge, std::vector<E_Int>& oids);
+    
+    static inline void append_all_topo_paths (const K_FLD::FloatArray& crd, E_Int Nstart, E_Int Nend, const id_to_ids_t& nodes_graph, idlists_t& paths);
+    
+    template <typename IntCONT>
+    static inline void get_farthest_point_to_edge (const K_FLD::FloatArray& crd, E_Int Ni, E_Int Nj, const IntCONT& list, E_Int& Nf, E_Float& d2);
+    
 private:
 
   E_Int __getContainingElement(const E_Float* point, const K_FLD::FloatArray& pos, const K_FLD::IntArray& connect,

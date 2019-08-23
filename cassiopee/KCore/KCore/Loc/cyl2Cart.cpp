@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -38,13 +38,13 @@ E_Int K_LOC::cyl2Cart(E_Int npts, E_Float* rt, E_Float* thetat,
     // Choix direction suivant axe
     if (ex > eps && ey < eps && ez < eps) // axe X
     {
-      xl = zt; yl = yt; //zl = xt;
-      x0 = Z0; y0 = Y0;
+      xl = yt; yl = zt; //zl = xt;
+      x0 = Y0; y0 = Z0;
     }
     else if (ey > eps && ex < eps && ez < eps) // axe Y
     {
-      xl = xt; yl = zt; //zl = yt;
-      x0 = X0; y0 = Z0;
+      xl = zt; yl = xt; //zl = yt;
+      x0 = Z0; y0 = X0;
     }
     else if (ez > eps && ey < eps && ex < eps) // axe Z
     {

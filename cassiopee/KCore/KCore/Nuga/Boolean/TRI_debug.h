@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -55,7 +55,7 @@ public:
   
   static void coloring_frames(const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3, K_FLD::IntArray& neighbors, E_Int Kseed/*one of the target faulty PHT3s triangles*/);
   
-  static void get_same_ancestor_T3s (E_Int PGi, E_Int iter, const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3, const std::vector<E_Int>& ancestors, std::vector<E_Int>& oids);
+  static void get_same_ancestor_T3s (E_Int PGi, const std::vector<E_Int>& ancestors, std::vector<E_Int>& oids);
   static void draw_same_ancestor_T3s(E_Int PGi, E_Int iter, const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3, const std::vector<E_Int>& ancestors);
   
   static void write_wired(const char* fname, const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3, bool normal, const std::vector<E_Int>*T3colors=0, const std::vector<bool>* mask=0);

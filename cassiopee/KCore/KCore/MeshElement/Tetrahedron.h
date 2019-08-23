@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -22,6 +22,8 @@
 #include "Def/DefTypes.h"
 #include "Fld/DynArray.h"
 #include "MeshElement/Triangle.h"
+#define Vector_t std::vector
+
 
 static const E_Float aa = 0.25*(1. - 1./::sqrt(5.));
 static const E_Float bb = 1. -3.*aa;//(5. + 3.*::sqrt(5.)) / 20.;
@@ -34,17 +36,94 @@ class Tetrahedron {
   public:
     static const E_Int NB_NODES;
     static const E_Int NB_TRIS;
+    static const E_Int NB_BOUNDS;
+    static const E_Int NB_EDGES;
+
     typedef K_MESH::Triangle       boundary_type;
   
   public:
-    Tetrahedron(){}
+    Tetrahedron():_shift(0){}
     ~Tetrahedron(){}
+    
+    Tetrahedron(const E_Int* nodes, E_Int shift=0):_shift(shift){ for (size_t i = 0; i< 4; ++i)_nodes[i]=*(nodes++) + shift;}
+    
+    // Constructor from a NGON. non-oriented version
+    template <typename ngunit_t>
+    Tetrahedron(const ngunit_t & PGs, const E_Int* first_pg):_shift(0)
+    {
+      // WARNING : non-oriented _nodes upon exit
+      // WARNING : assume a index start at 1 on node upon entry
+      
+      // work on the first 2 triangle to find out the nodes
+      
+      const E_Int* nodes = PGs.get_facets_ptr(first_pg[0]-1);
+       
+      
+#ifdef DEBUG_MESH_ELEMENT
+      E_Int nb_nodes = PGs.stride(first_pg[0]-1);
+      assert (nb_nodes == 3);
+#endif
+      _nodes[0] = nodes[0]-1;
+      _nodes[1] = nodes[1]-1;
+      _nodes[2] = nodes[2]-1;
+          
+      nodes = PGs.get_facets_ptr(first_pg[1]-1);
+      
+
+#ifdef DEBUG_MESH_ELEMENT
+      nb_nodes = PGs.stride(first_pg[1]-1); 
+      assert (nb_nodes == 3);
+#endif
+
+      if ((nodes[0]-1 != _nodes[0]) && (nodes[0]-1 != _nodes[1]) && (nodes[0]-1 != _nodes[2])) _nodes[3] = nodes[0]-1;
+      else if ((nodes[1]-1 != _nodes[0]) && (nodes[1]-1 != _nodes[1]) && (nodes[1]-1 != _nodes[2])) _nodes[3] = nodes[1]-1;
+      else if ((nodes[2]-1 != _nodes[0]) && (nodes[2]-1 != _nodes[1]) && (nodes[2]-1 != _nodes[2])) //_nodes[3] = nodes[1];
+        _nodes[3] = nodes[2]-1;
+    }
+    
+    inline E_Int node(E_Int i){return _nodes[i]+_shift;}
+    
+    E_Int* nodes() { return _nodes;}
+    const E_Int* nodes() const { return _nodes;}
+    
+    E_Int nb_nodes() const {return NB_NODES;}
+    E_Int nb_tris() const {return NB_TRIS;}
     
     void setNodes(E_Int* nodes){for (size_t i = 0; i< 4; ++i)_nodes[i]=*(nodes++);}
     
     static bool is_inside(const E_Float* Ni, const E_Float* Nj, const E_Float* Nk, const E_Float* Nl, const E_Float* pt);
     
     void triangulate(E_Int* target);
+    
+    E_Float quality(const K_FLD::FloatArray& crd, E_Float* Vol);
+    
+    void edge_length_extrema(const K_FLD::FloatArray& crd, E_Float& Lmin2, E_Float& Lmax2);
+    
+    ///
+    template <typename TriangulatorType, typename acrd_t>
+    void triangulate (const TriangulatorType& dt, const acrd_t& acrd) {} //dummy : for genericity
+        
+    static void get_edges(const E_Int* nodes, Vector_t<K_MESH::NO_Edge>& edges);
+
+    
+    inline void triangle(E_Int i, E_Int* target)
+    {
+      assert (i >= 0 && i < 4);
+      
+      switch (i)
+      {
+        case 0 : target[0]=_nodes[0]; target[1]=_nodes[1]; target[2]=_nodes[3]; break;
+        case 1 : target[0]=_nodes[0]; target[1]=_nodes[3]; target[2]=_nodes[2]; break;
+        case 2 : target[0]=_nodes[0]; target[1]=_nodes[2]; target[2]=_nodes[1]; break;
+        case 3 : target[0]=_nodes[1]; target[1]=_nodes[2]; target[2]=_nodes[3]; break;
+        default:break;
+      }
+    }
+    
+    template< typename ngo_t>
+    static void reorder_pgs(ngo_t& ng, const K_FLD::IntArray& F2E, E_Int i);
+    
+    
     
     ///
     static inline E_Float volume(const E_Float* p1, const E_Float* p2, const E_Float* p3, const E_Float* p4)
@@ -60,6 +139,46 @@ class Tetrahedron {
       case 3: b.setNodes(_nodes[0], _nodes[2], _nodes[1]);break;
       default : break;
     }
+  }
+    
+  template <typename CoordAcc> inline
+  void iso_barycenter(const CoordAcc& coord, E_Float* G)
+  { 
+    //
+    for (size_t d=0; d < 3; ++d) G[d]=0.;
+  
+    for (E_Int i=0; i < NB_NODES; ++i)
+    {
+      for (size_t d=0; d < 3; ++d)
+      {
+        //std::cout << "v : " << coord.getVal(node(i), d) << std::endl;
+        G[d] += coord.getVal(node(i), d);
+      }
+    }
+  
+    E_Float k = 1./(E_Float)NB_NODES;
+  
+    for (size_t i = 0; i < 3; ++i) G[i] *= k;
+    //std::cout << "G : " << G[0] << "/" << G[1] << "/" << G[2] << std::endl;
+  
+  }
+  
+  template <typename ngunit_t>
+  static inline void iso_barycenter(const K_FLD::FloatArray& crd, const ngunit_t & PGs, const E_Int* first_pg, E_Int nb_pgs, E_Int index_start, E_Float* G)
+  {    
+    Tetrahedron t(PGs, first_pg);
+    using acrd_t = K_FLD::ArrayAccessor<K_FLD::FloatArray>;
+    acrd_t acrd(crd);
+    t.iso_barycenter<acrd_t>(acrd, G);
+  }
+  
+  template<typename box_t, typename CoordAcc>
+  void bbox(const CoordAcc& acrd, box_t&bb) const
+  {
+    for (E_Int i = 0; i < 3; ++i)
+      {bb.minB[i] = K_CONST::E_MAX_FLOAT; bb.maxB[i] = -K_CONST::E_MAX_FLOAT;}
+
+    bb.compute(acrd, _nodes, NB_NODES, _shift/*idx start*/);
   }
     
     /*void split8(K_FLD::FloatArray& crd, K_FLD::IntArray& cntTH4)
@@ -240,8 +359,67 @@ private:
   Tetrahedron(const Tetrahedron& orig);
   
 private:
+    E_Int _shift;
     E_Int _nodes[4];
 };
+
+template< typename ngo_t>
+void Tetrahedron::reorder_pgs(ngo_t& ng, const K_FLD::IntArray& F2E, E_Int i)
+{
+  std::map<E_Int,E_Int> glmap; // crd1 to 0-26 indexes
+  E_Int nb_faces = ng.PHs.stride(i); 
+  E_Int* faces = ng.PHs.get_facets_ptr(i);
+  E_Int PGi = faces[0] - 1;
+  E_Int* pN = ng.PGs.get_facets_ptr(PGi);
+
+  // but convention, first face is bottom, first node is 0 in local numbering (0 to 26)
+
+  glmap[*pN] = 0; // PHi(0,0) -> 0  
+  glmap[*(pN+1)] = 1;
+  glmap[*(pN+2)] = 2;
+
+  if (F2E(1,PGi) != i) // for BOT, PH is the right element. if not, wrong orientation => swap of 1 and 3
+  { 
+    glmap[*(pN+1)] = 2;
+    glmap[*(pN+2)] = 1;
+  }
+  E_Int F1Id(E_IDX_NONE), F2Id(E_IDX_NONE), F3Id(E_IDX_NONE);
+
+  for (int k = 1; k < 4; ++k)
+  {
+    int count = 0;
+    std::vector<bool> commonNodes(3,false);
+    E_Int testedPG = faces[k]-1;
+    E_Int* pNode = ng.PGs.get_facets_ptr(testedPG);
+
+    for (int j = 0; j < 3; ++j)
+    {
+      auto it = glmap.find(pNode[j]);
+      if (it != glmap.end())
+      {
+        // found
+        count++;
+        commonNodes[it->second] = true;
+      }
+    }
+    if (commonNodes[0] && commonNodes[1])
+      F1Id = k;
+    else if (commonNodes[1] && commonNodes[2])
+      F2Id = k;
+    else if (commonNodes[2] && commonNodes[0])
+      F3Id = k;
+    }
+
+  E_Int mol[4];
+
+  mol[0] = faces[0];
+  mol[1] = faces[F1Id];
+  mol[2] = faces[F2Id];
+  mol[3] = faces[F3Id];
+
+  for (int i = 0; i < nb_faces; ++i)
+    faces[i] = mol[i];
+}
 
 }
 #endif	/* __K_MESH_TETRAHEDRON_H__ */

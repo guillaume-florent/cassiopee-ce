@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -77,7 +77,7 @@ PyObject* K_CONVERTER::center2Node(PyObject* self, PyObject* args)
       {
         nin = 1; njn = 1; nkn = nk+1;
       }
-      else if (nk == 1)
+      else //if (nk == 1)
       {
         nin = 1; njn = 1; nkn = nk+1;
       }
@@ -92,7 +92,7 @@ PyObject* K_CONVERTER::center2Node(PyObject* self, PyObject* args)
       {
         nin = 1; njn = 1; nkn = nk+1;
       }
-      else if (nk == 1)
+      else // if (nk == 1)
       {
         nin = ni+1; njn = 1; nkn = 1;
       }
@@ -107,7 +107,7 @@ PyObject* K_CONVERTER::center2Node(PyObject* self, PyObject* args)
       {
         nin = 1; njn = nj+1; nkn = 1;
       }
-      else if (nj == 1)
+      else //if (nj == 1)
       {
         nin = ni+1; njn = 1; nkn = 1;
       }

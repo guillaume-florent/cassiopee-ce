@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -58,7 +58,7 @@ PyObject* K_TRANSFORM::oneovern(PyObject* self, PyObject* args)
   FldArrayF* f; FldArrayI* cn;
   char* varString; char* eltType;
   E_Int res = 
-    K_ARRAY::getFromArray(array, varString, f, im, jm, km, cn, eltType, true);
+    K_ARRAY::getFromArray2(array, varString, f, im, jm, km, cn, eltType);
 
   if (res != 1 && res != 2)
   {
@@ -91,7 +91,7 @@ PyObject* K_TRANSFORM::oneovern(PyObject* self, PyObject* args)
   //printf("size %d %d %d\n", in+addi, jn+addj, kn+addk);
 
   PyObject* tpl;
-  tpl = K_ARRAY::buildArray(nfld, varString, in+addi, jn+addj, kn+addk);
+  tpl = K_ARRAY::buildArray2(nfld, varString, in+addi, jn+addj, kn+addk);
   E_Float* subzonep = K_ARRAY::getFieldPtr(tpl);
   FldArrayF subzone((in+addi)*(jn+addj)*(kn+addk), nfld, subzonep, true);
   E_Int ind, ind2;

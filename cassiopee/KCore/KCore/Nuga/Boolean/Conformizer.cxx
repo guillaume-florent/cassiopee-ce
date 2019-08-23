@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -553,15 +553,25 @@ E_Int Conformizer<DIM, Element_t>::__run
 #endif
   
   //fixme : improvement ?
-  // might be a better place to update the tolerance but require a finer toelrance
+  // might be a better place to update the tolerance but require a finer tolerance
   //based on hard node concept and local metric preservation to avoid triangles to get too big when some of their nodes are merged on the contour
   //if (_iter == 1 && tolerance == 0.) // First pass.
   //   __update_tolerance(pos, xc, ancestors);
-#ifdef DEBUG_CONFORMIZER 
-  E_Int nb_merges2 = 
+
+#ifdef DEBUG_CONFORMIZER
+  E_Int nb_merges2 = 0;
 #endif
-    _one_pass_mode ? 0 : this->__simplify_and_clean(pos, _tolerance, connect, ancestors, xc);
-  
+  if (_one_pass_mode && _split_swap_afterwards)
+#ifdef DEBUG_CONFORMIZER
+    nb_merges2 = 
+#endif
+    this->__simplify_and_clean2(pos, _tolerance, connect, ancestors, xc);
+  else if (!_one_pass_mode)
+#ifdef DEBUG_CONFORMIZER
+    nb_merges2 = 
+#endif
+    this->__simplify_and_clean(pos, _tolerance, connect, ancestors, xc);
+
 #ifdef DEBUG_CONFORMIZER
   if (detect_duplis_and_baffles(connect))
     std::cout << "oddities : after __simplify_and_clean : FOUND !!!!" << std::endl;

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -75,23 +75,13 @@ OctreeNode* updateVoisin6_27(OctreeNode* node);
 //============================================================================
 PyObject* octree3(PyObject* self, PyObject* args)
 {
-  E_Int levelMax;
   PyObject *stlArrays, *listOfSnears;
-  E_Float dfar; 
-#if defined E_DOUBLEREAL && defined E_DOUBLEINT
-  if (!PyArg_ParseTuple(args, "OOdl", &stlArrays, &listOfSnears, 
-                        &dfar, &levelMax)) return NULL;
-#elif defined E_DOUBLEREAL && !defined E_DOUBLEINT
-  if (!PyArg_ParseTuple(args, "OOdi", &stlArrays, &listOfSnears, 
-                        &dfar, &levelMax)) return NULL;
-#elif !defined E_DOUBLEREAL && defined E_DOUBLEINT
-  if (!PyArg_ParseTuple(args, "OOfl", &stlArrays, &listOfSnears, 
-                        &dfar, &levelMax)) return NULL;
-#else
-  if (!PyArg_ParseTuple(args, "OOfi", &stlArrays, &listOfSnears, 
-                        &dfar, &levelMax)) return NULL;
-#endif
-
+  E_Float dfar; E_Int levelMax;
+  PyObject* octant;
+  if (!PYPARSETUPLE(args, "OOdlO", "OOdiO", "OOflO", "OOfiO",
+                    &stlArrays, &listOfSnears, 
+                    &dfar, &levelMax, &octant)) return NULL;
+  
   if (PyList_Size(stlArrays) == 0)
   {
     PyErr_SetString(PyExc_TypeError, 
@@ -257,18 +247,47 @@ PyObject* octree3(PyObject* self, PyObject* args)
   }
   K_ARRAY::cleanUnstrFields(unstrF, cnt, eltTypet);
 
-  // construction de l'octree
+  // construction de l'octree (octant)
   E_Float Deltax = xmaxo+dfxp-xmino+dfxm;
   E_Float Deltay = ymaxo+dfyp-ymino+dfym;
   E_Float Deltaz = zmaxo+dfzp-zmino+dfzm;
-  E_Float Delta = K_FUNC::E_max(Deltax,Deltay); if (dim == 3) Delta = K_FUNC::E_max(Delta,Deltaz);
+  E_Float Delta = K_FUNC::E_max(Deltax,Deltay); 
+  if (dim == 3) Delta = K_FUNC::E_max(Delta,Deltaz);
   Delta = 0.5*Delta;
   E_Float xc = 0.5*(xmaxo+dfxp+xmino-dfxm);
   E_Float yc = 0.5*(ymaxo+dfyp+ymino-dfym);
   E_Float zc = 0.5*(zmaxo+dfzp+zmino-dfzm);
   zmino = 0.; zmaxo = 0.;
-  xmino = xc-Delta; ymino = yc-Delta; if ( dim == 3 ) zmino = zc-Delta;
-  xmaxo = xc+Delta; ymaxo = yc+Delta; if ( dim == 3 ) zmaxo = zc+Delta;
+  xmino = xc-Delta; ymino = yc-Delta; if (dim == 3) zmino = zc-Delta;
+  xmaxo = xc+Delta; ymaxo = yc+Delta; if (dim == 3) zmaxo = zc+Delta;
+
+  // si octant est present, ecrase xmino,...
+  if (octant != Py_None && PyList_Check(octant) == true)
+  {
+    E_Int s = PyList_Size(octant);
+    if (s == 2) 
+    { 
+      xmino = PyFloat_AsDouble(PyList_GetItem(octant,0)); 
+      xmaxo = PyFloat_AsDouble(PyList_GetItem(octant,1)); 
+    }
+    else if (s == 4)
+    { 
+      xmino = PyFloat_AsDouble(PyList_GetItem(octant,0)); 
+      ymino = PyFloat_AsDouble(PyList_GetItem(octant,1)); 
+      xmaxo = PyFloat_AsDouble(PyList_GetItem(octant,2)); 
+      ymaxo = PyFloat_AsDouble(PyList_GetItem(octant,3)); 
+    } 
+    else if (s == 6)
+    {
+      xmino = PyFloat_AsDouble(PyList_GetItem(octant,0)); 
+      ymino = PyFloat_AsDouble(PyList_GetItem(octant,1)); 
+      zmino = PyFloat_AsDouble(PyList_GetItem(octant,2));
+      xmaxo = PyFloat_AsDouble(PyList_GetItem(octant,3)); 
+      ymaxo = PyFloat_AsDouble(PyList_GetItem(octant,4));
+      zmaxo = PyFloat_AsDouble(PyList_GetItem(octant,5));
+    }
+  }
+
   E_Int l0 = 0;// niveau le plus grossier
   OctreeNode* toptree = new OctreeNode(xmino, ymino, zmino, xmaxo-xmino, l0);
   vector<E_Int> indicesBB;

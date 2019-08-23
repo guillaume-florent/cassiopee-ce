@@ -8,32 +8,34 @@ DEBUG = False
 # Check module import
 # Write SUCCESS or FAILED (with colored output)
 #==============================================================================
-def checkModuleImport(moduleName):
+def checkModuleImport(moduleName, raiseOnError=True):
     # Remove . from PYTHONPATH
-    try:
-        del sys.path[sys.path.index('')]
+    try: del sys.path[sys.path.index('')]
     except: pass
-    try:
-        del sys.path[sys.path.index(os.getcwd())]
+    try: del sys.path[sys.path.index(os.getcwd())]
     except: pass
     # Try to detect if colored output is supported
     color = False
     if sys.stdout.isatty(): color = True
 
+    # sec / lock
+    moduleBase = moduleName.split('.')[0]
+    os.chmod(moduleBase, 0o700)
+
     # try import module
     try:
         __import__(moduleName)
         if color:
-            print "\033[32m%s correctly installed.\033[0m"%moduleName
-        else: print "%s correctly installed."%moduleName
-    except Exception, inst:
+            print("\033[32m%s correctly installed.\033[0m"%moduleName)
+        else: print("%s correctly installed."%moduleName)
+    except Exception as inst:
         if color:
-            print "\033[31mFAILED: %s\033[0m"%inst
-            print "\033[31mFAILED: %s badly installed.\033[0m"%moduleName
+            print("\033[31mFAILED: %s\033[0m"%inst)
+            print("\033[31mFAILED: %s badly installed.\033[0m"%moduleName)
         else:
-            print "FAILED: %s"%inst
-            print "FAILED: %s badly installed."%moduleName
-
+            print("FAILED: %s"%inst)
+            print("FAILED: %s badly installed."%moduleName)
+        
 #==============================================================================
 # Return informations on the current operating system
 # Return: Unix, Windows, Darwin, Java, mingw + bits of the system ('32', '64')
@@ -45,6 +47,9 @@ def getSystem():
           key = os.environ['ELSAPROD']
           if key == 'win64': return ['mingw', '64']
           elif key == 'win32': return ['mingw', '32']
+          elif key == 'msys64': return ['mingw', '64']
+          elif key == 'msys64p3': return ['mingw', '64']
+          elif key == 'msys32': return ['mingw', '32']
           key = os.environ['MSYSTEM']
           if key == 'MINGW32': return ['mingw', '32']
           elif key == 'MINGW64': return ['mingw', '64']
@@ -64,32 +69,53 @@ def getSystem():
 # Return '' if name is not in environ
 #==============================================================================
 def getenv(name):
-     if os.environ.has_key(name): return os.environ[name]
+     if name in os.environ: return os.environ[name]
      else: return ''
 
 #==============================================================================
-# Check all
+# Check all (python, numpy, C++, fortran, hdf, mpi, mpi4py, png, osmesa, mpeg)
 #==============================================================================
-def checkAll():
+def checkAll(summary=True):
+    from config import additionalLibPaths, additionalIncludePaths
+    
     out = []
     try:
         (pythonVersion, pythonIncDir, pythonLibDir, pythonLibs) = checkPython()
         out += ['Python: %s'%pythonVersion]
     except: out += ['Python: include is missing.']
     try:
-        (numpyVersion, numpyIncDir, ti) = checkNumpy()
+        (numpyVersion, numpyIncDir, numpyLibDir) = checkNumpy()
         out += ['Numpy: %s'%numpyVersion]
     except: out += ['Numpy: is missing or numpy includes are missing.']
-    (ok, CppLibs, CppLibPaths) = checkCppLibs()
-    if ok: out += ['C++: OK, %s %s'%(CppLibs, CppLibPaths)]
-    else: out += ['C++: Fail']
-    (ok, FLibs, FLibPaths) = checkFortranLibs()
-    if ok: out += ['f77: OK, %s %s'%(FLibs, FLibPaths)]
-    else: out += ['f77: Fail']
-    (ok, hdfIncDir, hdfLib) = checkHdf()
-    if ok: out += ['hdf: OK, %s %s'%(hdfIncDir, hdfLib)]
-    else: out += ['hdf: missing']
-    for i in out: print i
+    (ok, CppLibs, CppLibPaths) = checkCppLibs(additionalLibPaths, additionalIncludePaths)
+    if ok: out += ['C++: OK (%s, %s).'%(CppLibs, CppLibPaths)]
+    else: out += ['C++: Fail.']
+    (ok, FLibs, FLibPaths) = checkFortranLibs(additionalLibPaths, additionalIncludePaths)
+    if ok: out += ['f77: OK (%s, %s).'%(FLibs, FLibPaths)]
+    else: out += ['f77: Fail.']
+    (ok, hdfIncDir, hdfLibDir) = checkHdf(additionalLibPaths, additionalIncludePaths)
+    if ok: out += ['hdf: OK (%s, %s).'%(hdfIncDir, hdfLibDir)]
+    else: out += ['hdf: missing (%s, %s).'%(hdfIncDir, hdfLibDir)]
+    (ok, pngIncDir, pngLibDir) = checkPng(additionalLibPaths, additionalIncludePaths)
+    if ok: out += ['png: OK (%s, %s).'%(pngIncDir, pngLibDir)]
+    else: out += ['png: missing (%s, %s).'%(pngIncDir, pngLibDir)]
+    (ok, osmesaIncDir, osmesaLibDir, libname) = checkOSMesa(additionalLibPaths, additionalIncludePaths)
+    if ok: out += ['osmesa: OK (%s, %s).'%(osmesaIncDir, osmesaLibDir)]
+    else: out += ['osmesa: missing (%s, %s).'%(osmesaIncDir, osmesaLibDir)]
+    (ok, mpegIncDir, mpegLibDir) = checkMpeg(additionalLibPaths, additionalIncludePaths)
+    if ok: out += ['mpeg: OK (%s, %s).'%(mpegIncDir, mpegLibDir)]
+    else: out += ['mpeg: missing (%s, %s).'%(mpegIncDir, mpegLibDir)]
+    (ok, mpiIncDir, mpiLibDir) = checkMpi(additionalLibPaths, additionalIncludePaths)
+    if ok: out += ['mpi: OK (%s, %s).'%(mpiIncDir, mpiLibDir)]
+    else: out += ['mpi: missing (%s %s).'%(mpiIncDir, mpiLibDir)]
+    (ok, mpi4pyIncDir, mpi4pyLibDir) = checkMpi4py(additionalLibPaths, additionalIncludePaths)
+    if ok: out += ['mpi4py: OK (%s).'%(mpi4pyIncDir)]
+    else: out += ['mpi4py: missing (%s).'%(mpi4pyIncDir)]
+    
+    if summary:
+        print('Summary:')
+        print('========')
+        for i in out: print(i)
 
 #==============================================================================
 # Check python includes / libs
@@ -113,7 +139,7 @@ def checkPython():
     return (pythonVersion, pythonIncDir, pythonLibDir, pythonLibs)
 
 #=============================================================================
-# Check numpy
+# Check numpy include / module
 #=============================================================================
 def checkNumpy():
      numpyVersion = False
@@ -136,7 +162,14 @@ def checkNumpy():
 def getInstallPath(prefix):
     mySystem = getSystem()[0]; bits = getSystem()[1]
     # Based on spec
-    if mySystem == 'Windows' or mySystem == 'mingw':
+    if os.environ['ELSAPROD'][0:6] == 'msys64':
+        pythonLib = distutils.sysconfig.get_python_lib()
+        pythonLib = pythonLib.split('/')
+        pythonVersion = pythonLib[-2]
+        Site = pythonLib[-1]
+        Lib = pythonLib[-3]
+        installPath = '%s/%s/%s/site-packages'%(prefix, Lib, pythonVersion) 
+    elif mySystem == 'Windows' or mySystem == 'mingw':
          installPath = prefix + "/Lib/site-packages"
     elif mySystem == 'Darwin':
          pythonLib = distutils.sysconfig.get_python_lib()
@@ -149,11 +182,11 @@ def getInstallPath(prefix):
          # Based on python lib
          #installPath = prefix + '/' + '/'.join(pythonLib[-3:])
          # Python version
-         pythonVersion = pythonLib[-2]
+         pversion = sys.version_info
+         pythonVersion = "python{}.{}".format(pversion[0], pversion[1])
          Site = pythonLib[-1]
          # Lib
          Lib = pythonLib[-3]
-         #if (bits == '64'): Lib = 'lib64'
          installPath = '%s/%s/%s/site-packages'%(prefix, Lib, pythonVersion)
     return installPath
 
@@ -192,7 +225,7 @@ def writeEnvs():
      except: import installPath as K
      libPath = K.libPath
      installPathLocal = K.installPath
-     env = os.environ.data
+     env = os.environ
      cassiopee = env.get('CASSIOPEE', '')
      elsaprod = env.get('ELSAPROD', '')
      if cassiopee != '': envPath = libPath+'/../../../'
@@ -207,6 +240,7 @@ def writeEnvs():
      except: mt = 1
 
      # sh
+     # usage: source $CASSIOPEE/Dist/env_Cassiopee.sh
      p = open(envPath+"env_Cassiopee.sh", 'w')
      if cassiopee != '': p.write("export CASSIOPEE=%s\n"%cassiopee)
      if elsaprod != '': p.write("export ELSAPROD=%s\n"%elsaprod)
@@ -232,6 +266,7 @@ def writeEnvs():
      p.close()
 
      # csh
+     # usage: source $CASSIOPEE/Dist/env_Cassiopee.csh
      p = open(envPath+"env_Cassiopee.csh", 'w')
      if cassiopee != '': p.write("setenv CASSIOPEE %s\n"%cassiopee)
      if elsaprod != '': p.write("setenv ELSAPROD %s\n"%elsaprod)
@@ -262,6 +297,42 @@ def writeEnvs():
      p.write("set PYTHONPATH="+installPathLocal+";%PYTHONPATH%\n")
      p.write("set OMP_NUM_THREADS=%NUMBER_OF_PROCESSORS%\n")
      p.close()
+
+     # module
+     # usage: module use $CASSIOPEE/Dist
+     # module load cassiopee
+     p = open(envPath+"cassiopee", 'w')
+     p.write("#%Module1.0#####################################################################\n")
+     p.write("##\n")
+     p.write("## CASSIOPEE\n")
+     p.write("##\n")
+     p.write("module-whatis   \"Set the environment for using Cassiopee\"\n")
+     if cassiopee != '': p.write("setenv CASSIOPEE %s\n"%cassiopee)
+     if elsaprod != '': p.write("setenv ELSAPROD %s\n"%elsaprod)
+     p.write("setenv OMP_NUM_THREADS %d\n"%mt)
+     p.write("prepend-path PATH %s\n"%cmdPath)
+     p.write("prepend-path PYTHONPATH %s\n"%installPathLocal)
+     if installLD is not None:
+        p.write("prepend-path LD_LIBRARY_PATH %s\n"%installLD)
+     p.write("prepend-path LD_LIBRARY_PATH %s\n"%libPath)
+
+#==============================================================================
+# Creation intel compiler + on le met si Cppcompiler = icc
+#==============================================================================
+try: from config import Cppcompiler
+except: from KCore.config import Cppcompiler
+if Cppcompiler.find('icc') == 0 or Cppcompiler.find('icpc') == 0:
+    def new_compiler(plat=None, compiler=None, verbose=0, dry_run=0, force=0):
+        from numpy.distutils.intelccompiler import IntelCCompiler
+        compiler = IntelCCompiler(None, dry_run, force)
+        compiler.cc_exe = Cppcompiler
+        compiler.set_executables(compiler=Cppcompiler, compiler_cxx=Cppcompiler, compiler_so=Cppcompiler,
+                                linker_exe=Cppcompiler, linker_so=Cppcompiler+' -shared')
+        return compiler
+
+    from distutils import ccompiler
+    import numpy.distutils.ccompiler
+    ccompiler.new_compiler = new_compiler
 
 #==============================================================================
 # Write setup.cfg en fonction du compilateur C++ (si different de None)
@@ -294,14 +365,14 @@ def writeSetupCfg():
         p = open("./setup.cfg", 'w')
         p.write('[build_ext]\ncompiler=unix\n')
         p.close()
+    elif Cppcompiler.find('pgcc') == 0 or Cppcompiler.find('pgc++') == 0:
+        p = open("./setup.cfg", 'w')
+        p.write('[build_ext]\ncompiler=unix\n')
+        p.close()
     else:
         p = open("./setup.cfg", 'w')
         p.write('[build_ext]\ncompiler=%s\n'%Cppcompiler)
         p.close()
-
-    if Cppcompiler.find('icc') == 0 or Cppcompiler.find('icpc') == 0:
-         import numpy.distutils
-         numpy.distutils.ccompiler.new_compiler(compiler='intel')
 
 #==============================================================================
 # Retourne le compilo c, c++ et ses options tels que definis dans distutils
@@ -311,13 +382,21 @@ def getDistUtilsCompilers():
     vars = distutils.sysconfig.get_config_vars('CC', 'CXX', 'OPT',
                                                'BASECFLAGS', 'CCSHARED',
                                                'LDSHARED', 'SO')
-    for i in xrange(len(vars)):
-        if vars[i] is None: vars[i] = ""
+    for i, v in enumerate(vars):
+        if v is None: vars[i] = "" 
 
     try: from config import Cppcompiler
     except: from KCore.config import Cppcompiler
     if Cppcompiler != 'None' or Cppcompiler != '':
-        if Cppcompiler.find('g++') != -1: # g++-version + mingw-g++-version
+        if Cppcompiler.find('clang++') != -1:
+            vars[0] = Cppcompiler.replace('clang++', 'clang'); vars[1] = Cppcompiler
+        elif Cppcompiler.find('clang') != -1:
+            vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('clang', 'clang++')
+        elif Cppcompiler.find('pgcc') != -1:
+            vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('pgcc', 'pgc++')
+        elif Cppcompiler.find('pgc++') != -1:
+            vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('pgc++', 'pgcc')
+        elif Cppcompiler.find('g++') != -1: # g++-version + mingw-g++-version
             vars[0] = Cppcompiler.replace('g++', 'gcc'); vars[1] = Cppcompiler
         elif Cppcompiler.find('gcc') != -1:
             vars[0] = Cppcompiler; vars[1] = Cppcompiler.replace('gcc', 'g++')
@@ -343,8 +422,8 @@ def getPP():
     sizes = '-DINTEGER_E="INTEGER*4" -DREAL_E="REAL*8"'
     if Cppcompiler == 'icl.exe': PP = 'fpp.exe '+sizes+' \I'
     elif Cppcompiler == "x86_64-w64-mingw32-gcc":
-         PP = 'x86_64-w64-mingw32-cpp -traditional %s -I'%sizes
-    else: PP = 'cpp -traditional %s -I'%sizes
+         PP = 'x86_64-w64-mingw32-cpp -P -traditional %s -I'%sizes
+    else: PP = 'cpp -P -traditional %s -I'%sizes
     return PP
 
 #==============================================================================
@@ -402,7 +481,7 @@ def getVersion(compiler):
                              stderr=subprocess.PIPE)
      out = ''
      while True:
-          line = proc.stdout.readline()
+          line = proc.stdout.readline()#.decode('utf-8')
           if line != '': out += line
           else: break
      out = out.split('\n')
@@ -439,6 +518,142 @@ def getCacheLine():
                val = int(i[12:]); return val
      return 1
 
+#=============================================================================
+# Retourne le niveau de vectorisation simd
+# Se base sur l'option du compilateur C si elle contient -DSIMD=XX
+#==============================================================================
+def getSimd():
+     opts = getCppArgs()
+     for i in opts:
+          if i[0:6] == '-DSIMD':
+               val = i[7:]; return val
+     return 1
+
+#=============================================================================
+# Retourne le nbre de socket du noeud
+# Se base sur l'option du compilateur C si elle contient -DNB_SOCKET=XX
+#==============================================================================
+def getNbSocket():
+     opts = getCppArgs()
+     for i in opts:
+          if i[0:11] == '-DNB_SOCKET':
+               val = int(i[12:]); return val
+     return 1
+
+#==============================================================================
+# Retourne le nbre de coeur physique par socket
+# Se base sur l'option du compilateur C si elle contient -DCORE_PER_SOCK=XX
+#==============================================================================
+def getCorePerSocket():
+     opts = getCppArgs()
+     for i in opts:
+          if i[0:15] == '-DCORE_PER_SOCK':
+               val = int(i[16:]); return val
+     return 1
+
+#==============================================================================
+# Fonction interne a getFilesOfExt
+#==============================================================================
+def scanext(args, dir, file):
+    givenExts = args[0]
+    ret = args[1]
+    for f in file:
+        (root,ext) = os.path.splitext(f)
+        tot = '%s/%s'%(dir,f)
+        t = os.path.islink(tot)
+        m = True
+        if f[len(f)-1] == '~' : m = False
+        if 'build' in tot: m = False
+        if '.svn' in tot: m = False
+        if 'Stubs' in tot: m = False
+        if 'test' in tot: m = False
+        if 'EXEMPLES' in tot: m = False
+        if ext in givenExts and not t and m:
+            ret.append(tot)
+
+#==============================================================================
+# Parcours un repertoire a la recherche des fichiers d'une certaine extension
+# Ex: getFilesOfExt('Converter', ['.cpp'])
+#==============================================================================
+def getFilesOfExt(rootdir, givenExts):
+  ret = []
+  os.path.walk(rootdir, scanext, [givenExts, ret])
+  return ret
+
+#==============================================================================
+# Sort a file list to solve the dependance to "use module" for fortran90
+#==============================================================================
+def sortFileListByUse(files):
+    # Calcul du nombre de USE et le nom des modules utilises
+    nbs = {}; mods = {}; defmods = {}
+    for f in files:
+        nb = 0
+        fh = open(f, 'r')
+        d = fh.read()
+        fh.close()
+        d = d.splitlines()
+        mod = []; defmod = []
+        for j in d:
+            tr = j[0:]; tr = tr.lstrip(); tr1 = tr[0:3]
+            if tr1 == 'use' or tr1 == 'USE':
+                tr2 = tr[3:]; tr2 = tr2.lstrip()
+                tr2 = tr2.split(' ')
+                tr2 = tr2[0]
+                tr2 = tr2.split(',')
+                tr2 = tr2[0]
+                tr2 = tr2.split('!')
+                tr2 = tr2[0]
+                if tr2 not in mod:
+                    mod.append(tr2)
+                    nb += 1
+            tr3 = tr[0:6]
+            if tr3 == 'module' or tr3 == 'MODULE':
+                tr2 = tr[6:]; tr2 = tr2.lstrip()
+                tr2 = tr2.split(' ')
+                tr2 = tr2[0]
+                tr2 = tr2.split(',')
+                tr2 = tr2[0]
+                tr2 = tr2.split('!')
+                tr2 = tr2[0]
+                defmod.append(tr2)
+        nbs[f] = nb
+        mods[f] = mod
+        defmods[f] = defmod
+
+    # tri
+    files = sorted(files, key=lambda x: nbs[x])
+
+    out = []
+    lf0 = 0
+    lf = len(files)
+
+    while lf-lf0 != 0:
+        lf0 = lf
+        # selectionne les fichiers a 0 dependance
+        c = 0
+        for f in files:
+            if nbs[f] > 0: break
+            c += 1
+
+        l0 = files[0:c]
+        out += l0
+        files = files[c:]
+        lf = len(files)
+
+        # remplace les 0 use
+        for f in files:
+            for l in l0:
+                for j in defmods[l]:
+                    if j in mods[f]:
+                        nbs[f] -= 1; mods[f].remove(j)
+        # tri
+        files = sorted(files, key=lambda x: nbs[x])
+    if lf > 0: out += files
+    #print 'MODULES'
+    #for f in out:
+    #    if len(defmods[f])>0: print f, defmods[f], nbs[f], '->', mods[f]
+    return out
+
 #==============================================================================
 # Retourne les options additionelles des compilos definies dans config
 #==============================================================================
@@ -453,11 +668,11 @@ def getf77AdditionalOptions():
      return f77AdditionalOptions
 
 #==============================================================================
-# Retourne les arguments pour le compilateur Cpp
+# Retourne les arguments pour le compilateur C (utilise aussi pour Cpp)
 # IN: config.Cppcompiler, config.useStatic, config.useOMP,
 # config.CppAdditionalOptions
 #==============================================================================
-def getCppArgs():
+def getCArgs():
     try: from config import Cppcompiler
     except: from KCore.config import Cppcompiler
     mySystem = getSystem()
@@ -465,13 +680,15 @@ def getCppArgs():
     l = len(compiler)-1
     Cppcompiler = compiler[l]
     if Cppcompiler == "None": return []
-    options = getCppAdditionalOptions()
+    options = getCppAdditionalOptions()[:]
     if Cppcompiler.find("icpc") == 0 or Cppcompiler.find("icc") == 0:
          if DEBUG: options += ['-g', '-O0', '-wd47', '-wd1224']
          else: options += ['-DNDEBUG', '-O2', '-wd47', '-wd1224']
          v = getCppVersion()
-         if v[0] < 15: options += ['-fp-speculation=strict']
-         else: options += ['-fp-model=strict']
+         if v[0] < 15:
+            options += ['-fp-speculation=strict']
+         else:
+            options += ['-fp-model=precise'] # modif 2.6
          if useOMP() == 1:
             if v[0] < 15: options += ['-openmp']
             else: options += ['-qopenmp']
@@ -479,7 +696,7 @@ def getCppArgs():
          else: options += ['-fPIC']
          return options
     elif Cppcompiler.find("gcc") == 0 or Cppcompiler.find("g++") == 0:
-         if DEBUG: options += ['-g', '-O0', '-Wall']
+         if DEBUG: options += ['-g', '-O0', '-Wall', '-pedantic', '-D_GLIBCXX_DEBUG_PEDANTIC']
          else: options += ['-DNDEBUG', '-O3', '-Wall']
          if useOMP() == 1: options += ['-fopenmp']
          if useStatic() == 1: options += ['--static', '-static-libstdc++', '-static-libgcc']
@@ -492,22 +709,44 @@ def getCppArgs():
          options += ['/EHsc', '/MT']
          if useOMP() == 1: options += ['/Qopenmp']
          return options
+    elif Cppcompiler.find("pgcc") == 0 or Cppcompiler.find("pgc++") == 0:
+         if DEBUG: options += ['-g', '-O0', '-fPIC']
+         else: options += ['-DNDEBUG', '-O3', '-fPIC']
+         if useOMP() == 1: options += []
+         if useStatic() == 1: options += []
+         else: options += []
+         return options
     elif Cppcompiler == "x86_64-w64-mingw32-gcc" or Cppcompiler == "x86_64-w64-mingw32-g++":
          options += ['-DMS_WIN64', '-fpermissive', '-D__USE_MINGW_ANSI_STDIO=1']
-         if DEBUG: options += ['-g', 'O0']
+         if DEBUG: options += ['-g', 'O0', '-D_GLIBCXX_DEBUG_PEDANTIC']
          else: options += ['-DNDEBUG', '-O3']
          if useOMP() == 1: options += ['-fopenmp']
          if useStatic() == 1: options += ['--static', '-static-libstdc++', '-static-libgcc']
          else: options += ['-fPIC']
          return options
     elif Cppcompiler.find("clang") == 0 or Cppcompiler.find("clang++") == 0:
-         if DEBUG: options += ['-g', '-O0', '-Wall']
+         if DEBUG: options += ['-g', '-O0', '-Wall', '-D_GLIBCXX_DEBUG_PEDANTIC']
          else: options += ['-DNDEBUG', '-O3', '-Wall']
          if useOMP() == 1: options += ['-fopenmp']
          if useStatic() == 1: options += ['--static', '-static-libstdc++', '-static-libgcc']
          else: options += ['-fPIC']
          return options
     else: return options
+
+# Options pour le compilateur C++
+def getCppArgs():
+    opt = getCArgs()
+    try: from config import Cppcompiler
+    except: from KCore.config import Cppcompiler
+    if (Cppcompiler == 'g++' or Cppcompiler == 'gcc') and getSystem()[0] == 'mingw':
+        opt += ["-std=c++11"]
+    elif Cppcompiler == 'pgcc' or Cppcompiler == 'pg++':
+        opt += ["--c++11"]
+    elif Cppcompiler == "icl.exe":
+        opt += ["/std=c++11"]
+    else:
+        opt += ["-std=c++11"]
+    return opt
 
 #==============================================================================
 # Retourne les arguments pour le compilateur Fortran
@@ -528,19 +767,30 @@ def getForArgs():
          if useOMP() == 1: options += ['-fopenmp']
          if useStatic() == 1: options += ['--static']
          else: options += ['-fPIC']
-         if (mySystem[0] == 'mingw' and mySystem[1] == '32'):
+         if mySystem[0] == 'mingw' and mySystem[1] == '32':
               options.remove('-fPIC')
               options += ['-large-address-aware']
          return options
     elif f77compiler.find("ifort") == 0:
          if DEBUG: options += ['-g', '-O0', '-fPIC']
          else: options += ['-O3']
+         v = getForVersion()
+         if v[0] < 15:
+            options += ['-fp-speculation=strict']
+         else:
+            options += ['-fp-model=precise']
          if useOMP() == 1:
             v = getForVersion()
             if v[0] < 15: options += ['-openmp']
             else: options += ['-qopenmp']
          if useStatic() == 1: options += ['-static']
          else: options += ['-fPIC']
+         return options
+    elif f77compiler == "pgf90" or f77compiler == "pgf77":
+         options += ['-fPIC']
+         if DEBUG: options += ['-g', '-O0']
+         else: options += ['-O3']
+         if useOMP() == 1: options += ['-omp']
          return options
     elif f77compiler == "x86_64-w64-mingw32-gfortran":
          if DEBUG: options += ['-g', '-O0']
@@ -570,7 +820,7 @@ def getLinkArgs():
           if useStatic() == 1: out += ['--static']
      mySystem = getSystem()[0]
      if mySystem == 'Darwin':
-	  if useStatic() == 0: out += ['-dynamiclib']
+         if useStatic() == 0: out += ['-dynamiclib']
      return out
 
 #=============================================================================
@@ -584,12 +834,10 @@ def checkPythonPath():
     installPathLocal = K.installPath
     a = os.getenv("PYTHONPATH")
     if a is None:
-        print 'Warning: to use the module, please add: '\
-        + installPathLocal + ' to your PYTHONPATH.'
+        print('Warning: to use the module, please add: %s to your PYTHONPATH.'%installPathLocal)
     else:
-        if (re.compile(installPathLocal).search(a) is None):
-            print 'Warning: to use the module, please add: '\
-            + installPathLocal + ' to your PYTHONPATH.'
+        if re.compile(installPathLocal).search(a) is None:
+            print('Warning: to use the module, please add: %s to your PYTHONPATH.'%installPathLocal)
 
 #=============================================================================
 # Check LD_LIBRARY_PATH
@@ -602,12 +850,12 @@ def checkLdLibraryPath():
     a = os.getenv("LD_LIBRARY_PATH")
     b = os.getenv("LIBRARY_PATH")
     if a is None and b is None:
-        print "Warning: to use the module, please add: %s to your LD_LIBRARY_PATH (unix) or PATH (windows)."%libPath
+        print("Warning: to use the module, please add: %s to your LD_LIBRARY_PATH (unix) or PATH (windows)."%libPath)
     else:
          if a is not None: ret = a
          else: ret = b
-         if (re.compile(libPath).search(ret) is None):
-              print "Warning: to use the module, please add: %s to your LD_LIBRARY_PATH (unix) or PATH (windows)."%libPath
+         if re.compile(libPath).search(ret) is None:
+              print("Warning: to use the module, please add: %s to your LD_LIBRARY_PATH (unix) or PATH (windows)."%libPath)
 
 #=============================================================================
 # Check for KCore
@@ -618,8 +866,8 @@ def checkKCore():
         import KCore.installPath
         kcoreIncDir = KCore.installPath.includePath
         kcoreIncDir = os.path.join(kcoreIncDir, 'KCore')
-        kcoreLib = KCore.installPath.libPath
-        return (KCore.__version__, kcoreIncDir, kcoreLib)
+        kcoreLibDir = KCore.installPath.libPath
+        return (KCore.__version__, kcoreIncDir, kcoreLibDir)
 
     except ImportError:
         raise SystemError("Error: kcore library is required for the compilation of this module.")
@@ -634,8 +882,8 @@ def checkGenerator():
         generatorIncDir = KCore.installPath.includePath
         generatorIncDir = os.path.dirname(generatorIncDir)
         generatorIncDir = os.path.join(generatorIncDir, 'Generator/Generator')
-        generatorLib = KCore.installPath.libPath
-        return (Generator.__version__, generatorIncDir, generatorLib)
+        generatorLibDir = KCore.installPath.libPath
+        return (Generator.__version__, generatorIncDir, generatorLibDir)
 
     except ImportError:
         raise SystemError("Error: generator library is required for the compilation of this module.")
@@ -648,13 +896,30 @@ def checkFast():
         import Fast
         import KCore.installPath
         fastIncDir = KCore.installPath.includePath
+        fastIncDir = fastIncDir.replace('Modules', 'PModules')
         fastIncDir = os.path.dirname(fastIncDir)
         fastIncDir = os.path.join(fastIncDir, 'Fast/Fast')
-        fastLib = KCore.installPath.libPath
-        return (Fast.__version__, fastIncDir, fastLib)
+        fastLibDir = KCore.installPath.libPath
+        return (Fast.__version__, fastIncDir, fastLibDir)
 
     except ImportError:
         raise SystemError("Error: fast library is required for the compilation of this module.")
+
+#=============================================================================
+# Check for Connector module
+#=============================================================================
+def checkConnector():
+    try:
+        import Connector
+        import KCore.installPath
+        ConnectorIncDir = KCore.installPath.includePath
+        ConnectorIncDir = os.path.dirname(ConnectorIncDir)
+        ConnectorIncDir = os.path.join(ConnectorIncDir, 'Connector/Connector')
+        ConnectorLibDir = KCore.installPath.libPath
+        return (Connector.__version__, ConnectorIncDir, ConnectorLibDir)
+
+    except ImportError:
+        raise SystemError("Error: Connector library is required for the compilation of this module.")
 
 #=============================================================================
 # Check for Cassiopee Kernel in Dist/ or Kernel/
@@ -681,12 +946,12 @@ def checkCassiopee():
     b1 = os.access(kvar+"/Dist/include", os.F_OK)
     b2 = os.access(kvar+"/Dist/bin/"+pvar+'/elsAc.so', os.F_OK)
 
-    if (a1 and a2):
+    if a1 and a2:
         Cassiopee = True
         CassiopeeIncDir = kvar + "/Kernel/include"
         CassiopeeLibDir = kvar + "/Kernel/lib/" + pvar
 
-    elif (b1 and b2):
+    elif b1 and b2:
         Cassiopee = True
         CassiopeeIncDir = kvar + "/Dist/include"
         CassiopeeLibDir = kvar + "/Dist/bin/" + pvar
@@ -699,21 +964,21 @@ def checkCassiopee():
               a2 = os.access(kvar+"/Kernel/lib/"+pvar+'/elsAc.so', os.F_OK)
               b1 = os.access(kvar+"/Dist/include", os.F_OK)
               b2 = os.access(kvar+"/Dist/bin/"+pvar+'/elsAc.so', os.F_OK)
-              if (a1 and a2):
+              if a1 and a2:
                    Cassiopee = True
                    CassiopeeUseMpi = True
                    CassiopeeIncDir = kvar + "/Kernel/include"
                    CassiopeeLibDir = kvar + "/Kernel/lib/" + pvar
 
-              elif (b1 and b2):
+              elif b1 and b2:
                    Cassiopee = True
                    CassiopeeUseMpi = True
                    CassiopeeIncDir = kvar + "/Dist/include"
                    CassiopeeLibDir = kvar + "/Dist/bin/" + pvar
 
     if Cassiopee:
-        print 'Info: Cassiopee Kernel detected at '+CassiopeeLibDir+'.'
-        print 'Info: .Cassiopee extension will be built.'
+        print('Info: Cassiopee Kernel detected at '+CassiopeeLibDir+'.')
+        print('Info: .Cassiopee extension will be built.')
 
     return (Cassiopee, CassiopeeIncDir, CassiopeeLibDir, CassiopeeUseMpi)
 
@@ -766,8 +1031,8 @@ def checkElsa():
                    elsALibDir = kvar + "/Dist/bin/" + pvar
 
     if elsA:
-        print 'Info: elsA Kernel detected at '+elsALibDir+'.'
-        print 'Info: .Elsa extension will be built.'
+        print('Info: elsA Kernel detected at '+elsALibDir+'.')
+        print('Info: .Elsa extension will be built.')
     return (elsA, elsAIncDir, elsALibDir, elsAUseMpi)
 
 #=============================================================================
@@ -781,11 +1046,11 @@ def checkGlut(additionalLibPaths=[], additionalIncludePaths=[]):
         if l is None:
              l = checkLibFile__('libfreeglut.a', additionalLibPaths)
     i = checkIncFile__('GL/glut.h', additionalIncludePaths)
-    if (i is not None and l is not None):
-        print 'Info: glut detected at '+l+'.'
+    if i is not None and l is not None:
+        print('Info: glut detected at '+l+'.')
         return (True, i, l)
     else:
-        print 'Info: libglut or GL/glut.h was not found on your system.'
+        print('Info: libglut or GL/glut.h was not found on your system.')
         return (False, '', '')
 
 #=============================================================================
@@ -801,11 +1066,11 @@ def checkGlew(additionalLibPaths=[], additionalIncludePaths=[]):
              l = checkLibFile__('libglew32.a', additionalLibPaths)
     i = checkIncFile__('GL/glew.h', additionalIncludePaths)
 
-    if (i is not None and l is not None):
-        print 'Info: glew detected at '+l+'.'
+    if i is not None and l is not None:
+        print('Info: glew detected at '+l+'.')
         return (True, i, l)
     else:
-        print 'Info: libglew or GL/glew.h was not found on your system. No shader support for CPlot.'
+        print('Info: libglew or GL/glew.h was not found on your system. No shader support for CPlot.')
         return (False, '', '')
 
 #=============================================================================
@@ -814,16 +1079,46 @@ def checkGlew(additionalLibPaths=[], additionalIncludePaths=[]):
 # Retourne: (True/False, chemin des includes, chemin de la librairie)
 #=============================================================================
 def checkOSMesa(additionalLibPaths=[], additionalIncludePaths=[]):
+    libname = 'OSMesa'
     l = checkLibFile__('libOSMesa.so', additionalLibPaths)
     if l is None:
         l = checkLibFile__('libOSMesa.a', additionalLibPaths)
+        if l is None:
+            l = checkLibFile__('libosmesa.a', additionalLibPaths)
+            if l is not None: libname = 'osmesa'
+        
     i = checkIncFile__('GL/osmesa.h', additionalIncludePaths)
-    if (i is not None and l is not None):
-        print 'Info: libOSmesa detected at %s.'%l
+    if i is not None and l is not None:
+        print('Info: libOSmesa detected at %s.'%l)
+        return (True, i, l, libname)
+    else:
+        print('Info: libOSMesa or GL/osmesa.h was not found on your system. No offscreen support for CPlot.')
+        return (False, i, l, libname)
+
+#=============================================================================
+# Check for OCE (open cascade edition library)
+# additionalPaths: chemins d'installation non standards: ['/home/toto',...]
+# Retourne: (True/False, chemin des includes, chemin de la librairie)
+#=============================================================================
+def checkOCE(additionalLibPaths=[], additionalIncludePaths=[]):
+    libnames = ['TKernel', 'TKMath', 'TKGeomBase', 'TKG2d', 'TKG3d', 'TKBRep', 
+        'TKGeomAlgo', 'TKBool', 'TKPrim', 'TKShHealing', 'TKTopAlgo', 'TKXSBase',
+        'TKIGES', 'TKSTEP', 'TKSTEP2']
+    libnames2 = ['TKXDESTEP']
+    l = checkLibFile__('libTKernel.so', additionalLibPaths)
+    if l is None:
+        l = checkLibFile__('libTKernel.a', additionalLibPaths)
+        if l is None:
+            l = checkLibFile__('libTKernel.dll.a', additionalLibPaths)
+            
+    i = checkIncFile__('oce/TopTools.hxx', additionalIncludePaths)
+    if i is not None and l is not None:
+        print('Info: libOCE detected at %s.'%l)
         return (True, i, l)
     else:
-        print 'Info: libOSMesa or GL/osmesa.h was not found on your system. No offscreen support for CPlot.'
-        return (False, '', '')
+        # On n'affiche pas ici le message, car il peut y avoir un installation locale de OCE
+        #print('Info: libOCE or oce/*.hxx was not found on your system. No IGES/STEP support.')
+        return (False, i, l)
 
 #=============================================================================
 # Check for png (libpng)
@@ -837,12 +1132,12 @@ def checkPng(additionalLibPaths=[], additionalIncludePaths=[]):
         if l is None:
              l = checkLibFile__('libpng.dll.a', additionalLibPaths)
     i = checkIncFile__('png.h', additionalIncludePaths)
-    if (i is not None and l is not None):
-        print 'Info: png detected at %s.'%l
+    if i is not None and l is not None:
+        print('Info: png detected at %s.'%l)
         return (True, i, l)
     else:
-        print 'Info: libpng or png.h was not found on your system. No png support.'
-        return (False, '', '')
+        print('Info: libpng or png.h was not found on your system. No png support.')
+        return (False, i, l)
 
 #=============================================================================
 # Check for mpeg (ffmpeg)
@@ -860,12 +1155,12 @@ def checkMpeg(additionalLibPaths=[], additionalIncludePaths=[]):
          i = checkIncFile__('libavutil/mem.h', additionalIncludePaths)
     if i is not None:
          i = checkIncFile__('libavutil/imgutils.h', additionalIncludePaths)
-    if (i is not None and l is not None):
-        print 'Info: mpeg detected at %s.'%l
+    if i is not None and l is not None:
+        print('Info: mpeg detected at %s.'%l)
         return (True, i, l)
     else:
-        print 'Info: libavcodec or libavcodec/avcodec.h,  libavutil/mem.h or libavutil/imgutils.h was not found on your system. No mpeg support.'
-        return (False, '', '')
+        print('Info: libavcodec or libavcodec/avcodec.h,  libavutil/mem.h or libavutil/imgutils.h was not found on your system. No mpeg support.')
+        return (False, i, l)
 
 #=============================================================================
 # Check for Adf
@@ -877,12 +1172,12 @@ def checkAdf(additionalLibPaths=[], additionalIncludePaths=[]):
     if l is None:
         l = checkLibFile__('libcgns.a', additionalLibPaths)
     i = checkIncFile__('adf/ADF.h', additionalIncludePaths)
-    if (i is not None and l is not None):
-        print 'Info: Adf detected at %s.'%l
+    if i is not None and l is not None:
+        print('Info: Adf detected at %s.'%l)
         return (True, i, l)
     else:
-        print 'Info: libadf or adf/ADF.h was not found on your system. No adf support.'
-        return (False, '', '')
+        print('Info: libadf or adf/ADF.h was not found on your system. No adf support.')
+        return (False, i, l)
 
 #=============================================================================
 # Check for Hdf
@@ -894,12 +1189,12 @@ def checkHdf(additionalLibPaths=[], additionalIncludePaths=[]):
     if l is None:
         l = checkLibFile__('libhdf5.a', additionalLibPaths)
     i = checkIncFile__('hdf5.h', additionalIncludePaths)
-    if (i is not None and l is not None):
-        print 'Info: Hdf5 detected at %s.'%l
+    if i is not None and l is not None:
+        print('Info: Hdf5 detected at %s.'%l)
         return (True, i, l)
     else:
-        print 'Info: libhdf5 or hdf5.h was not found on your system. No hdf5 support.'
-        return (False, '', '')
+        print('Info: libhdf5 or hdf5.h was not found on your system. No hdf5 support.')
+        return (False, i, l)
 
 #=============================================================================
 # Check for Mpi
@@ -910,13 +1205,15 @@ def checkMpi(additionalLibPaths=[], additionalIncludePaths=[]):
     l = checkLibFile__('libmpi.so', additionalLibPaths)
     if l is None:
         l = checkLibFile__('libmpi.a', additionalLibPaths)
+    if l is None:
+        l = checkLibFile__('msmpi.lib', additionalLibPaths)
     i = checkIncFile__('mpi.h', additionalIncludePaths)
-    if (i is not None and l is not None):
-        print 'Info: Mpi detected at %s.'%l
+    if i is not None and l is not None:
+        print('Info: Mpi detected at %s.'%l)
         return (True, i, l)
     else:
-        print 'Info: libmpi or mpi.h was not found on your system. No Mpi support.'
-        return (False, '', '')
+        print('Info: libmpi/msmpi or mpi.h was not found on your system. No Mpi support.')
+        return (False, i, l)
 
 #=============================================================================
 # Check for Mpi4py
@@ -925,34 +1222,122 @@ def checkMpi(additionalLibPaths=[], additionalIncludePaths=[]):
 #=============================================================================
 def checkMpi4py(additionalLibPaths=[], additionalIncludePaths=[]):
     try: import mpi4py
-    except: return (False, '', '')
+    except:
+        print('Info: mpi4py or mpi4py.MPI.h was not found on your system. No Mpi support.')
+        return (False, '', '')
 
     incPaths = []
     try: import KCore.installPath as K
     except: import installPath as K
     incPaths += [K.installPath+'/mpi4py/include']
-    import mpi4py
     fileN = mpi4py.__file__
     incPaths += [os.path.dirname(fileN)+'/include']
     i = checkIncFile__('mpi4py/mpi4py.MPI.h', additionalIncludePaths+incPaths)
 
     if i is not None:
-        print 'Info: Mpi4py detected at %s.'%i
+        print('Info: Mpi4py detected at %s.'%i)
         return (True, i, '')
     else:
-        print 'Info: mpi4py or mpi4py.MPI.h was not found on your system. No Mpi support.'
+        print('Info: mpi4py or mpi4py.MPI.h was not found on your system. No Mpi support.')
+        return (False, i, '')
+
+#=============================================================================
+# Check for paradigma
+# additionalPaths: chemins d'installation non standards : ['/home/toto',...]
+# Retourne: (True/False, chemin des includes, chemin de la librairie)
+#=============================================================================
+def checkParadigma(additionalLibPaths=[], additionalIncludePaths=[]):
+    try: import pyPdm
+    except:
+        print('Info: paradigma was not found on your system.')
         return (False, '', '')
+
+    i = mpi4py.__file__
+    print('Info: paradigma detected at %s.'%i)
+    return (True, i, '')
+    
+#=============================================================================
+# Check for BLAS
+# additionalPaths: chemins d'installation non standards: ['/home/toto',...]
+# Retourne: (True/False, chemin des includes, chemin de la librairie, 
+# option de compile, nom de la librarie)
+#=============================================================================
+def checkBlas(additionalLibPaths=[], additionalIncludePaths=[]):
+    try: from config import Cppcompiler
+    except: from KCore.config import Cppcompiler
+    if Cppcompiler == 'icc' or Cppcompiler == 'icpc': # intel - cherche dans MKL
+        libPrefix = 'libmkl_'; includePrefix = 'mkl_'; compOpt = '-mkl'
+    else: # cherche std
+        libPrefix = 'lib'; includePrefix = ''; compOpt = ''
+
+    # Cherche libname et le chemin des libs
+    libname = 'openblas'
+    l = checkLibFile__(libPrefix+'openblas*.so', additionalLibPaths)
+    if l is None:
+        l = checkLibFile__(libPrefix+'openblas*.a', additionalLibPaths)
+    if l is None:
+        libname = 'blas'
+        l = checkLibFile__(libPrefix+'blas*.so', additionalLibPaths)
+        if l is None:
+            l = checkLibFile__(libPrefix+'blas*.a', additionalLibPaths)
+    if libPrefix == 'libmkl_': libname = 'mkl'
+
+    # Chemin des includes
+    i = checkIncFile__(includePrefix+'cblas.h', additionalIncludePaths)
+    if i is not None and l is not None:
+        print('Info: Blas detected at %s.'%l)
+        return (True, i, l, compOpt, libname)
+    else:
+        print('Info: libblas or cblas.h was not found on your system. No Blas support.')
+        return (False, i, l, compOpt, libname)
+
+#=============================================================================
+# Check for LAPACK
+# additionalPaths: chemins d'installation non standards : ['/home/toto',...]
+# Retourne: (True/False, chemin des includes, chemin de la librairie, 
+# option de compile, nom de la librarie)
+#=============================================================================
+def checkLapack(additionalLibPaths=[], additionalIncludePaths=[]):
+    try: from config import Cppcompiler
+    except: from KCore.config import Cppcompiler
+    if Cppcompiler == 'icc' or Cppcompiler == 'icpc': # intel - cherche dans MKL
+        libPrefix = 'libmkl_'; includePrefix = 'mkl_'; compOpt = '-mkl'
+    else: # cherche std
+        libPrefix = 'lib'; includePrefix = ''; compOpt = ''
+    libname = 'openblas'
+    l = checkLibFile__(libPrefix+'openblas*.so', additionalLibPaths)
+    if l is None:
+        l = checkLibFile__(libPrefix+'openblas*.a', additionalLibPaths)
+    if l is None:
+        libname = 'lapacke'
+        l = checkLibFile__(libPrefix+'lapack*.so', additionalLibPaths)
+        if l is None:
+            l = checkLibFile__(libPrefix+'lapack*.a', additionalLibPaths)
+    i = checkIncFile__(includePrefix+'lapack.h', additionalIncludePaths)
+    if i is None:
+        i = checkIncFile__(includePrefix+'lapacke.h', additionalIncludePaths)
+    if i is not None and l is not None:
+        print('Info: Lapack detected at %s.'%l)
+        return (True, i, l, compOpt, libname)
+    else:
+        print('Info: liblapack or lapack.h or lapacke.h was not found on your system. No Lapack support.')
+        return (False, i, l, compOpt, libname)
 
 #=============================================================================
 # Check for Cython
 # Retourne: (True/False, chemin des includes, chemin de la librairie)
 #=============================================================================
 def checkCython(additionalLibPaths=[], additionalIncludePaths=[]):
-     try:
-          import Cython.Compiler.Main as cython_compiler
-          return True
-     except:
-          return False
+   try:
+      import Cython.Compiler.Main as cython_compiler
+      try:
+        import Cython
+        cythonVersion = Cython.__version__
+      except: cythonVersion = True
+   except: cythonVersion = False
+   if cythonVersion != False:
+     print('Info: found Cython version '+cythonVersion)
+   return cythonVersion
 
 def cythonize(src):
      import Cython.Compiler.Main as cython_compiler
@@ -984,7 +1369,7 @@ def checkFortranLibs(additionalLibs=[], additionalLibPaths=[],
      paths += additionalLibPaths
 
      # gfortran (gfortran, gomp)
-     if f77compiler == 'gfortran':
+     if f77compiler.find('gfortran') == 0:
           l = checkLibFile__('libgfortran.so*', additionalLibPaths)
           if l is None:
                l = checkLibFile__('libgfortran.a', additionalLibPaths)
@@ -1001,7 +1386,7 @@ def checkFortranLibs(additionalLibs=[], additionalLibPaths=[],
                else: ret = False
 
      # ifort (ifcore, svml, irc, guide, iomp5)
-     if f77compiler == 'ifort':
+     if f77compiler.find('ifort') == 0:
           l = checkLibFile__('libifcore.so*', additionalLibPaths)
           if l is None:
                l = checkLibFile__('libifcore.a', additionalLibPaths)
@@ -1046,6 +1431,7 @@ def checkFortranLibs(additionalLibs=[], additionalLibPaths=[],
 #=============================================================================
 def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
                  useOMP=None):
+
      if Cppcompiler is None:
           try: from config import Cppcompiler
           except:
@@ -1064,8 +1450,10 @@ def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
      paths += additionalLibPaths
 
      # gcc (stdc++, gomp)
-     if Cppcompiler == 'gcc' or Cppcompiler == 'g++':
-          l = checkLibFile__('libstdc++.so', additionalLibPaths)
+     if Cppcompiler.find('gcc') == 0 or Cppcompiler.find('g++') == 0:
+          os.environ['CC'] = 'gcc' # forced in 2.6 to overide setup.cfg
+          os.environ['CXX'] = 'g++'
+          l = checkLibFile__('libstdc++.so*', additionalLibPaths)
           if l is None:
                l = checkLibFile__('libstdc++.a', additionalLibPaths)
 
@@ -1081,11 +1469,10 @@ def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
                else: ret = False
 
      # icc (stdc++, guide ou iomp5)
-     if Cppcompiler == 'icc':
+     if Cppcompiler.find('icc') == 0 or Cppcompiler.find('icpc') == 0:
           l = checkLibFile__('libstdc++.so*', additionalLibPaths)
           if l is None:
                l = checkLibFile__('libstdc++.a', additionalLibPaths)
-
           if l is not None:
                libs += ['stdc++']; paths += [l]
 
@@ -1105,23 +1492,24 @@ def checkCppLibs(additionalLibs=[], additionalLibPaths=[], Cppcompiler=None,
      return (ret, libs, paths)
 
 #==============================================================================
-# Check if file exists in std lib dirs, path dirs and specified lib dirs
+# Check if file exists LD_LIBRARY_PATH dirs and specified lib dirs
 # additionalPaths est en premier pour pouvoir forcer une librairie par config.
 #==============================================================================
 def checkLibFile__(file, additionalLibPaths):
     p = []
     for i in additionalLibPaths: p.append(i)
-    p += ['/usr/local/lib', '/opt/lib', '/usr/lib', '/opt/local/lib']
     mySystem = getSystem()
     env = os.environ
+
     if mySystem[0] == 'Windows':
          p1 = env.get('PATH', None)
          if p1 is not None: p += p1.split(';')
     else: # unix, mingw...
-         p1 = env.get('PATH', None)
-         if p1 is not None: p += p1.split(';')
          p1 = env.get('LD_LIBRARY_PATH', None)
          if p1 is not None: p += p1.split(':')
+         p1 = env.get('PATH', None)
+         if p1 is not None: p += p1.split(';')
+    #p += ['/usr/local/lib', '/opt/lib', '/usr/lib', '/opt/local/lib']
     for i in p:
          a = glob.glob(i+'64/'+file)
          if a != []: return i+'64'
@@ -1130,13 +1518,11 @@ def checkLibFile__(file, additionalLibPaths):
     return None
 
 #==============================================================================
-# Check if file exists in std include dir, path dirs and specified include dirs
+# Check if file exists in path dirs and specified include dirs
 #==============================================================================
 def checkIncFile__(file, additionalIncludePaths):
     p = []
     for i in additionalIncludePaths: p.append(i)
-    p += ['/usr/local/include', '/opt/include', '/usr/include',
-          '/opt/local/include']
     mySystem = getSystem()
     env = os.environ
     pp = []
@@ -1144,13 +1530,21 @@ def checkIncFile__(file, additionalIncludePaths):
          p1 = env.get('PATH', None)
          if p1 is not None: pp += p1.split(';')
     else: # unix, mingw...
-         p1 = env.get('PATH', None)
-         if p1 is not None: pp += p1.split(':')
-         p1 = env.get('LD_LIBRARY_PATH', None)
-         if p1 is not None: pp += p1.split(':')
-    for i in xrange(len(pp)): pp[i] = pp[i].replace('lib', 'include')
+        p1 = env.get('LD_LIBRARY_PATH', None)
+        if p1 is not None: pp += p1.split(':')
+        p1 = env.get('PATH', None)
+        if p1 is not None: pp += p1.split(':')
+    #p += ['/usr/local/include', '/opt/include', '/usr/include', '/opt/local/include']
+    for i, v in enumerate(pp):
+        s = v.split('/'); ls = len(s)
+        if ls > 0 and s[-1] == 'lib': s[-1] = 'include'
+        if ls > 1 and s[-2] == 'lib': s[-2] = 'include'; s[-1] = ''
+        if ls > 0 and s[-1] == 'lib64': s[-1] = 'include'
+        if ls > 1 and s[-2] == 'lib64': s[-2] = 'include'; s[-1] = ''
+        out = ''
+        for j in s: out += j+'/'
+        pp[i] = out[:-1]
     p += pp
-
     for i in p:
         a = os.access(i+'/'+file, os.F_OK)
         if a: return i
@@ -1168,7 +1562,7 @@ def writeBuildInfo():
 
      dict = {}
      # Date
-     import time, pickle
+     import time
      execTime = time.strftime('%d/%m/%y %Hh%M', time.localtime())
      dict['date'] = execTime
 
@@ -1200,7 +1594,14 @@ def writeBuildInfo():
      if hdf: dict['hdf'] = hdfLib
      else: dict['hdf'] = "None"
 
+     # Check mpi
+     (mpi, mpiIncDir, mpiLib) = checkMpi(config.additionalLibPaths,
+                                         config.additionalIncludePaths)
+     if mpi: dict['mpi'] = mpiLib
+     else: dict['mpi'] = "None"
+
      # Write dictionnary
+     p.write("# This file is generated by Cassiopee installer.\n")
      p.write("buildDict = "+str(dict))
      p.close()
 
@@ -1222,9 +1623,8 @@ def writeInstallBase(dict):
 
      # Pretty print dict
      p.write("installDict = {\n")
-     keys = dict.keys()
      kc = 0
-     for k in keys:
+     for k in dict:
           p.write("###############################################################################\n")
           if isinstance(k, str): kstr = "\'%s\'"%k
           else: kstr = str(k)
@@ -1248,7 +1648,7 @@ def writeInstallBase(dict):
                elif lc == 11: p.write("%s, # additionalLibs\n"%lstr)
                elif lc == 12: p.write("%s # additionalLibPaths\n"%lstr)
           kc += 1
-          if kc == len(keys): p.write("]\n")
+          if kc == len(dict): p.write("]\n")
           else: p.write("], \n")
      p.write("}\n")
      p.close()
@@ -1314,6 +1714,18 @@ def createExtensions(module, srcs, includeDirs, libraryDirs, libraries,
      return listExtensions
 
 #==============================================================================
+# Retourne un dictionnaire des variables de l'environnement que scons
+# doit voir
+#==============================================================================
+def getEnvForScons():
+    return {'PATH': getenv('PATH'),
+            'LD_LIBRARY_PATH': getenv('LD_LIBRARY_PATH'),
+            'LM_LICENSE_FILE': getenv('LM_LICENSE_FILE'),
+            'INTEL_LICENSE_FILE': getenv('INTEL_LICENSE_FILE'),
+            'TMP':getenv('TMP'),
+            'TEMP':getenv('TEMP')}
+
+#==============================================================================
 # Fortran builder
 #==============================================================================
 # Ajoute le fortran builder a env
@@ -1365,34 +1777,28 @@ def createFortranFiles(env, srcs):
 
 # Scan les .f pour faire les dependences (include)
 def fortranScan(node, env, path, arg=None):
-     import itertools
      import re
-     # scan file to extract all possible include.
+     # scan file to extract all possible includes.
      contents = node.get_text_contents()
-     names = [reo.findall(contents) for reo in [
-               re.compile(r'^\s*from\s+(.+?)\s+cimport\s.*$', re.M),
-               re.compile(r'^\s*cimport\s+(.+?)$', re.M),
-               ]]
-     names = itertools.chain(*names)
-     # keep characters before " as ".
-     names = [name.split(' as ')[0] for name in names]
-     # split each cimport.
-     names = itertools.chain(*[name.split(',') for name in names])
+     reg = re.compile(r'include\s+(\S+)$', re.M)
+     names = reg.findall(contents)
      names = [name.strip() for name in names]
+     names = [name.replace('"', '') for name in names]
+
      # remove duplications
      names = set(names)
-     # prepend with the directory of the original pyx file.
-     prefix = os.path.dirname(env.GetBuildPath(node))
-     names = [os.path.join(prefix, '%s.pxd'%name) for name in names]
-     # only take local pxd file and ignore anything unfound.
-     names = [name for name in names if os.path.exists(name)]
-     return [env.File(name) for name in names]
+     # remove false dep (+in KCore?)
+     names = [n for n in names if not 'omp_lib.h' in n]
+     names = [n for n in names if not 'parallelF.h' in n]
+     return env.File(list(names))
 
 # Cree le scanner Fortran dans env
 def createFortranScanner(env):
      import SCons
-     fortranscanner = SCons.Scanner(function=fortranScan, skeys=['.f'], name='??')
-     env.Append(SCANNERS=[fortranscanner])
+     fortranscanner = SCons.Scanner.Scanner(function=fortranScan, skeys=['.for'],
+                                            recursive=True)
+     env.Append(SCANNERS=fortranscanner)
+     return env
 
 #==============================================================================
 # Builder Cython
@@ -1409,9 +1815,9 @@ def createCythonBuilder(env):
      for i in env['CPPPATH']: incs += ' -I"%s" '%i
 
      cypath = ''
-     if (env.has_key("CYTHONCOMPATH") and (env["CYTHONCOMPATH"] != "")):
+     if "CYTHONCOMPATH" in env and env["CYTHONCOMPATH"] != "":
           SYSPATH = ""
-          if env.has_key("PYTHONPATH"): SYSPATH=env['PYTHONPATH']
+          if "PYTHONPATH" in env: SYSPATH=env['PYTHONPATH']
           cypath = env["CYTHONCOMPATH"]
           if cypath != "": cypath += "/"
           pypath = "PYTHONPATH=%s:%s:%s "%(RESOURCELIBPATH,CYTHONLIBPATH,SYSPATH)
@@ -1460,8 +1866,9 @@ def cythonScan(node, env, path, arg=None):
 # Cree le scanner Cython dans env
 def createCythonScanner(env):
      import SCons
-     pyxscanner = SCons.Scanner(function=cythonScan, skeys=['.pyx'], name='PYX')
-     env.Append(SCANNERS=[pyxscanner])
+     pyxscanner = SCons.Scanner.Scanner(function=cythonScan, skeys=['.pyx'], name='PYX')
+     env.Append(SCANNERS=pyxscanner)
+     return env
 
 # Cree les targets des fichiers CPP
 def createCythonFiles(env, srcs):

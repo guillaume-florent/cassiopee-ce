@@ -1,5 +1,6 @@
 # - extract mesh par interpolation -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -68,7 +69,7 @@ def extractMesh():
     fail = False
     try:
         meshes = P.extractMesh(sources, meshes, order=2, tol=1.e-6) 
-    except Exception, e:
+    except Exception as e:
         fail = True
         Panels.displayErrors([0,str(e)], header='Error: extractMesh')
     # Remise dans l'arbre
@@ -95,7 +96,7 @@ def createApp(win):
                            text='tkExtractMesh', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Interpolate solution on\nanother mesh.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=4)
     Frame.columnconfigure(1, weight=0)
@@ -145,11 +146,11 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

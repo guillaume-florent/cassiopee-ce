@@ -1,5 +1,5 @@
 C  
-C    Copyright 2013-2017 Onera.
+C    Copyright 2013-2019 Onera.
 C
 C    This file is part of Cassiopee.
 C
@@ -271,7 +271,7 @@ c       t2     : ending coordinate
 c	jmax   : number of point in t vector ( j = 1,2,3, ... , jmax )        
 c	         this value is given by the user                              
 c       t      : output vector containing the tanh spacing distribution       
-c	ds1    : the specified lenght of initial interval                     
+c	ds1    : the specified length of initial interval                     
 c	         this value is given by the user                              
 c	ds2    : the specified lenght of final interval                       
 c	         this value is given by the user                              

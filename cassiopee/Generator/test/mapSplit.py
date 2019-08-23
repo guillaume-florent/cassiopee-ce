@@ -1,6 +1,5 @@
 # - mapSplit (array) -
 import Generator as G
-import Transform as T
 import Converter as C
 import Geom as D
 

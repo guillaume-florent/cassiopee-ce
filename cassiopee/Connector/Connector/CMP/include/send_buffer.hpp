@@ -1,16 +1,16 @@
 // SendBuffer.hpp
 #ifndef _CMP_SENDBUFFER_HPP_
 #define _CMP_SENDBUFFER_HPP_
+#if defined(_WIN64)
+# define __int64 long long
+#endif
 #include <mpi.h>
+#include <iostream>
 #include <string>
-#if __cplusplus > 199711L
 #include <memory>
 using std::shared_ptr;
-#else
-#include "shared_ptr.hpp"
-using CMP::shared_ptr;
-#endif
 #include "vector_view.hpp"
+#include <cassert>
 
 namespace CMP {
     class SendBuffer {
@@ -22,15 +22,21 @@ namespace CMP {
 
             template <typename K>
             PackedData( const K& val )
-                : m_nbBytes( sizeof( K ) ), m_pt_data( (char*)new K( val ) ), m_is_owner( true ) {}
+                : m_nbBytes( sizeof( K ) ), m_pt_data( (char*)new K( val ) ), m_is_owner( true ), m_must_copy(true) {}
 
             template <typename K>
             PackedData( const std::size_t nbElts, const K* pt_data )
-                : m_nbBytes( nbElts * sizeof( K ) ), m_pt_data( (char*)pt_data ), m_is_owner( pt_data == NULL ) {
+                : m_nbBytes( nbElts * sizeof( K ) ), m_pt_data( (char*)pt_data ), m_is_owner( pt_data == NULL ), m_must_copy(true) {
                 if ( m_is_owner ) m_pt_data = (char*)new K[nbElts];
             }
+
+            PackedData( const std::size_t nbElts )
+                : m_nbBytes( nbElts ), m_pt_data( NULL ), m_is_owner( false ), m_must_copy(false) 
+            {
+            }
+
             template <typename InpIterator>
-            PackedData( InpIterator beg, InpIterator end ) : m_nbBytes( 0 ), m_pt_data( NULL ), m_is_owner( false ) {
+            PackedData( InpIterator beg, InpIterator end ) : m_nbBytes( 0 ), m_pt_data( NULL ), m_is_owner( false ), m_must_copy(true) {
                 char* pt_beg = (char*)&( *beg );
                 char* pt_end = (char*)&( *end );
                 m_nbBytes    = pt_end - pt_beg;
@@ -42,7 +48,7 @@ namespace CMP {
             /** Copie plus dans l'esprit du déplacement */
             PackedData( const PackedData& data )
                 : m_nbBytes( data.m_nbBytes ), m_pt_data( data.m_pt_data ), m_is_owner( data.m_is_owner ) {
-                data.m_is_owner = false;
+                data.m_is_owner = false; m_must_copy = data.m_must_copy;
             }
             /** Destructeur
             */
@@ -50,12 +56,13 @@ namespace CMP {
                 if ( m_is_owner ) delete m_pt_data;
             }
 
-            PackedData& operator=( PackedData& data ) {
+            PackedData& operator=( const PackedData& data ) {
                 if ( this != &data ) {
                     if ( m_is_owner ) delete m_pt_data;
                     m_nbBytes       = data.m_nbBytes;
                     m_pt_data       = data.m_pt_data;
                     m_is_owner      = data.m_is_owner;
+                    m_must_copy     = data.m_must_copy;
                     data.m_is_owner = false;
                 }
                 return *this;
@@ -64,24 +71,29 @@ namespace CMP {
             /** Adresse des données à sérialiser */
             template <typename K>
             K* data( ) {
-                return static_cast<K*>( m_pt_data );
+                return (K*)( m_pt_data );
             }
             /** Adresse des données à sérialiser
             */
             template <typename K>
             const K* data( ) const {
-                return static_cast<K*>( m_pt_data );
+                return (const K*)( m_pt_data );
             }
+
+            template<typename K> void set_data( K* addr ) { assert(m_pt_data == NULL); m_pt_data = (char*)addr; }
+
             std::size_t    size( ) const { return m_nbBytes; }  // Taille en octet des données sérialisés
             iterator       begin( ) { return static_cast<iterator>( m_pt_data ); }
             const_iterator begin( ) const { return static_cast<const_iterator>( m_pt_data ); }
             iterator       end( ) { return static_cast<iterator>( m_pt_data ) + size( ); }
             const_iterator end( ) const { return static_cast<const_iterator>( m_pt_data ) + size( ); }
+            bool must_copy() const { return m_must_copy; }
 
         private:
             std::size_t  m_nbBytes;   // Taille en octet des données
             char*        m_pt_data;   // Adresse
             mutable bool m_is_owner;  // Données à détruire par la suite ?
+            bool         m_must_copy; // Uniquement un espace à réserver ( faux ) ou données qu'on doit copier ( true ) ?
         };
         // -----------------------------------------------------------------------------
         SendBuffer( int recv_rank, int id_tag = MPI_ANY_TAG, const MPI_Comm& comm = MPI_COMM_WORLD );
@@ -107,6 +119,9 @@ namespace CMP {
             return *this;
         }
 
+        PackedData& push_inplace_array( size_t size );
+
+        void finalize_and_copy();
         int  isend( );  // Envoie asynchrone du buffer, retour un entier pour signaler une erreur éventuelle
         bool test( MPI_Status* pt_status = NULL );  // Renvoie vrai si l'envoi est fini.
         int wait( MPI_Status* pt_status = NULL );   // Attend que l'envoi se finisse

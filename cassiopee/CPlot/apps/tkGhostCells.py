@@ -1,5 +1,6 @@
 # - explicit ghost cells management -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -7,8 +8,7 @@ import CPlot.Tk as CTK
 import Converter.Internal as Internal
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def addGhostCells(event=None):
@@ -92,7 +92,7 @@ def createApp(win):
                            text='tkGhostCells', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='My personal applet.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -125,6 +125,64 @@ E_Int K_IO::GenIO::readGivenKeyword(FILE* ptrFile, const char* keyword)
   }
 
   delete [] word;
+
+  if (t == EOF) return 0;
+  else return 1;
+}
+
+//=============================================================================
+/*
+  Lit le ptrFile jusqu'a rencontrer keyword1 ou keyword2 ou eof.
+  keyword1 et keyword2 doicent etre en majuscule.
+  Ignore les majuscules.
+  Retourne 1 si keyword1 a ete trouve en premier.
+  Retourne 2 si keyword2 a ete trouve en premier.
+  Retourne 0 si eof a ete atteint.
+*/
+//=============================================================================
+E_Int K_IO::GenIO::readGivenKeyword(FILE* ptrFile, const char* keyword1, 
+                                    const char* keyword2)
+{
+  E_Int i, a;
+  E_Int l1 = strlen(keyword1);
+  E_Int l2 = strlen(keyword2);
+  
+  char* word1 = new char [l1+1];
+  char* word2 = new char [l2+1];
+  
+  for (i = 0; i < l1; i++) word1[i] = ' ';
+  word1[l1] = '\0';
+  for (i = 0; i < l2; i++) word2[i] = ' ';
+  word2[l2] = '\0';
+
+  char t;
+  t = fgetc(ptrFile);
+  
+  while (t != EOF)
+  {
+    for (a = 0; a < l1-1; a++) word1[a] = word1[a+1];
+    word1[l1-1] = toupper(t);
+    for (a = 0; a < l2-1; a++) word2[a] = word2[a+1];
+    word2[l2-1] = toupper(t);
+  
+    if (strcmp(word1, keyword1) == 0)
+    {
+      //printf("%s\n", word1);
+      delete [] word1; delete [] word2;
+      return 1;
+    }
+
+    if (strcmp(word2, keyword2) == 0)
+    {
+      //printf("%s\n", word2);
+      delete [] word1; delete [] word2;
+      return 2;
+    }
+
+    t = fgetc(ptrFile);
+  }
+
+  delete [] word1; delete [] word2;
 
   if (t == EOF) return 0;
   else return 1;
@@ -537,6 +595,125 @@ E_Int K_IO::GenIO::readIntTuple(FILE* ptrFile, E_Int& value)
 }
 
 //=============================================================================
+/* 
+   Lit un tuple 12/13/24 ou 12/13.
+   Retourne les deux premieres valeurs.
+   Retourne 2 si eof, 1 si arret sur un blanc et 0 sinon. 
+ */
+//=============================================================================
+E_Int K_IO::GenIO::readIntTuple2(FILE* ptrFile, E_Int& value1, E_Int& value2)
+{
+  E_Int i = 0;
+  char c;
+  char number[256];
+  
+  c = fgetc(ptrFile);
+  // Avance jusqu'a un tuple lisible
+  while (c != EOF && (c == ' ' || c == '\n' || c == '\r'))
+  {
+    c = fgetc(ptrFile);
+  }
+
+  // Lit la premiere valeur du tuple
+  while (c != EOF && c != ' ' && c != '/' && c != '\n' && c != '\r')
+  {
+    {number[i] = c; if (c == 'D') number[i] = 'E'; i++;}
+    c = fgetc(ptrFile);
+  }
+  number[i] = '\0';
+
+  value1 = strtol(number, NULL, 0);
+
+  c = fgetc(ptrFile); // passe /
+  i = 0;
+  while (c != EOF && c != ' ' && c != '/' && c != '\n' && c != '\r')
+  {
+    {number[i] = c; if (c == 'D') number[i] = 'E'; i++;}
+    c = fgetc(ptrFile);
+  }
+  number[i] = '\0';
+
+  value2 = strtol(number, NULL, 0);
+
+  // Lit les autres valeurs (si il y en a)
+  while (c != EOF && c != ' ' && c != '\n' && c != '\r')
+  {
+    c = fgetc(ptrFile);
+  }
+  
+  if (c == EOF) return 2;
+  else if (c == ' ') return 1;
+  else if (c == '\t') return 1;
+  else return 0;
+}
+
+//=============================================================================
+/* 
+   Lit un tuple 12/13/24.
+   Retourne les trois valeurs.
+   Retourne 2 si eof, 1 si arret sur un blanc et 0 sinon. 
+ */
+//=============================================================================
+E_Int K_IO::GenIO::readIntTuple3(FILE* ptrFile, E_Int& value1, E_Int& value2, E_Int& value3)
+{
+  E_Int i = 0;
+  char c;
+  char number[256];
+  
+  value1 = -1; value2 = -1; value3 = -1;
+
+  c = fgetc(ptrFile);
+  // Avance jusqu'a un tuple lisible
+  while (c != EOF && (c == ' ' || c == '\n' || c == '\r'))
+  {
+    c = fgetc(ptrFile);
+  }
+
+  // Lit la premiere valeur du tuple
+  while (c != EOF && c != ' ' && c != '/' && c != '\n' && c != '\r')
+  {
+    {number[i] = c; if (c == 'D') number[i] = 'E'; i++;}
+    c = fgetc(ptrFile);
+  }
+  number[i] = '\0';
+
+  value1 = strtol(number, NULL, 0);
+
+  if (c == '/')
+  { // essai pour lire la deuxieme valeur
+    c = fgetc(ptrFile); // passe /
+    i = 0;
+    while (c != EOF && c != ' ' && c != '/' && c != '\n' && c != '\r')
+    {
+      {number[i] = c; if (c == 'D') number[i] = 'E'; i++;}
+      c = fgetc(ptrFile);
+    }
+    number[i] = '\0';
+
+    value2 = strtol(number, NULL, 0);
+
+    if (c == '/')
+    {
+      c = fgetc(ptrFile); // passe /
+      i = 0;
+      while (c != EOF && c != ' ' && c != '/' && c != '\n' && c != '\r')
+      {
+        {number[i] = c; if (c == 'D') number[i] = 'E'; i++;}
+        c = fgetc(ptrFile);
+      }
+      number[i] = '\0';
+
+      value3 = strtol(number, NULL, 0);
+    }
+  }
+  
+  if (c == EOF) return 2;
+  else if (c == ' ') return 1;
+  else if (c == '\t') return 1;
+  else return 0;
+}
+
+//=============================================================================
 /* Skip comment.
    Skip a comment line in a file.
    Don't move ptrFile if the current line is not a comment.
@@ -622,7 +799,7 @@ E_Int K_IO::GenIO::readline(FILE*& ptrFile, char* buf, E_Int size)
 //=============================================================================
 E_Int K_IO::GenIO::readTwoCoordinates(FILE* ptrFile, E_Float* pt)
 {
-  char* buf = new char[BUFSIZE];
+  char* buf = new char[BUFSIZE+1];
   readWord(ptrFile, buf);
   E_Int ret = readTwoCoordinates(buf, ptrFile, pt);
   delete [] buf;
@@ -636,13 +813,13 @@ E_Int K_IO::GenIO::readTwoCoordinates(char* buf, FILE* ptrFile, E_Float* pt)
   K_ARRAY::extractVars(buf, numbers);
   E_Int numbersSize = numbers.size();
   E_Float value;
-  
   for (E_Int i = 0; i < numbersSize; i++)
   { 
     value = strtod(numbers[i], NULL);
     delete [] numbers[i];
     pt[i] = value;
   }
+  numbers.clear();
   
   if (numbersSize == 1)
   {

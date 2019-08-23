@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -59,6 +59,10 @@ public:
   
   inline static void coloring (const K_FLD::IntArray& neighbors, int_vector_type& colors);
   inline static void coloring (const ngon_unit& neighbors, int_vector_type& colors);
+  
+  inline static void extrapolate (const ngon_unit& neighbors, K_FLD::IntArray& properties);
+  
+  inline static void smoothd1(const ngon_unit& PHs, const K_FLD::IntArray& noF2E, const std::vector<E_Int>& PHlevel, std::vector<E_Int>& adap_incr); 
   
   static void coloring_pure (const K_FLD::IntArray& neighbors, int_vector_type& colors);
   

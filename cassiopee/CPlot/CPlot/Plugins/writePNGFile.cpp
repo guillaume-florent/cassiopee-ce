@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -105,7 +105,7 @@ void writePNGFile(Data* d, char *filename, char* buffer,
 
   /* cleanup heap allocation */
   delete [] row_pointers;
-  fclose(fp);
+  fclose(fp); 
 
-  printf("Wrote filename %s (%d x %d pixels).\n", filename, width, height);
+  printf("Wrote file %s (%d x %d pixels).\n", filename, width, height);
 }

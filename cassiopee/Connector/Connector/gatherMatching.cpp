@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -106,7 +106,7 @@ PyObject* K_CONNECTOR::gatherMatching(PyObject* self, PyObject* args)
   E_Boolean skipNoCoord = true;
   E_Boolean skipStructured = false;
   E_Boolean skipUnstructured = true;
-  E_Boolean skipDiffVars = true;
+  E_Boolean skipDiffVars = false;//true;
 
   E_Int isOk = K_ARRAY::getFromArrays(
     listOfAllWins, resl, structVarString, unstrVarString,

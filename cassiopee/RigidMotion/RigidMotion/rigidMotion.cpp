@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -25,18 +25,58 @@
 static PyMethodDef PyrigidMotion [] =
 {
   {"move", K_RIGIDMOTION::move, METH_VARARGS},
+  {"moveN", K_RIGIDMOTION::moveN, METH_VARARGS},
   {NULL, NULL}
 };
+
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+struct module_state {
+    PyObject *error;
+};
+static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+static int myextension_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "rigidMotion",
+        NULL,
+        sizeof(struct module_state),
+        PyrigidMotion,
+        NULL,
+        myextension_traverse,
+        myextension_clear,
+        NULL
+};
+#endif
 
 // ============================================================================
 /* Init of module */
 // ============================================================================
 extern "C"
 {
-  void initrigidMotion();
-  void initrigidMotion()
+#if PY_MAJOR_VERSION >= 3
+  PyMODINIT_FUNC PyInit_rigidMotion();
+  PyMODINIT_FUNC PyInit_rigidMotion()
+#else
+  PyMODINIT_FUNC initrigidMotion();
+  PyMODINIT_FUNC initrigidMotion()
+#endif
   {
+#if PY_MAJOR_VERSION >= 3
+    PyObject* module = PyModule_Create(&moduledef);
+#else
     Py_InitModule("rigidMotion", PyrigidMotion);
+#endif
     import_array();
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
   }
 }

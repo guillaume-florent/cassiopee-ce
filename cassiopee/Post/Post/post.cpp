@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -41,6 +41,7 @@ static PyMethodDef Pypost [] =
   {"exteriorFaces", K_POST::selectExteriorFaces, METH_VARARGS},
   {"exteriorFacesStructured", K_POST::selectExteriorFacesStructured, METH_VARARGS},
   {"exteriorElts", K_POST::selectExteriorElts, METH_VARARGS},
+  {"exteriorEltsStructured", K_POST::exteriorEltsStructured, METH_VARARGS},
   {"frontFaces", K_POST::frontFaces, METH_VARARGS},
   {"integ", K_POST::integ, METH_VARARGS},
   {"integ2", K_POST::integ2, METH_VARARGS},
@@ -51,10 +52,14 @@ static PyMethodDef Pypost [] =
   {"zipper", K_POST::zipperF, METH_VARARGS},
   {"usurp", K_POST::usurpF, METH_VARARGS},
   {"computeVariables", K_POST::computeVariables, METH_VARARGS},
+  {"computeVariables2", K_POST::computeVariables2, METH_VARARGS},
   {"computeGrad", K_POST::computeGrad, METH_VARARGS},
   {"computeGrad2NGon", K_POST::computeGrad2NGon, METH_VARARGS},
   {"computeGrad2Struct", K_POST::computeGrad2Struct, METH_VARARGS},
   {"computeNormGrad", K_POST::computeNormGrad, METH_VARARGS},
+  {"computeDiv", K_POST::computeDiv, METH_VARARGS},
+  {"computeDiv2NGon", K_POST::computeDiv2NGon, METH_VARARGS},
+  {"computeDiv2Struct", K_POST::computeDiv2Struct, METH_VARARGS},
   {"computeCurl", K_POST::computeCurl, METH_VARARGS},
   {"computeNormCurl", K_POST::computeNormCurl, METH_VARARGS},
   {"computeDiff", K_POST::computeDiff, METH_VARARGS},
@@ -66,6 +71,7 @@ static PyMethodDef Pypost [] =
   {"isoSurf", K_POST::isoSurf, METH_VARARGS},
   {"isoSurfMC", K_POST::isoSurfMC, METH_VARARGS},
   {"isoSurfMC_opt", K_POST::isoSurfMC_opt, METH_VARARGS},
+  {"isoSurfNGon", K_POST::isoSurfNGon, METH_VARARGS},
   {"enforceIndicatorNearBodies", K_POST::enforceIndicatorNearBodies, METH_VARARGS},
   {"enforceIndicatorForFinestLevel", K_POST::enforceIndicatorForFinestLevel, METH_VARARGS},
   {"enforceIndicatorForCoarsestLevel", K_POST::enforceIndicatorForCoarsestLevel, METH_VARARGS},
@@ -75,15 +81,53 @@ static PyMethodDef Pypost [] =
   {NULL, NULL}
 };
 
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+struct module_state {
+    PyObject *error;
+};
+static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+static int myextension_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "post",
+        NULL,
+        sizeof(struct module_state),
+        Pypost,
+        NULL,
+        myextension_traverse,
+        myextension_clear,
+        NULL
+};
+#endif
+
 // ============================================================================
 /* Init of module */
 // ============================================================================
 extern "C"
 {
-  void initpost();
-  void initpost()
+#if PY_MAJOR_VERSION >= 3
+  PyMODINIT_FUNC PyInit_post();
+  PyMODINIT_FUNC PyInit_post()
+#else
+  PyMODINIT_FUNC initpost();
+  PyMODINIT_FUNC initpost()
+#endif
   {
+#if PY_MAJOR_VERSION >= 3
+    PyObject* module = PyModule_Create(&moduledef);
+#else
     Py_InitModule("post", Pypost);
+#endif
     import_array();
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
   }
 }

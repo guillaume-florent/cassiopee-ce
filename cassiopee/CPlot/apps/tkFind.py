@@ -1,5 +1,6 @@
 # - find nodes and elements of given number -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import Converter.Internal as Internal
@@ -8,8 +9,7 @@ import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def find(event=None):
@@ -143,7 +143,7 @@ def createApp(win):
     Frame = TTK.LabelFrame(win, borderwidth=2, relief=CTK.FRAMESTYLE,
                            text='tkFind', font=CTK.FRAMEFONT, takefocus=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -152,12 +152,15 @@ def createApp(win):
     # - Frame menu -
     FrameMenu = TK.Menu(Frame, tearoff=0)
     FrameMenu.add_command(label='Close', accelerator='Ctrl+c', command=hideApp)
+    FrameMenu.add_command(label='Save', command=saveApp)
+    FrameMenu.add_command(label='Reset', command=resetApp)
     CTK.addPinMenu(FrameMenu, 'tkFind')
     WIDGETS['frameMenu'] = FrameMenu
     
     # - VARS -
     # -0- type (node/elements/coordinates) -
     V = TK.StringVar(win); V.set('Node index'); VARS.append(V)
+    if 'tkFindDataType' in CTK.PREFS: V.set(CTK.PREFS['tkFindDataType'])
     # -1- value -
     V = TK.StringVar(win); V.set('0'); VARS.append(V)
     
@@ -199,6 +202,17 @@ def hideApp(event=None):
 #==============================================================================
 def updateApp(): return
 
+#==============================================================================
+def saveApp():
+    CTK.PREFS['tkFindDataType'] = VARS[0].get()
+    CTK.savePrefFile()
+
+#==============================================================================
+def resetApp():
+    VARS[0].set('Node index')
+    CTK.PREFS['tkFindDataType'] = VARS[0].get()
+    CTK.savePrefFile()
+    
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)

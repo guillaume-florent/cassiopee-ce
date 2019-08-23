@@ -1,5 +1,5 @@
 C  
-C    Copyright 2013-2017 Onera.
+C    Copyright 2013-2019 Onera.
 C
 C    This file is part of Cassiopee.
 C
@@ -26,7 +26,7 @@ C==============================================================================
 C_IN
       INTEGER_E dim                     ! mesh size
       REAL_E center(1:3)                ! center of rotation
-      REAL_E axis(1:3)                  ! rotation vector
+      REAL_E axis(1:3)                  ! rotation Vector
       REAL_E teta                       ! angle
 C_OUT
       REAL_E x0(1:dim), y0(1:dim), z0(1:dim) ! rotated mesh point
@@ -39,7 +39,7 @@ C_LOCAL
       REAL_E e0, e1, e2, e3
       REAL_E a1, a2, steta, stetas2
 C==============================================================================
-C nx,ny,nz must be unit vector
+C nx,ny,nz must be unit Vector
       norm = axis(1)*axis(1) + axis(2)*axis(2) + axis(3)*axis(3)
       IF (norm.LE.1.e-12) THEN
          WRITE(*,*) 'Error: k6rotatemesh: nx,ny,nz has null norm.'

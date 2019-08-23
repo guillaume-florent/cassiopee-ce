@@ -7,7 +7,7 @@ switch (type)
    for (E_Int ne    = 0     ; ne    < nvars_loc ; ne++)
     {
      indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
-     noi       = shiftDonnor;
+     noi       = shiftDonor;
      for (E_Int noind = pt_deb; noind < pt_fin; noind++)
      {
       ncfLoc = donorPts[noi];// nb de pts pour la formule
@@ -42,9 +42,9 @@ switch (type)
    for (E_Int ne    = 0     ; ne    < nvars_loc ; ne++)
     {
      indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
-#ifdef _OPENMP4
-     #pragma omp simd
-#endif
+// #ifdef _OPENMP4
+//      #pragma omp simd
+// #endif
      for (E_Int noind = pt_deb; noind < pt_fin; noind++)
      {
       ind000 = donorPts[noind];
@@ -75,9 +75,9 @@ switch (type)
     for (E_Int ne    = 0     ; ne    < nvars_loc ; ne++)
     {
     indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
-#ifdef _OPENMP4
-    #pragma omp simd
-#endif
+// #ifdef _OPENMP4
+//     #pragma omp simd
+// #endif
     for (E_Int noind = pt_deb; noind < pt_fin; noind++)
     {
       ind00 = donorPts[noind];
@@ -126,9 +126,9 @@ switch (type)
    for (E_Int ne    = 0     ; ne    < nvars_loc ; ne++)
    {
     indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
-#ifdef _OPENMP4
-    #pragma omp simd
-#endif
+// #ifdef _OPENMP4
+//     #pragma omp simd
+// #endif
     for (E_Int noind = pt_deb; noind < pt_fin; noind++)
     {
       indD0 = donorPts[noind];  //car type 0 est toujour traité en dernier. Sinon noind pas valable

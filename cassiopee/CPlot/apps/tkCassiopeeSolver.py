@@ -1,5 +1,6 @@
 # - Cassiopee solver app -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -28,9 +29,9 @@ def writeSetupFile():
     nodes = Internal.getNodesFromName(CTK.t, 'GoverningEquations')
     if nodes != []:
         equations = Internal.getValue(nodes[0])
-        if (equations == 'Euler'): model = 'euler'
-        if (equations == 'NSLaminar'): model = 'nslam'
-        if (equations == 'NSTurbulent'): model = 'nstur'
+        if equations == 'Euler': model = 'euler'
+        if equations == 'NSLaminar': model = 'nslam'
+        if equations == 'NSTurbulent': model = 'nstur'
     else:
         CTK.TXT.insert('START', 'GoverningEquations is missing (tkState).\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -221,7 +222,7 @@ def createApp(win):
                            takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Export to Cassiopee \nCartesian solver.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=0)
     Frame.columnconfigure(1, weight=1)
@@ -336,7 +337,7 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

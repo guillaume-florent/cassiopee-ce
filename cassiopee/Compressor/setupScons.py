@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os, sys
+import os
 from distutils.core import setup, Extension
 
 #=============================================================================
@@ -43,7 +43,7 @@ extensions = [
 # Setup ======================================================================
 setup(
     name="Compressor",
-    version="2.5",
+    version="2.9",
     description="Compress CFD solutions.",
     author="Onera",
     package_dir={"":"."},

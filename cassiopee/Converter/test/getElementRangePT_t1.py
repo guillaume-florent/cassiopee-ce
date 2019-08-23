@@ -1,5 +1,4 @@
-# -- getElementRange (pyTree) --
-import Converter.PyTree as C
+# - getElementRange (pyTree) -
 import Generator.PyTree as G
 import Converter.Internal as Internal
 import KCore.test as test

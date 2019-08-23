@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -36,9 +36,9 @@ PyObject* K_CONVERTER::normL0(PyObject* self, PyObject* args)
   // Check array
   E_Int im, jm, km;
   FldArrayF* f; char* varString; 
-  char* eltType; FldArrayI* cn;  
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, im, jm, km, 
-                                    cn, eltType, true);
+  char* eltType; FldArrayI* cn;
+  E_Int res = K_ARRAY::getFromArray2(array, varString, f, im, jm, km, 
+                                     cn, eltType);
   
   E_Int npts = f->getSize();
   if (res != 1 && res != 2)
@@ -55,7 +55,7 @@ PyObject* K_CONVERTER::normL0(PyObject* self, PyObject* args)
   {
     RELEASESHAREDB(res, array, f, cn);
     PyErr_SetString(PyExc_TypeError, 
-                    "normL0: variable not found in array."); 
+                    "normL0: variable not found in array.");
     return NULL;
   }
 
@@ -105,8 +105,8 @@ PyObject* K_CONVERTER::normL2(PyObject* self, PyObject* args)
   E_Int im, jm, km;
   FldArrayF* f; FldArrayI* cn;
   char* varString; char* eltType;
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, im, jm, km, 
-                                    cn, eltType, true);
+  E_Int res = K_ARRAY::getFromArray2(array, varString, f, im, jm, km, 
+                                     cn, eltType);
 
   E_Int npts = f->getSize();
 
@@ -156,5 +156,5 @@ PyObject* K_CONVERTER::normL2(PyObject* self, PyObject* args)
   return Py_BuildValue("d", L2err);
 #else
   return Py_BuildValue("f", L2err);
-#endif  
+#endif
 }

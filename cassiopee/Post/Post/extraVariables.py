@@ -1,6 +1,6 @@
 # Calcul des autres variables de computeVariables
 
-import Post as P
+from . import Post as P
 import Converter as C
 import KCore
 
@@ -61,7 +61,7 @@ def computeQCriterion(array):
         grads = C.addVars([gradU, gradV, gradW])
     else: grads = C.extractVars(a,vars0)
     
-    grads = C.initVars(grads, 'QCriterion=-0.5*({gradxVelocityX}*{gradxVelocityX}+{gradyVelocityY}*{gradyVelocityY}+{gradzVelocityZ}*{gradzVelocityZ}+2*{gradyVelocityX}*{gradxVelocityY}+2*{gradzVelocityX}*{gradxVelocityZ}+2*{gradzVelocityY}*{gradyVelocityZ})')
+    grads = C.initVars(grads, '{QCriterion}=-0.5*({gradxVelocityX}*{gradxVelocityX}+{gradyVelocityY}*{gradyVelocityY}+{gradzVelocityZ}*{gradzVelocityZ}+2*{gradyVelocityX}*{gradxVelocityY}+2*{gradzVelocityX}*{gradxVelocityZ}+2*{gradzVelocityY}*{gradyVelocityZ})')
     ret = C.extractVars(grads, ['QCriterion'])
     return ret
 
@@ -95,15 +95,15 @@ def computeShearStress(array, gamma=1.4, rgp=287.053,
         grads =  C.extractVars(a,vars0)
         tau = C.addVars([grads, mu])
 
-    tau = C.initVars(tau, 'ShearStressXX=-2./3.*{ViscosityMolecular}*({gradxVelocityX}+{gradyVelocityY}+{gradzVelocityZ})+{ViscosityMolecular}*2*{gradxVelocityX}')
-    tau = C.initVars(tau, 'ShearStressXY={ViscosityMolecular}*({gradyVelocityX}+{gradxVelocityY})')
-    tau = C.initVars(tau, 'ShearStressXZ={ViscosityMolecular}*({gradzVelocityX}+{gradxVelocityZ})')
-    tau = C.initVars(tau, 'ShearStressYX={ViscosityMolecular}*({gradxVelocityY}+{gradyVelocityX})')
-    tau = C.initVars(tau, 'ShearStressYY=-2./3.*{ViscosityMolecular}*({gradxVelocityX}+{gradyVelocityY}+{gradzVelocityZ})+{ViscosityMolecular}*2*{gradyVelocityY}')
-    tau = C.initVars(tau, 'ShearStressYZ={ViscosityMolecular}*({gradzVelocityY}+{gradyVelocityZ})')
-    tau = C.initVars(tau, 'ShearStressZX={ViscosityMolecular}*({gradxVelocityZ}+{gradzVelocityX})')
-    tau = C.initVars(tau, 'ShearStressZY={ViscosityMolecular}*({gradyVelocityZ}+{gradzVelocityY})')
-    tau = C.initVars(tau, 'ShearStressZZ=-2./3.*{ViscosityMolecular}*({gradxVelocityX}+{gradyVelocityY}+{gradzVelocityZ})+{ViscosityMolecular}*2*{gradzVelocityZ}')
+    tau = C.initVars(tau, '{ShearStressXX}=-2./3.*{ViscosityMolecular}*({gradxVelocityX}+{gradyVelocityY}+{gradzVelocityZ})+{ViscosityMolecular}*2*{gradxVelocityX}')
+    tau = C.initVars(tau, '{ShearStressXY}={ViscosityMolecular}*({gradyVelocityX}+{gradxVelocityY})')
+    tau = C.initVars(tau, '{ShearStressXZ}={ViscosityMolecular}*({gradzVelocityX}+{gradxVelocityZ})')
+    tau = C.initVars(tau, '{ShearStressYX}={ViscosityMolecular}*({gradxVelocityY}+{gradyVelocityX})')
+    tau = C.initVars(tau, '{ShearStressYY}=-2./3.*{ViscosityMolecular}*({gradxVelocityX}+{gradyVelocityY}+{gradzVelocityZ})+{ViscosityMolecular}*2*{gradyVelocityY}')
+    tau = C.initVars(tau, '{ShearStressYZ}={ViscosityMolecular}*({gradzVelocityY}+{gradyVelocityZ})')
+    tau = C.initVars(tau, '{ShearStressZX}={ViscosityMolecular}*({gradxVelocityZ}+{gradzVelocityX})')
+    tau = C.initVars(tau, '{ShearStressZY}={ViscosityMolecular}*({gradyVelocityZ}+{gradzVelocityY})')
+    tau = C.initVars(tau, '{ShearStressZZ}=-2./3.*{ViscosityMolecular}*({gradxVelocityX}+{gradyVelocityY}+{gradzVelocityZ})+{ViscosityMolecular}*2*{gradzVelocityZ}')
     ret = C.extractVars(tau,
                         ['ShearStressXX', 'ShearStressXY', 'ShearStressXZ',
                          'ShearStressYX', 'ShearStressYY', 'ShearStressYZ',
@@ -124,14 +124,14 @@ def computeSkinFriction(array, tangent=0):
     n = C.normalize(n, ['sx', 'sy', 'sz'])
     a = C.addVars([array, n])
     # Array must contain ShearStress
-    a = C.initVars(a, 'SkinFrictionX={ShearStressXX}*{sx}+{ShearStressXY}*{sy}+{ShearStressXZ}*{sz}')
-    a = C.initVars(a, 'SkinFrictionY={ShearStressYX}*{sx}+{ShearStressYY}*{sy}+{ShearStressYZ}*{sz}')
-    a = C.initVars(a, 'SkinFrictionZ={ShearStressZX}*{sx}+{ShearStressZY}*{sy}+{ShearStressZZ}*{sz}')
+    a = C.initVars(a, '{SkinFrictionX}={ShearStressXX}*{sx}+{ShearStressXY}*{sy}+{ShearStressXZ}*{sz}')
+    a = C.initVars(a, '{SkinFrictionY}={ShearStressYX}*{sx}+{ShearStressYY}*{sy}+{ShearStressYZ}*{sz}')
+    a = C.initVars(a, '{SkinFrictionZ}={ShearStressZX}*{sx}+{ShearStressZY}*{sy}+{ShearStressZZ}*{sz}')
     a = C.extractVars(a, ['SkinFrictionX', 'SkinFrictionY', 'SkinFrictionZ'])
     if tangent == 1:
         a = C.addVars([a, n])
-        a = C.initVars(a, 'SkinFrictionTangentialX={SkinFrictionX} - {sx}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
-        a = C.initVars(a, 'SkinFrictionTangentialY={SkinFrictionY} - {sy}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
-        a = C.initVars(a, 'SkinFrictionTangentialZ={SkinFrictionZ} - {sz}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
+        a = C.initVars(a, '{SkinFrictionTangentialX}={SkinFrictionX} - {sx}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
+        a = C.initVars(a, '{SkinFrictionTangentialY}={SkinFrictionY} - {sy}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
+        a = C.initVars(a, '{SkinFrictionTangentialZ}={SkinFrictionZ} - {sz}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
         a = C.extractVars(a, ['SkinFrictionTangentialX', 'SkinFrictionTangentialY', 'SkinFrictionTangentialZ'])
     return a

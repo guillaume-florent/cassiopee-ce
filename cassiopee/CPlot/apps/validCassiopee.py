@@ -1,5 +1,6 @@
 # *Cassiopee* GUI for validation and tests
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import os, sys, re
 import subprocess
 import time
@@ -13,7 +14,7 @@ CASSIOPEE = os.getenv('CASSIOPEE_SOURCES')
 if CASSIOPEE is None or CASSIOPEE == '':
     CASSIOPEE = os.getenv('CASSIOPEE')
     if CASSIOPEE is None or CASSIOPEE == '':
-        print 'Error: CASSIOPEE must be present in your environement.'
+        print('Error: CASSIOPEE must be present in your environement.')
         sys.exit()
 
 # CFD Base
@@ -42,6 +43,8 @@ expTest4 = re.compile("_m") # distributed tests
 # Liste des tous les tests obtenue en listant les repertoires
 # Un element de la liste est une string comme affichee dans la listbox
 TESTS = []
+# Repertoire 'module' des modules
+MODULESDIR = {}
 
 # Est egal a 1 si on doit s'arreter
 STOP = 0
@@ -104,7 +107,8 @@ def buildString(module, test, CPUtime, coverage, status):
         path = CASSIOPEE+CFDBASEPATH
         fileTime = '%s/%s/Data/%s.time'%(path, test, test)
     else:
-        path = CASSIOPEE+'/Apps/Modules'
+        modulesDir = MODULESDIR[module]
+        path = CASSIOPEE+'/Apps/'+modulesDir
         testr = os.path.splitext(test)
         fileTime = '%s/%s/test/Data/%s.time'%(path, module, testr[0])
     a = os.access(fileTime, os.F_OK)
@@ -150,21 +154,37 @@ def buildString(module, test, CPUtime, coverage, status):
     return s
 
 #==============================================================================
-# Retourne la liste des modules situes dans Apps/Modules
+# Retourne la liste des modules situes dans Apps/Modules et dans Apps/PModules
 # Eventuellement peut ajouter "CFDBase", nom referencant les tests
 # de validation des solveurs (CFDBase)
 #==============================================================================
 def getModules():
     # Tests unitaires des modules
-    print 'getModules in:', CASSIOPEE
-    path = CASSIOPEE+'/Apps/Modules'
-    mods = os.listdir(path)
+    print('Getting tests in:%s.'%CASSIOPEE)
     modules = []
+
+    path = CASSIOPEE+'/Apps/PModules'
+    try: mods = os.listdir(path)
+    except: mods = []
     for i in mods:
         a = os.access('%s/%s/test'%(path,i), os.F_OK)
-        if a and i != 'CPlot': modules.append(i)
+        if a:
+            modules.append(i)
+            MODULESDIR[i] = 'PModules'
+
+    path = CASSIOPEE+'/Apps/Modules'
+    try: mods = os.listdir(path)
+    except: mods = []
+    for i in mods:
+        if i != 'CPlot' and i not in modules:
+            a = os.access('%s/%s/test'%(path,i), os.F_OK)
+            if a: 
+                modules.append(i)
+                MODULESDIR[i] = 'Modules'
+    
     # Validation CFD
     modules.append('CFDBase')
+    MODULESDIR['CFDBase'] = ''
     return modules
 
 #==============================================================================
@@ -174,7 +194,8 @@ def getModules():
 def getTests(module):
     a = []
     if module == 'CFDBase': a += getCFDBaseTests()
-    else: a += getUnitaryTests(module)
+    else:
+        a += getUnitaryTests(module)
     return a
 
 #==============================================================================
@@ -182,7 +203,8 @@ def getTests(module):
 # Les tests unitaires doivent etre dans module/test
 #==============================================================================
 def getUnitaryTests(module):
-    path = '%s/Apps/Modules/%s/test'%(CASSIOPEE,module)
+    modulesDir = MODULESDIR[module]
+    path = '%s/Apps/%s/%s/test'%(CASSIOPEE, modulesDir, module)
     files = os.listdir(path)
     tests = []
     for f in files:
@@ -192,7 +214,7 @@ def getUnitaryTests(module):
         m4 = expTest4.search(f)
         if m2 is not None and m3 is None:
             if m1 is not None: tests.append(f) # test seq
-            if isMpi and m4 is not None: tests.append(f) # test mpi
+            elif isMpi and m4 is not None: tests.append(f) # test mpi
     return tests
 
 #==============================================================================
@@ -289,13 +311,19 @@ def extractCPUTime2(output):
     i1 = output.find('h')
     hf = 0; mf = 0; sf = 0
     if i1 != -1:
-        hf = output[:i1]; hf = float(hf)
+        hf = output[:i1]
+        try: hf = float(hf)
+        except: hf = 0.
         output = output[i1+1:]
     i1 = output.find('m')
     if i1 != -1:
-        mf = output[:i1]; mf = float(mf)
+        mf = output[:i1]
+        try: mf = float(mf)
+        except: mf = 0.
         output = output[i1+1:]
-    sf = output.replace('s', ''); sf = float(sf)
+    sf = output.replace('s', '')
+    try: sf = float(sf)
+    except: sf = 0.
     tf = hf*3600.+mf*60.+sf
     hf = int(tf/3600.)
     tf = tf - 3600*hf
@@ -311,29 +339,38 @@ def extractCPUTime2(output):
 #==============================================================================
 def runSingleUnitaryTest(no, module, test):
     testr = os.path.splitext(test)
-    path = '%s/Apps/Modules/%s/test'%(CASSIOPEE,module)
+    modulesDir = MODULESDIR[module]
+    path = '%s/Apps/%s/%s/test'%(CASSIOPEE, modulesDir, module)
 
     m1 = expTest1.search(test) # seq ou distribue
+
+    if sys.version_info[0] == 3: pythonExec = 'python3'
+    else: pythonExec = 'python' 
 
     if mySystem == 'mingw' or mySystem == 'windows':
         # Commande Dos (sans time)
         path = path.replace('/', '\\')
-        if m1 is not None: cmd = 'cd %s && python %s'%(path, test)
-        else: cmd = 'cd %s && kpython -n 2 -t 1 %s'%(path, test)
+        if m1 is not None: cmd = 'cd %s && %s %s'%(path, pythonExec, test)
+        else: cmd = 'cd %s && set OMP_NUM_THREADS=4 && mpiexec -np 2 %s %s'%(path, pythonExec, test)
         cmd2 = 'echo %time%'
     else:
         # Unix - le shell doit avoir l'environnement cassiopee
         #sformat = r'"real\t%E\nuser\t%U\nsys\t%S"'
-        if m1 is not None: cmd = 'cd %s; time python %s'%(path, test)
-        else: cmd = 'cd %s; time kpython -n 2 -t 1 %s'%(path, test)
+        if m1 is not None: cmd = 'cd %s; time %s %s'%(path, pythonExec, test)
+        else: cmd = 'cd %s; time kpython -n 2 %s'%(path, test)
     try:
         if mySystem == 'mingw' or mySystem == 'windows':
             output1 = check_output(cmd2, shell=True, stderr=subprocess.STDOUT)
+            if sys.version_info[0] == 3: output1 = output1.decode()
         output = check_output(cmd, shell=True, stderr=subprocess.STDOUT)
+        if sys.version_info[0] == 3: output = output.decode()
+        
         if mySystem == 'mingw' or mySystem == 'windows':
             output2 = check_output(cmd2, shell=True, stderr=subprocess.STDOUT)
-        print output
-
+            if sys.version_info[0] == 3: output2 = output2.decode()
+        
+        print(output)
+        
         # Recupere success/failed
         success = True
         if regDiff.search(output) is not None: success = False
@@ -358,7 +395,8 @@ def runSingleUnitaryTest(no, module, test):
             i1 = sub.find('%')
             coverage = sub[:i1+1]
             coverage = coverage.strip()
-    except:
+    except Exception as e:
+        print(e)
         success = False; CPUtime = 'Unknown'; coverage='0%' # Core dump/error
 
     # update le fichier .time (si non present)
@@ -390,7 +428,7 @@ def runSingleUnitaryTest(no, module, test):
 #==============================================================================
 def runSingleCFDTest(no, module, test):
 
-    print 'running CFD test', test
+    print('Running CFD test %s.'%test)
     path = CASSIOPEE+CFDBASEPATH+'/'+test
 
     m1 = None # si None=seq
@@ -414,7 +452,8 @@ def runSingleCFDTest(no, module, test):
         output = check_output(cmd, shell=True, stderr=subprocess.STDOUT)
         if mySystem == 'mingw' or mySystem == 'windows':
             output2 = check_output(cmd2, shell=True, stderr=subprocess.STDOUT)
-        print output
+        print(output)
+
         # Recupere success/failed
         success = True
         if regDiff.search(output) is not None: success = False
@@ -429,7 +468,8 @@ def runSingleCFDTest(no, module, test):
             else: CPUtime = output[i1+4:i1+14]; CPUtime = CPUtime.strip()
         # Recupere le coverage
         coverage = '100%'
-    except:
+    except Exception as e:
+        print(e)
         success = False; CPUtime = 'Unknown'; coverage='0%' # Core dump/error
 
     # update le fichier .time (si non present)
@@ -514,7 +554,8 @@ def updateTests():
             test2 = test+'.time'
             test = 'post.ref*'
         else:
-            path = CASSIOPEE+'/Apps/Modules'
+            modulesDir = MODULESDIR[module]
+            path = CASSIOPEE+'/Apps/'+modulesDir
             d = os.path.splitext(test)
             test = d[0]+'.ref*'
             test2 = d[0]+'.time'
@@ -589,9 +630,9 @@ def viewTest(event=None):
         if module == 'CFDBase':
             pathl = CASSIOPEE+CFDBASEPATH+'/'+test
             test = 'compute.py'
-            print pathl, test
         else:
-            path = CASSIOPEE+'/Apps/Modules'
+            modulesDir = MODULESDIR[module]
+            path = CASSIOPEE+'/Apps/'+modulesDir
             pathl = '%s/%s/test'%(path,module)
         if mySystem == 'mingw' or mySystem == 'windows':
             pathl = pathl.replace('/', '\\')
@@ -793,9 +834,9 @@ def setThreads(event=None):
     try:
         nti = int(nt)
         KCore.kcore.setOmpMaxThreads(nti)
-        print 'Num threads set to %d.\n'%nti
+        print('Num threads set to %d.\n'%nti)
     except:
-        print 'Bad thread number.\n'
+        print('Bad thread number.\n')
     return
 
 #==============================================================================
@@ -811,7 +852,8 @@ def getThreads():
 # Exporte les resultats de la valid dans un fichier texte
 #==============================================================================
 def export2Text():
-    import tkFileDialog
+    try: import tkFileDialog
+    except: import tkinter.filedialog as tkFileDialog 
     ret = tkFileDialog.asksaveasfilename()
     if ret == '' or ret == None or ret == (): # user cancel
         return
@@ -883,7 +925,8 @@ def tagSelection(event=None):
         test = test.strip()
         module = splits[0]
         module = module.strip()
-        path = CASSIOPEE+'/Apps/Modules/'+module+'/test'
+        modulesDir = MODULESDIR[module]
+        path = CASSIOPEE+'/Apps/'+modulesDir+'/'+module+'/test'
         testr = os.path.splitext(test)
         fileStar = path+'/Data/'+testr[0]+'.star'
         writeStar(fileStar, star)
@@ -909,13 +952,14 @@ def untagSelection(event=None):
         test = test.strip()
         module = splits[0]
         module = module.strip()
-        path = CASSIOPEE+'/Apps/Modules/'+module+'/test'
+        modulesDir = MODULESDIR[module]
+        path = CASSIOPEE+'/Apps/'+modulesDir+'/'+module+'/test'
         testr = os.path.splitext(test)
         fileStar = path+'/Data/'+testr[0]+'.star'
         ls = len(star)
         star = ''
         if ls > 1:
-            for i in xrange(ls-1): star += '*'
+            for i in range(ls-1): star += '*'
             writeStar(fileStar, star)
         else:
             rmFile(path, testr[0]+'.star')
@@ -1014,7 +1058,7 @@ frame.rowconfigure(0, weight=1)
 frame.columnconfigure(1, weight=1)
 frame.grid(row=0, column=0, sticky=TK.EW)
 
-listbox = TK.Listbox(frame, selectmode=TK.EXTENDED, width=120, height=47,
+listbox = TK.Listbox(frame, selectmode=TK.EXTENDED, width=120, height=40,
                      background='White')
 listbox.grid(row=0, column=0, columnspan=10, sticky=TK.NSEW)
 

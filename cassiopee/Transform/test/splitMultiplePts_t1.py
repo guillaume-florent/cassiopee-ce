@@ -22,7 +22,7 @@ z1 = T.subzone(z0,(1,1,1),(5,10,nk))
 z2 = T.subzone(z0,(5,1,1),(10,5,nk))
 z3 = T.subzone(z0,(5,5,1),(10,10,nk))
 z4 = G.cart((-0.9,0.9,0.),(0.1,0.1,1.),(19,5,nk))
-z4 = C.addVars(z4, 'F')
+C._addVars(z4, 'F')
 z0 = T.translate(z0,(-0.9,0.,0.))
 zones = [z0,z1,z2,z3,z4]
 zones2 = T.splitMultiplePts(zones,dim=3)

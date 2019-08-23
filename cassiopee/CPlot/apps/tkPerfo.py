@@ -1,5 +1,6 @@
 # - CPlot control app  -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -7,8 +8,7 @@ import CPlot.Tk as CTK
 import KCore
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def oneovern(event=None):
@@ -77,7 +77,7 @@ def updateVarNameList2(event=None):
         vars = C.getVarNames(CTK.t[2][nob][2][noz], excludeXYZ=True)
     if len(vars) == 0: return
     vars = ['All fields', 'No field'] + vars[0]
-    if WIDGETS.has_key('fields'):
+    if 'fields' in WIDGETS:
         WIDGETS['fields']['values'] = vars
 
 #==============================================================================
@@ -118,7 +118,7 @@ def createApp(win):
                            text='tkPerfo', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Improve performance of Cassiopee.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -139,7 +139,7 @@ def createApp(win):
     V = TK.StringVar(win); V.set('All fields'); VARS.append(V)
     # -1- Oneovern -
     V = TK.StringVar(win); V.set('All points'); VARS.append(V)
-    if CTK.PREFS.has_key('tkPerfoPoints'): V.set(CTK.PREFS['tkPerfoPoints'])
+    if 'tkPerfoPoints' in CTK.PREFS: V.set(CTK.PREFS['tkPerfoPoints'])
     # -2- Threads
     V = TK.StringVar(win); V.set('1'); VARS.append(V)
     
@@ -227,7 +227,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

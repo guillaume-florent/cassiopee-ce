@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -16,7 +16,6 @@
     You should have received a copy of the GNU General Public License
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #include "Array/Array.h"
 #include "String/kstring.h"
 
@@ -30,6 +29,7 @@
    Cette routine ne fait pas de verification.
 */
 //=============================================================================
+/*
 E_Int K_ARRAY::getInfoFromArray(PyObject* o, char*& varString,
                                 E_Int& ni, E_Int& nj, E_Int& nk,
                                 E_Int& nvertex, E_Int& nelt, 
@@ -75,6 +75,134 @@ E_Int K_ARRAY::getInfoFromArray(PyObject* o, char*& varString,
       nelt = PyArray_DIM(ac, 1);
       sizeConnect = nelt*PyArray_DIM(ac, 0);
       Py_DECREF(ac);
+    }
+    return 2;
+  }
+  else
+  {
+    PyErr_Warn(PyExc_Warning, 
+               "getInfoFromArray: an array must be a list of type ['vars', a, ni, nj, nk] or ['vars', a, c, 'ELTTYPE']. Check number of elements in list.");
+    return -1;
+  }
+}
+*/
+//=============================================================================
+// marche sur array et array2 (la seule a conserver)
+E_Int K_ARRAY::getInfoFromArray(PyObject* o, char*& varString,
+                                E_Int& ni, E_Int& nj, E_Int& nk,
+                                E_Int& nvertex, E_Int& nelt, 
+                                E_Int& sizeConnect, char*& eltType)
+{
+  if (PyList_Check(o) == 0)
+  {
+    PyErr_Warn(PyExc_Warning,
+               "getInfoFromArray: an array must be a list of type ['vars', a, ni, nj, nk] or ['vars', a, c, 'ELTTYPE']. Check list.");
+    return -1;
+  }
+  E_Int s = PyList_Size(o);
+  if (s == 5) // structure 
+  {
+    PyObject* l = PyList_GetItem(o,0);
+    if (PyString_Check(l))
+    {
+      // pointeur sur la chaine python
+      varString = PyString_AsString(l);  
+    }
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(l))
+    {
+      varString = PyBytes_AsString(PyUnicode_AsUTF8String(l)); 
+    }
+    else
+    {
+      PyErr_Warn(PyExc_Warning,
+                 "getInfoFromArray: an array must be a list of type ['vars', a, ni, nj, nk] or ['vars', a, c, 'ELTTYPE']. Check list.");
+      return -1;
+    }
+#endif
+    ni = PyLong_AsLong(PyList_GetItem(o, 2));
+    nj = PyLong_AsLong(PyList_GetItem(o, 3));
+    nk = PyLong_AsLong(PyList_GetItem(o, 4));
+    return 1;
+  }
+  else if (s == 4) // non structure
+  {
+      PyObject* l = PyList_GetItem(o,0);
+      if (PyString_Check(l))
+      {
+        // pointeur sur la chaine python
+        varString = PyString_AsString(l);  
+      }
+#if PY_VERSION_HEX >= 0x03000000
+      else if (PyUnicode_Check(l))
+      {
+        varString = PyBytes_AsString(PyUnicode_AsUTF8String(l)); 
+      }
+#endif
+    //varString = PyString_AsString(PyList_GetItem(o,0));
+    IMPORTNUMPY;
+    PyObject* f = PyList_GetItem(o,1);
+    if (PyList_Check(f) == true) // array2
+      nvertex = PyArray_DIM((PyArrayObject*)PyList_GetItem(f, 0), 0);
+    else
+      nvertex = PyArray_DIM((PyArrayObject*)f, 1);
+    
+    PyObject* e = PyList_GetItem(o,3);
+    if (PyString_Check(e))
+    {
+      // pointeur sur la chaine python
+      eltType = PyString_AsString(e);
+    }
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(l))
+    {
+      eltType = PyBytes_AsString(PyUnicode_AsUTF8String(e)); 
+    }
+#endif
+    else
+    {
+      PyErr_Warn(PyExc_Warning,
+                 "getInfoFromArray: an array must be a list of type ['vars', a, ni, nj, nk] or ['vars', a, c, 'ELTTYPE']. Check list.");
+      return -1;
+    }
+    PyObject* c = PyList_GetItem(o,2);
+
+    //PyArrayObject* ac = 
+    //  (PyArrayObject*)PyArray_ContiguousFromObject(c, NPY_INT,
+    //               1, 10000000);
+    
+    if (K_STRING::cmp(eltType, "NGON") == 0)
+    {
+      if (PyList_Check(c) == true) // array2
+      {
+        PyArrayObject* acl = (PyArrayObject*)PyList_GetItem(c, 2);
+        nelt = PyArray_DIM(acl, 0);
+        sizeConnect = 0;
+      }
+      else // array
+      {
+        PyArrayObject* ac = (PyArrayObject*)c; Py_INCREF(ac);
+        int* ptr = (int*)PyArray_DATA(ac);
+        nelt = ptr[ptr[1]+2];
+        sizeConnect = PyArray_DIM(ac, 1);
+        Py_DECREF(ac);
+      }
+    }
+    else // elements basiques
+    {
+      if (PyList_Check(c) == true) // array2
+      {
+        PyArrayObject* acl = (PyArrayObject*)PyList_GetItem(c, 0);
+        nelt = PyArray_DIM(acl, 1);
+        sizeConnect = nelt*PyArray_DIM(acl, 0);
+      }
+      else // array
+      {
+        PyArrayObject* ac = (PyArrayObject*)c; Py_INCREF(ac);
+        nelt = PyArray_DIM(ac, 1);
+        sizeConnect = nelt*PyArray_DIM(ac, 0);
+        Py_DECREF(ac);
+      }
     }
     return 2;
   }

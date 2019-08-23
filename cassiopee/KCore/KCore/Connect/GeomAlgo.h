@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -23,10 +23,10 @@
 
 #include "Fld/DynArray.h"
 #include "MeshElement/Edge.h"
+#include "Nuga/include/macros.h"
 
 #define Vector_t std::vector
 
-#define zSIGN(a) ( (a < 0.)? -1 : (a==0.) ? 0 : 1 )
 
 namespace K_CONNECT {
 

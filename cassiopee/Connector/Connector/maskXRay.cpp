@@ -179,6 +179,7 @@ E_Int K_CONNECTOR::compCharacteristics(
   // Allocate each XRay planes
   p->xmin = xmin; p->ymin = ymin; p->zmin = zmin;
   p->xmax = xmax; p->ymax = ymax; p->zmax = zmax;
+  if ( p->zmax < p->zmin+K_CONST::E_GEOM_CUTOFF ) p->zmax = p->zmin+K_CONST::E_GEOM_CUTOFF;
   p->ni = dim1; p->hi = (p->xmax - p->xmin)/(K_CONST::ONE*p->ni-1);
   if (elevationDir == 2) {p->nj = 1; p->hj = 1.;}
   else
@@ -408,7 +409,7 @@ E_Int K_CONNECTOR::compIntersect(E_Int elevationDir,
     E_Float n012x = y02*z12 - z02*y12;
     E_Float n012y = z02*x12 - x02*z12;
     E_Float n012z = x02*y12 - y02*x12;
-     
+    
     delta = dz*n012z;
     delta1 = dz*(dx2*y12 - x12*dy2);
     delta2 = dz*(x02*dy2 - dx2*y02);
@@ -418,10 +419,10 @@ E_Int K_CONNECTOR::compIntersect(E_Int elevationDir,
 
     E_Float n012  = 1./sqrt(n012x*n012x+n012y*n012y+n012z*n012z);    
     E_Float deltad = n012z * n012;
-    E_Float deltai = 1./delta;
  
     if (K_FUNC::fEqualZero(deltad, eps2) != true)
     {
+      E_Float deltai = 1./delta;
       r = delta1 * deltai;
       t = delta2 * deltai;
       l = delta3 * deltai;

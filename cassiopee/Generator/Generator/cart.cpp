@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -48,7 +48,7 @@ PyObject* K_GENERATOR::cartStruct(PyObject* self, PyObject* args)
   if (ni < 1 || nj < 1 || nk < 1)
   {
     PyErr_SetString(PyExc_ValueError, 
-                    "cart: ni, nk, nk must be >= 1.");
+                    "cart: ni, nj, nk must be >= 1.");
     return NULL;
   }
 

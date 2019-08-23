@@ -1,10 +1,9 @@
 # - Extension of a surface starting from an edge of the surface following normals -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
-import Transform.PyTree as T
-import Post.PyTree as P
 import Converter.Internal as Internal
 import Generator.PyTree as G
 
@@ -13,8 +12,8 @@ WIDGETS = {}; VARS = []
 
 #==============================================================================
 def extendSurf():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
@@ -26,10 +25,10 @@ def extendSurf():
         v = v.lstrip(); v = v.rstrip()
         sname = v.split('/', 1)
         bases = Internal.getNodesFromName1(CTK.t, sname[0])
-        if (bases != []):
+        if bases != []:
             nodes = Internal.getNodesFromType1(bases[0], 'Zone_t')
             for z in nodes:
-                if (z[0] == sname[1]): surfaces.append(z)
+                if z[0] == sname[1]: surfaces.append(z)
                     
     # - Hauteur de chaque maille -
     dhloc = CTK.varsFromWidget(VARS[1].get(), type=1); dhloc = dhloc[0]

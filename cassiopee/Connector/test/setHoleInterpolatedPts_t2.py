@@ -2,7 +2,6 @@
 import Converter as C
 import Connector as X
 import Generator as G
-import Transform as T
 import KCore.test as test
 def sphere(x,y,z):
     if x*x+y*y+z*z < 0.5**2 : return 0.

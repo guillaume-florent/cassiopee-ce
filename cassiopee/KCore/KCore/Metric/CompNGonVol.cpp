@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -19,7 +19,6 @@
 
 # include "Connect/connect.h"
 # include "metric.h"
-# include "Python.h"
 # include <vector>
 
 using namespace K_FUNC;

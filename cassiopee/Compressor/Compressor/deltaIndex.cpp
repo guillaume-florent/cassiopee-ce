@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -48,7 +48,7 @@ PyObject* K_COMPRESSOR::deltaIndex(PyObject* self, PyObject* args)
   FldArrayI ref;
   ret = K_ARRAY::getFromList(array2, ref);
   if (ret == 0) 
-  { 
+  {
     PyErr_SetString(
       PyExc_ValueError,
         "deltaIndex: second arg must be an integer list or a numpy.");
@@ -80,6 +80,7 @@ PyObject* K_COMPRESSOR::deltaIndex(PyObject* self, PyObject* args)
   // build deltas
   E_Int* r1p = r1.begin();
   E_Int* r2p = r2.begin();
+
   E_Int s1 = r1.getSize(); // taille de index
   E_Int s2 = r2.getSize(); // taille de ref
   E_Int Nadd = 0;

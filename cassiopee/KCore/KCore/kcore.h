@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -34,7 +34,12 @@
 #include "Linear/linear.h"
 #include "Metric/metric.h"
 #include "Search/KdTree.h"
+//#include "Memory/unique_ptr.hpp"
+//#include "Memory/shared_ptr.hpp"
+//#include "Memory/vector_view.hpp"
+//#include "ExtArith/quad_double.hpp"
 #include "parallel.h"
+#include "kPython.h"
 #include <vector>
 
 namespace K_KCORE
@@ -52,7 +57,7 @@ namespace K_KCORE
   PyObject* empty(PyObject* self, PyObject* args);
   PyObject* tester(PyObject* self, PyObject* args);
   PyObject* activation(PyObject* self, PyObject* args);
-  int activation();
+  int activation(const char* name=NULL);
   void memcpy__(E_Int* a, E_Int* b, E_Int s);
   void memcpy__(E_Float* a, E_Float* b, E_Int s);
 } 

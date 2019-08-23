@@ -1,5 +1,6 @@
 # - Flow Equation and Reference State manipulator -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -7,8 +8,7 @@ import CPlot.Tk as CTK
 import Converter.Internal as Internal
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 # get state from pyTree, l'affiche dans les widgets.
@@ -118,7 +118,7 @@ def getState():
     else: RokInf = 1.e-6
     Vit = UInf*UInf+VInf*VInf+WInf*WInf
     Vit = math.sqrt(Vit)
-    if (Vit > 1.e-10): TurbLevel = sqrt(2*RokInf/(3*Vit*Vit*Density))
+    if Vit > 1.e-10: TurbLevel = math.sqrt(2*RokInf/(3*Vit*Vit*Density))
     else: TurbLevel = 1.e-4
     MuInf = Density*Vit / max(reynolds,1.e-10) # L=1
     node = Internal.getNodeFromName(state, 'TurbulentSANuTildeDensity')
@@ -190,7 +190,7 @@ def setState(event=None):
     elif ADIM == 'dim3(real UInf,PInf,RoInf,Rgp=287.053)': adim = 'dim3'
     CTK.saveTree()
 
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         nodes = Internal.getBases(CTK.t)
         fullBase = False
     else:
@@ -207,20 +207,20 @@ def setState(event=None):
     for b in nodes:
         p, r = Internal.getParentOfNode(CTK.t, b)
         C.addState2Node__(p[2][r], 'GoverningEquations', VARS[1].get())
-        if (VARS[1].get() == 'NSTurbulent'):
-            if (VARS[6].get() == 'SpalartAllmaras'):
+        if VARS[1].get() == 'NSTurbulent':
+            if VARS[6].get() == 'SpalartAllmaras':
                 C.addState2Node__(p[2][r],
                                   'TurbulenceModel',
                                   'OneEquation_SpalartAllmaras')
-            elif (VARS[6].get() == 'JonesLaunder(k-eps)'):
+            elif VARS[6].get() == 'JonesLaunder(k-eps)':
                 C.addState2Node__(p[2][r],
                                   'TurbulenceModel',
                                   'TwoEquation_JonesLaunder')
-            elif (VARS[6].get() == 'Wilcox(k-w)'):
+            elif VARS[6].get() == 'Wilcox(k-w)':
                 C.addState2Node__(p[2][r],
                                   'TurbulenceModel',
                                   'TwoEquation_Wilcox')
-            elif (VARS[6].get() == 'MenterSST(k-w)'):
+            elif VARS[6].get() == 'MenterSST(k-w)':
                 C.addState2Node__(p[2][r],
                                   'TurbulenceModel',
                                   'TwoEquation_MenterSST')
@@ -243,7 +243,7 @@ def createApp(win):
                            text='tkState', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Set information on case.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     WIDGETS['frame'] = Frame
@@ -403,7 +403,7 @@ def updateApp(event=None):
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

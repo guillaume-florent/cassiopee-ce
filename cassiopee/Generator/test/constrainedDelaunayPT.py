@@ -4,7 +4,7 @@ import Generator.PyTree as G
 import Geom.PyTree as D
 import Transform.PyTree as T
 
-A = D.text1D('STEPHANIE')
+A = D.text1D('CASSIOPEE')
 A = C.convertArray2Tetra(A); a = T.join(A)
 # Triangulation respecting given contour
 tri = G.constrainedDelaunay(a)

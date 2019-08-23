@@ -1,5 +1,6 @@
 # - block operations in a pyTree -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import Transform.PyTree as T
@@ -112,7 +113,7 @@ def convert2Tetra():
         try:
             a = C.convertArray2Tetra(CTK.t[2][nob][2][noz])
             CTK.replace(CTK.t, nob, noz, a)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
 
     if not fail: CTK.TXT.insert('START', 'Zones converted to tetra.\n')
@@ -120,14 +121,10 @@ def convert2Tetra():
         Panels.displayErrors(errors, header='Error: convert2Tetra')
         CTK.TXT.insert('START', 'Tetra conversion fails for at least one zone.\n')
         CTK.TXT.insert('START', 'Warning: ', 'Warning')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
-
-# Completely equivalent code
-#def convert2Tetra():
-#    CTK.GIF(C.convertArray2Tetra, 'convert2Tetra')
 
 #==============================================================================
 # Converti un bloc ou tous les blocs en hexa
@@ -140,7 +137,7 @@ def convert2Hexa():
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (nzs == []):
+    if nzs == []:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     CTK.saveTree()
@@ -160,14 +157,14 @@ def convert2Hexa():
             else:
                 a = C.convertArray2Hexa(z)
                 CTK.replace(CTK.t, nob, noz, a)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
     if not fail: CTK.TXT.insert('START', 'Zones converted to hexa.\n')
     else:
         Panels.displayErrors(errors, header='Error: convert2Hexa')
         CTK.TXT.insert('START', 'Hexa conversion fails for at least one zone.\n')
         CTK.TXT.insert('START', 'Warning: ', 'Warning')
-    CTK.t = C.fillMissingVariables(CTK.t)   
+    #C._fillMissingVariables(CTK.t)   
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -195,7 +192,7 @@ def convert2Node():
         CTK.replace(CTK.t, nob, noz, a)
         
     CTK.TXT.insert('START', 'Zones converted to node.\n')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -229,11 +226,11 @@ def exteriorFaces():
             ext = P.exteriorFaces(CTK.t[2][nob][2][noz])
             ext = T.splitConnexity(ext)
             for i in ext: CTK.add(CTK.t, gnob, -1, i)
-        except TypeError, e: # type d'element non reconnu
+        except TypeError as e: # type d'element non reconnu
             fail = True; errors += [0,str(e)]
         except ValueError: # empty set
             pass
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     if not fail: CTK.TXT.insert('START', 'Exterior faces done.\n')
@@ -274,7 +271,7 @@ def oneovern():
         try:
             a = T.oneovern(CTK.t[2][nob][2][noz], (ni,nj,nk))
             CTK.replace(CTK.t, nob, noz, a)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
 
     if not fail: CTK.TXT.insert('START', 'oneovern done.\n')
@@ -310,7 +307,7 @@ def close():
         z = CTK.t[2][nob][2][noz]
         zones.append(z)
     try: zones = G.close(zones, eps)
-    except Exception, e:
+    except Exception as e:
         fail = True; errors += [0,str(e)]
         
     if not fail:
@@ -336,7 +333,7 @@ def createApp(win):
                            text='tkBlock', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='General block operations.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -353,10 +350,10 @@ def createApp(win):
     # - VARS -
     # -0- oneovern -
     V = TK.StringVar(win); V.set('2;2;2'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBlockOneovern'): V.set(CTK.PREFS['tkBlockOneovern'])
+    if 'tkBlockOneovern' in CTK.PREFS: V.set(CTK.PREFS['tkBlockOneovern'])
     # -1- eps pour close
     V = TK.StringVar(win); V.set('1.e-6'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBlockClose'): V.set(CTK.PREFS['tkBlockClose'])
+    if 'tkBlockClose' in CTK.PREFS: V.set(CTK.PREFS['tkBlockClose'])
 
     # - Rm block from model -
     B = TTK.Button(Frame, text="Rm block", command=rmBlock)
@@ -436,7 +433,7 @@ def displayFrameMenu(event=None):
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

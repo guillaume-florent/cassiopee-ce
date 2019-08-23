@@ -41,8 +41,8 @@ test.testT(t,3)
 # Cas hybride
 a1 = G.cartNGon((0.,0.,0.), (0.1, 0.1, 0.1), (11, 21, 11)); a1[0] = 'cartNGon'
 a2 = G.cart((1.,0.,0.), (0.1, 0.1, 0.1), (11, 21, 11)); a2[0] = 'cart2'
-t = C.newPyTree(['Base']); t[2][1][2] += [a1,a2]
+t = C.newPyTree(['Base',a1,a2])
 C._addState(t[2][1], 'EquationDimension', 3)
 C._initVars(t,'centers:Density', 1.); C._initVars(t, 'F', 0.)
-t = X.connectMatch(t,type='hybrid')
+t = X.connectMatch(t, type='hybrid')
 test.testT(t,4)

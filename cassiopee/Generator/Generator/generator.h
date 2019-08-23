@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -20,7 +20,6 @@
 # ifndef _GENERATOR_GENERATOR_H_
 # define _GENERATOR_GENERATOR_H_
 
-# include "Python.h"
 # include "kcore.h"
 
 # define FldArrayF K_FLD::FldArrayF
@@ -113,6 +112,8 @@ namespace K_GENERATOR
   PyObject* netgen1(PyObject* self, PyObject* args);
   PyObject* netgen2(PyObject* self, PyObject* args);
   PyObject* tetgen(PyObject* self, PyObject* args);
+  PyObject* mmgs(PyObject* self, PyObject* args);
+  PyObject* quad2Pyra(PyObject* self, PyObject* args);
 
   void computeEta(E_Int nic, E_Float* xc, E_Float* yc, E_Float* zc, 
                   E_Float* nxc, E_Float* nyc, E_Float* nzc, 
@@ -363,8 +364,10 @@ namespace K_GENERATOR
                            FldArrayF& fo, FldArrayI& cno, FldArrayI& levelso, 
                            E_Int& no, E_Int& eto);
   /* Balancing of an octree or an octree3 */
+
   void checkBalancing2(FldArrayI& cn, FldArrayF& coords);
   void checkBalancing3(FldArrayI& cn, FldArrayF& coords);
+  void balanceOctree2(FldArrayF& f, FldArrayI& cn, E_Int corners);
 
   void getValidNgbrsForMerge(E_Int et, E_Float* indict, E_Float* dht, 
                              E_Float xs, E_Float ys, E_Float zs,
@@ -415,8 +418,10 @@ namespace K_GENERATOR
   /* Calcul d'un tableau d indirection servant a construire un front de maillage non-structure selon un critre sur le cellN */
   void computeUnstrFrontIndi(E_Float* cellN, E_Int npts, E_Int var1, E_Int var2, E_Int corners, FldArrayI& cn, E_Int* indi, E_Int& np);
   /* Snap un maillage par rapport a une surface */
-  void snapMesh( FldArrayF& surface, std::vector<E_Int> sizet,E_Int posx,E_Int posy,E_Int posz,
-               std::vector<E_Float*>& coordx, std::vector<E_Float*>& coordy, std::vector<E_Float*>& coordz);
+  void snapMesh(FldArrayF& surface, std::vector<E_Int> sizet,E_Int posx,E_Int posy,E_Int posz,
+                std::vector<E_Float*>& coordx, std::vector<E_Float*>& coordy, 
+                std::vector<E_Float*>& coordz, std::vector<E_Float*>& indic,
+                std::vector<FldArrayI*>& connect);
 }
 # undef FldArrayF
 # undef FldArrayI

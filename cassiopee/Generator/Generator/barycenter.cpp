@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -27,18 +27,16 @@ PyObject* K_GENERATOR::barycenter(PyObject* self, PyObject* args)
 {
   PyObject* array;
   PyObject* weight;
-  if ( !PyArg_ParseTuple(args, "OO", &array, &weight) ) return NULL;
+  if (!PyArg_ParseTuple(args, "OO", &array, &weight)) return NULL;
 
   // Check array
   E_Int ni, nj, nk;
-  FldArrayF* f;
-  FldArrayI* cn;
-  char* varString;
-  char* eltType;
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, 
-                                    ni, nj, nk, cn, eltType, true);
+  FldArrayF* f; FldArrayI* cn;
+  char* varString; char* eltType;
+  E_Int res = K_ARRAY::getFromArray2(array, varString, f, 
+                                     ni, nj, nk, cn, eltType);
   
-  if (res != 1 && res != 2) 
+  if (res != 1 && res != 2)
   {
     PyErr_SetString(PyExc_TypeError, 
                     "barycenter: invalid array.");
@@ -64,14 +62,12 @@ PyObject* K_GENERATOR::barycenter(PyObject* self, PyObject* args)
   else 
   {
     E_Int niw, njw, nkw;
-    FldArrayF* fw;
-    FldArrayI* cnw;
-    char* varStringw;
-    char* eltTypew;
-    E_Int resw = K_ARRAY::getFromArray(weight, varStringw, fw, 
-                                       niw, njw, nkw, cnw, eltTypew, true);
+    FldArrayF* fw; FldArrayI* cnw;
+    char* varStringw; char* eltTypew;
+    E_Int resw = K_ARRAY::getFromArray2(weight, varStringw, fw, 
+                                        niw, njw, nkw, cnw, eltTypew);
   
-    if ( resw != 1 && resw != 2 ) 
+    if (resw != 1 && resw != 2) 
     {
       RELEASESHAREDB(res, array, f, cn);
       PyErr_SetString(PyExc_TypeError, 

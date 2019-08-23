@@ -1,6 +1,5 @@
 # - projectOrthoSmooth (array) -
 import Geom as D
-import Converter as C
 import Generator as G
 import Transform as T
 import KCore.test as test

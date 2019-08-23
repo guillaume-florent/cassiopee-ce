@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -52,7 +52,7 @@ PyObject* K_CONVERTER::adaptBCC2BCFace(PyObject* self, PyObject* args)
   {
     RELEASESHAREDN(BCCO, BCC);
     PyErr_SetString(PyExc_TypeError, 
-                    "adaptBCFace2BCC: cn is invalid.");
+                    "adaptBCC2BCFace: cn is invalid.");
     return NULL;
   }
   //E_Int* cnp = cn->begin();

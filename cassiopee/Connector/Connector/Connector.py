@@ -1,26 +1,29 @@
 """Find connectivity in grids.
 """
-__version__ = '2.5'
+__version__ = '2.9'
 __author__ = "Stephanie Peron, Christophe Benoit, Gaelle Jeanfaivre, Pascal Raud, Luis Bernardos"
 #
 # Interface for connectivity checking
 #
-import connector
+from . import connector
+
+try: range = xrange
+except: pass
+
+__all__ = ['blankCells', '_blankCells', 'blankCellsTetra', 'blankCellsTri', 'blankIntersectingCells', 'chimeraTransfer', 'connectMatch', 'getIntersectingDomainsAABB', 'maximizeBlankedCells', 'optimizeOverlap', 'setDoublyDefinedBC', 'setHoleInterpolatedPoints', 'setIBCTransfers', 'setIBCTransfersD', 'setInterpTransfers', 'setInterpTransfersD', 'writeCoefs','maskXRay__','_applyBCOverlapsStruct__','applyBCOverlapsStruct__','applyBCOverlapsNG__','getInterpolatedPoints__','getEXPoints__']
 
 #===============================================================================
 def connectMatch(a1, a2, sameZone=0, tol=1.e-6, dim=3):
-    """Detect (sub-)windows of a1 that match with (sub)-windows of a2.
-    Return a list of matching windows  and trirac.
-    If a1 and a2 represent the same zone, sameZone=1.
+    """Find matching boundaries.
     Usage: connectMatch(a1, a2, sameZone, tol, dim)"""
     try: import Converter as C; import Transform as T
     except: raise ImportError("connectMatch requires Converter and Transform modules.")
 
     res = []
-    if len(a1) != 5 or len(a2) != 5: print 'Warning: connectMatch is valid only for structured grids.'; return res
+    if len(a1) != 5 or len(a2) != 5: print('Warning: connectMatch is valid only for structured grids.'); return res
     if dim == 2: nwins = 4
     elif dim == 3: nwins = 6
-    else: raise ImportError("connectMatch: dim me be 2 or 3.")
+    else: raise ImportError("connectMatch: dim must be 2 or 3.")
 
     allWins = []; dimsI = []; dimsJ = []; dimsK = []; typeOfWins=[]; indirBlkOfWins=[]
     dimsI.append(a1[2]); dimsJ.append(a1[3]); dimsK.append(a1[4])
@@ -49,24 +52,23 @@ def connectMatch(a1, a2, sameZone=0, tol=1.e-6, dim=3):
             elif win2 == 4: jmin2 = jmax2
             elif win2 == 5: kmax2 = 1
             elif win2 == 6: kmin2 = kmax2 
-            #
             win = T.subzone(a2,(imin2,jmin2,kmin2),(imax2,jmax2,kmax2))
             if win2 == 1 or win2 == 2: win = T.reorder(win,(3,1,2))
             elif win2 == 3 or win2 == 4: win = T.reorder(win,(1,3,2))
             allWins.append(win)
             indirBlkOfWins.append(1)
             typeOfWins.append(win2)
-    #
+    
     allWins = C.extractVars(allWins,['x','y','z'])
     allTags = C.node2Center(allWins)
     allTags = C.initVars(allTags,'tag1',-1.) # defines the opposite window
     allTags = C.initVars(allTags,'tag2',-2.) # defines the opposite index in opposite window
-    #
+
     allTags = identifyMatching(allTags,tol)
     allTags = C.extractVars(allTags,['tag1','tag2'])
 
     # Gather matching cells into structured patches [ [[noz1,noz2],[imin1,imax1,...],[imin2,imax2,...],trirac] ]
-    infos = gatherMatching(allWins,allTags,typeOfWins,indirBlkOfWins,dimsI, dimsJ, dimsK, dim, tol)
+    infos = gatherMatching(allWins, allTags, typeOfWins, indirBlkOfWins, dimsI, dimsJ, dimsK, dim, tol)
     for info in infos:
         range1 = info[1]
         range2 = info[2]
@@ -105,7 +107,7 @@ def gatherMatchingNM(listOfWins, listOfTags, typeOfWins, blkOfWins,
                                       blkOfWins, allNI, allNJ, allNK, dim, tol)
 
 def gatherMatchingNGon__(tagsF, allExtIndices):
-    return connector.gatherMatchingNGon(tagsF,allExtIndices)
+    return connector.gatherMatchingNGon(tagsF, allExtIndices)
 
 def gatherDegenerated(listOfTags, typeOfWins, blkOfWins, 
                       allNI, allNJ, allNK, dim=3):
@@ -136,7 +138,7 @@ def optimizeOverlap(nodes1, centers1, nodes2, centers2, prio1=0, prio2=0, isDW=0
         try: import Generator as G
         except: raise ImportError("optimizeOverlap requires Converter and Generator modules.")
         vol2 = G.getVolumeMap(nodes2); centers2 = C.addVars([centers2,vol2])
-    #
+    
     extCenters1 = C.node2ExtCenter(nodes1)
     extCenters2 = C.node2ExtCenter(nodes2)
     hook1 = C.createHook([extCenters1],'extractMesh')
@@ -164,6 +166,32 @@ def maximizeBlankedCells(a, depth=2, dir=1, cellNName='cellN'):
         return connector.maximizeBlankedCells(a, depth, dir, cellNName)
 
 #-----------------------------------------------------------------------------
+def _setHoleInterpolatedPoints(cellN,depth=2, dir=0, cellNName='cellN'):
+    """Set interpolated points cellN=2 around cellN=0 points."""
+    if depth == 0: return None
+    try: import Converter
+    except: raise ImportError("_setHoleInterpolatedPoints: requires Converter module.")
+    loc = 'nodes'
+    if len(cellN) == 4:
+        if cellN[1].shape[1] == cellN[2].shape[1]: loc = 'centers'
+
+    if loc == 'nodes':
+        if depth < 0:
+            Converter._initVars(cellN,'{%s} = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
+            _getOversetHolesInterpNodes__(cellN, -depth, dir, cellNName)
+            Converter._initVars(cellN,'{%s} = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
+        else: 
+            _getOversetHolesInterpNodes__(cellN, depth, dir, cellNName)
+    else: # non structure avec champ celln en centres
+        if depth < 0:
+            Converter._initVars(cellN,'{%s} = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
+            _getOversetHolesInterpCellCenters__(cellN, -depth, dir, cellNName)
+            Converter._initVars(cellN,'{%s} = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
+        else: 
+            _getOversetHolesInterpCellCenters__(cellN, depth, dir, cellNName)
+    
+    return None
+
 def setHoleInterpolatedPoints(celln, depth=2, dir=0, cellNName='cellN'):
     """Set interpolated points cellN=2 around cellN=0 points."""
     if depth == 0: return celln
@@ -175,25 +203,25 @@ def setHoleInterpolatedPoints(celln, depth=2, dir=0, cellNName='cellN'):
     if loc == 'nodes':
         if depth < 0:
             celln = Converter.initVars(celln, 
-                                       '%s = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
+                                       '{%s} = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
             celln = getOversetHolesInterpNodes__(celln, -depth, dir, cellNName)
             celln = Converter.initVars(celln, 
-                                       '%s = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
+                                       '{%s} = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
         else: celln = getOversetHolesInterpNodes__(celln, depth, dir, cellNName)
     else: # non structure avec champ celln en centres
         if depth < 0:
             celln = Converter.initVars(celln, 
-                                       '%s = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
+                                       '{%s} = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
             celln = getOversetHolesInterpCellCenters__(celln, -depth, dir, cellNName)
             celln = Converter.initVars(celln, 
-                                       '%s = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
+                                       '{%s} = 1-{cellN}+({cellN}>1.5)*3'%cellNName)
         else: celln = getOversetHolesInterpCellCenters__(celln, depth, dir, cellNName)
     return celln
 
 #------------------------------------------------------------------------------
 def blankCells(coords, cellnfields, body, blankingType=1, \
                delta=1.e-10, dim=3, masknot=0, tol=1.e-8, \
-               XRaydim1=1000, XRaydim2=1000):
+               XRaydim1=1000, XRaydim2=1000, cellNName='cellN'):
     """Blank cells in coords by a X-Ray mask defined by the body,
     within a distance delta.
     Usage: blankCells(coords, cellnfields, body, blankingType, delta, dim, maskNot, tol)"""
@@ -213,8 +241,33 @@ def blankCells(coords, cellnfields, body, blankingType=1, \
     if blankingType == 2: # center_in: simplement un node_in sur les centres
         coords = C.node2Center(coords); blankingType = 0 
     return connector.blankCells(coords, cellnfields, bodyt, blankingType, \
-                                delta, dim, masknot, tol, XRaydim1, XRaydim2)
+                                delta, dim, masknot, tol, XRaydim1, XRaydim2, cellNName)
+#------------------------------------------------------------------------------
+# in place version: modifies cellnfields 
+def _blankCells(coords, cellnfields, body, blankingType=1, \
+                delta=1.e-10, dim=3, masknot=0, tol=1.e-8, \
+                XRaydim1=1000, XRaydim2=1000, cellNName='cellN'):
+    """Blank cells in coords by a X-Ray mask defined by the body,
+    within a distance delta. cellnfields is modified in place without copy.
+    Usage: blankCells(coords, cellnfields, body, blankingType, delta, dim, maskNot, tol)"""
+    try: import Converter as C
+    except: raise ImportError("blankCells: requires Converter module.")
+    # passe body en centres etendus si structure et pas node_in
+    if blankingType != 0:
+        # verif que ts les body sont structures
+        struct = 1
+        for z in body:
+            if len(z) != 5: struct = 0; break
+        if struct == 1: body = C.node2ExtCenter(body)
+    bodyt = []
+    for z in body:
+        z = C.convertArray2Tetra(z)
+        bodyt.append(z)
+    if blankingType == 2: # center_in: simplement un node_in sur les centres
+        coords = C.node2Center(coords); blankingType = 0 
 
+    return connector._blankCells(coords, cellnfields, bodyt, blankingType, \
+                                 delta, dim, masknot, tol, XRaydim1, XRaydim2, cellNName)
 #==============================================================================
 # blankIntersectingCells
 # IN: a: 3D structured mesh with wall orthogonal to k direction
@@ -250,7 +303,7 @@ def blankCellsTetra(coords, cellnfields, meshT4, blankingType=1, tol = 1.e-12, c
     
     mask = connector.createTetraMask(meshT4, maskSkin, tol)  
     
-    for i in xrange(len(coords)):
+    for i in range(len(coords)):
       #print 'coords : %d / %d' %(i+1, len(coords))
       bt = blankingType
       if blankingType == 2: # center_in: simplement un node_in sur les centres
@@ -283,7 +336,7 @@ def blankCellsTri(coords, cellnfields, meshT3, blankingType=1, tol = 1.e-12,
     
     mask = connector.createTriMask(meshT3, tol)
     
-    for i in xrange(len(coords)):
+    for i in range(len(coords)):
       #print 'coords : %d / %d' %(i+1, len(coords))
       bt = blankingType
       if blankingType == 2: # center_in: simplement un node_in sur les centres
@@ -294,25 +347,36 @@ def blankCellsTri(coords, cellnfields, meshT3, blankingType=1, tol = 1.e-12,
     connector.deleteTriMask(mask);
     return cellnt
 
+def getIntersectingDomainsAABB(arrays, tol=1.e-10):
+    """Return the intersection list of a list of bounding boxes."""
+    return connector.getIntersectingDomainsAABB(arrays, tol)
+
 #=============================================================================
 # set cellN to 2 for nodes/cells in a neighborhood of depth nodes/cells
 # for NGON arrays
 #=============================================================================
-def applyBCOverlapsNG__(a, faceList, depth, loc):
+def applyBCOverlapsNG__(a, faceList, depth, loc, val=2, cellNName='cellN'):
     if loc == 'nodes': locI = 0
     elif loc == 'centers': locI = 1
     else: raise ValueError("applyBCOverlapsUnstr: invalid location.")
-    return connector.applyBCOverlapsNG(a, faceList, depth, locI)
+    return connector.applyBCOverlapsNG(a, faceList, depth, locI, val, cellNName)
 
 #=============================================================================
 # set cellN to 2 for nodes/cells in a neighborhood of depth nodes/cells
 # for structured arrays. 
+# in place
 #=============================================================================
-def applyBCOverlapsStruct__(a, minIndex, maxIndex, depth, loc):
+def _applyBCOverlapsStruct__(a, minIndex, maxIndex, depth, loc, val=2, cellNName='cellN'):
     if loc == 'nodes': locI = 0
     elif loc == 'centers': locI = 1
     else: raise ValueError("applyBCOverlapsStruct: invalid location.")
-    return connector.applyBCOverlapStruct(a, minIndex, maxIndex, depth, locI)
+    return connector.applyBCOverlapStruct(a, minIndex, maxIndex, depth, locI, val, cellNName)
+
+def applyBCOverlapsStruct__(a, minIndex, maxIndex, depth, loc, val=2, cellNName='cellN'):
+    import Converter as C
+    b = C.copy(a)
+    _applyBCOverlapsStruct__(b, minIndex, maxIndex, depth, loc, val=val, cellNName=cellNName)
+    return b
 
 #=============================================================================
 # Application des conditions aux limites doublement definies pour une zone z
@@ -329,7 +393,7 @@ def setDoublyDefinedBC(z, cellN, listOfInterpZones, listOfCelln, range,
     Usage: setDoublyDefinedBC(z, cellN, listOfInterpZones, listOfCelln, range, depth)"""
     try:
         import Converter as C
-        listOfCelln = C.initVars(listOfCelln,'cellN=minimum(1.,{cellN})')
+        listOfCelln = C.initVars(listOfCelln,'{cellN}=minimum(1.,{cellN})')
     except: pass
     return connector.setDoublyDefinedBC(z, cellN, listOfInterpZones, 
                                         listOfCelln, range, depth)
@@ -346,6 +410,7 @@ def setDoublyDefinedBC(z, cellN, listOfInterpZones, listOfCelln, range,
 # IN: nature=0: aucun sommet de la cellule d'interpolation ne doit etre avec un cellN=0
 #     nature=1: toutes les sommets de la cellule d'interpolation doivent etre de cellN=1
 # IN: hook: hook sur l'adt (pas reconstruit dans setInterpData), l'ordre doit suivre celui de zonesD
+# IN : interpDataType : 1 for ADT, 0 if donor are cartesian (optimized)
 # OUT: res = [[rcvInd1],[donorInd1D],[donorType],[coefs],extrapInd1D, orphanInd1D]
 #      res[0] liste des indices 1D des pts interpoles/extrapoles par zone donneuse (numerotation de interpPts)
 #      res[1] liste des indices 1D des molecules donneuses, dont le stockage est defini par le type
@@ -355,18 +420,19 @@ def setDoublyDefinedBC(z, cellN, listOfInterpZones, listOfCelln, range,
 #      res[5] orphanInd1D: indice 1D des points orphelins (numero ds interpPts)
 # 
 #===============================================================================
-def setInterpData__(interpPts, zonesD, order=2, penalty=1, nature=0, method='lagrangian', hook=None, dim=3):    
+def setInterpData__(interpPts, zonesD, order=2, penalty=1, nature=0, method='lagrangian', interpDataType=1, hook=None, dim=3):    
     if method == 'lagrangian': 
         if isinstance(interpPts[0], list): # liste d arrays
             if interpPts[0][1].shape[1] >0: return connector.setInterpDataDW(interpPts, zonesD, order, nature, penalty, hook)
             else: return None
         else: # pas de liste d arrays = pas de double wall  
-            if interpPts[1].shape[1]>0: return connector.setInterpData(interpPts, zonesD, order, nature, penalty, hook)
+            if interpPts[1].shape[1]>0: return connector.setInterpData(interpPts, zonesD, order, nature, penalty, 
+                                                                       interpDataType, hook)
             else: return None
 
     elif method == 'leastsquares':
         if isinstance(interpPts[0], list): # liste d'arrays
-            print 'Warning: setInterpData__: only 1st zone in 1st arg taken into account'
+            print('Warning: setInterpData__: only 1st zone in 1st arg taken into account.')
             if interpPts[0][1].shape[1]>0: 
                 return connector.setInterpDataLS(interpPts[0], zonesD, order, nature, penalty, hook, dim)
             else: return None
@@ -387,6 +453,7 @@ def setInterpData__(interpPts, zonesD, order=2, penalty=1, nature=0, method='lag
 # IN: listOfInterpolationCelln: liste des champs celln associes - en centres
 # IN: isEX=0 si traitement aux centres, isEX=1 si interpPts = pts EX
 # IN: zoneId: numero global (en parallele) de la zone, commence a 1
+# IN: cfMax, valeur max. authorisee (pour la somme des valeurs absolues des coefs) pour l extrapolation
 # OUT: coefficients d'interpolation
 # OUT: indices pour les cellules interpolees
 # OUT: indices pour les cellules d interpolation
@@ -398,27 +465,28 @@ def setInterpData__(interpPts, zonesD, order=2, penalty=1, nature=0, method='lag
 #-----------------------------------------------------------------------------
 def setInterpolations__(rcvzonename,nir, njr, interpPts,
                         listOfInterpolationZones=[],
-                        listOfInterpolationCelln=[], isEX=0, zoneId=-1, 
+                        listOfInterpolationCelln=[], isEX=0, cfMax=30., zoneId=-1, 
                         check=True):
     """Compute and store interpolation coefficients."""
     resInterp = connector.setInterpolations(nir, njr, interpPts,
                                             listOfInterpolationZones,
-                                            listOfInterpolationCelln, isEX, zoneId)
+                                            listOfInterpolationCelln, isEX, zoneId, cfMax)
     # Bilan : 
     nborphan = 0; nbextrapolated = 0; nbinterpolated = 0
     nbinterpolated = interpPts[0][1].shape[1]
     if len(resInterp[5])>0:
-        for nozd in xrange(len(resInterp[6])): nbextrapolated += resInterp[6][nozd].size
+        for nozd in range(len(resInterp[6])): nbextrapolated += resInterp[6][nozd].size
         nborphan = resInterp[7][0].size
         nbinterpolated = nbinterpolated-nbextrapolated-nborphan
         if check: # sequential context
             if isEX == 0: 
-                print 'Zone %s: interpolated=%d ; extrapolated=%d ; orphan=%d'%(rcvzonename, nbinterpolated, nbextrapolated, nborphan) 
-                if  nborphan>0: print 'Warning: zone %s has %d orphan points !'%(rcvzonename, nborphan)
+                print('Zone %s: interpolated=%d ; extrapolated=%d ; orphan=%d'%(rcvzonename, nbinterpolated, nbextrapolated, nborphan))
+                if  nborphan>0: print('Warning: zone %s has %d orphan points !'%(rcvzonename, nborphan))
             else:
-                print 'Zone %s: EX interpolated=%d ; EX extrapolated=%d ; EX orphan=%d'%(rcvzonename, nbinterpolated, nbextrapolated, nborphan) 
-                if  nborphan>0: print 'Warning: zone %s has %d EX orphan points !'%(rcvzonename, nborphan)
+                print('Zone %s: EX interpolated=%d ; EX extrapolated=%d ; EX orphan=%d'%(rcvzonename, nbinterpolated, nbextrapolated, nborphan))
+                if  nborphan>0: print('Warning: zone %s has %d EX orphan points !'%(rcvzonename, nborphan))
     return resInterp
+
 #-----------------------------------------------------------------------------
 # Ecriture des coefficients d'interpolation dans des fichiers pour elsA 
 # IN: ntotZones: nombre total de zones
@@ -443,17 +511,6 @@ def writeCoefs(ntotZones,listRcvId,listCellIndicesRcv,listOfDirectionEX,listCell
     connector.writeCoefs(ntotZones,listRcvId,listCellIndicesRcv,listOfDirectionEX,listCellIndicesDonor,listInterpolantsDonor, listInterpTypes, listCellN, listDonorDim, nbInterpCellsForDonor, PrefixFile, isEX, solver, nGhostCells)
 
 #-----------------------------------------------------------------------------
-# Retourne le celln modifie des cellules interpolees
-# a partir de la fenetre [i1,i2,j1,j2,k1,k2] de la BCOverlap
-# IN: zc: contient le cellnaturefield aux centres
-# IN: bcrange: range de la BCOverlap associee - localisee en centres
-# IN: depth: nb de rangees de cellules a interpoler
-#-----------------------------------------------------------------------------
-def getBCOverlapInterpCellCenters__(zc, bcrange, depth=2):
-    """Set cellN to 2 for interpolated cell centers from a BCOverlap window."""
-    return connector.getBCOverlapInterpCellCenters(zc, bcrange, depth)
-
-#-----------------------------------------------------------------------------
 # Retourne le celln modifie des cellules interpolees au voisinage des pts masques
 # IN: zc: contient au moins le celln (celln=0 pour les pts interpoles)
 # IN: depth: nb de rangees de cellules interpolees
@@ -462,7 +519,12 @@ def getOversetHolesInterpCellCenters__(zc, depth=2, dir=0, cellNName='cellN'):
     """Set cellN=2 for the fringe of interpolated cells around cells of celln
     equal to 0."""
     return connector.getOversetHolesInterpCellCenters(zc, depth, dir, cellNName)
-    
+
+# version getFromArray2: ne marche qu en structure
+def _getOversetHolesInterpCellCenters__(zc, depth=2, dir=0, cellNName='cellN'):
+    """Set cellN=2 for the fringe of interpolated cells around cells of celln
+    equal to 0."""
+    return connector._getOversetHolesInterpCellCenters(zc, depth, dir, cellNName)
 #-----------------------------------------------------------------------------
 # Retourne le celln modifie des noeuds interpoles au voisinage des pts masques
 # IN: zc: contient au moins le celln (celln=0 pour les pts interpoles)
@@ -472,6 +534,12 @@ def getOversetHolesInterpNodes__(z, depth=2, dir=0, cellNName='cellN'):
     """Set cellN=2 for the fringe of interpolated nodes around nodes of celln
     equal to 0."""
     return connector.getOversetHolesInterpNodes(z, depth, dir, cellNName)
+
+# version getFromArray2: ne marche qu en structure
+def _getOversetHolesInterpNodes__(z, depth=2, dir=0, cellNName='cellN'):
+    """Set cellN=2 for the fringe of interpolated nodes around nodes of celln
+    equal to 0."""
+    return connector._getOversetHolesInterpNodes(z, depth, dir, cellNName)
 
 #------------------------------------------------------------------------------
 # Retourne les coordonnees des pts EX et les indices dans le maillage initial
@@ -521,9 +589,9 @@ def getInterpolatedPoints__(a):
 # IN: projectionSurfaces: liste des surfaces TRI correspondant aux surfaces de projection
 # OUT: z modifie pour les pts de cellN=2
 #------------------------------------------------------------------------------
-def changeWall__(z, firstWallPoints, projectionSurfaces):
+def changeWall__(z, firstWallPoints, projectionSurfaces, planarTol=0.):
     if projectionSurfaces == [] or firstWallPoints == []: return z
-    else: return connector.changeWall(z, firstWallPoints, projectionSurfaces)
+    else: return connector.changeWall(z, firstWallPoints, projectionSurfaces, planarTol)
 
 #-----------------------------------------------------------------------------
 # Nouvel algo de changeWall, sans tolerance double wall
@@ -534,9 +602,9 @@ def changeWall__(z, firstWallPoints, projectionSurfaces):
 # IN: projectionSurfaces: liste des surfaces TRI correspondant aux surfaces de projection
 # OUT: zc modifie pour les pts de cellN=2
 #-----------------------------------------------------------------------------
-def changeWallEX__(EXPts, zc, zn, firstWallCenters, projectionSurfaces):
+def changeWallEX__(EXPts, zc, zn, firstWallCenters, projectionSurfaces, planarTol=0.):
     if projectionSurfaces == [] or firstWallCenters == []: return z
-    else: return connector.changeWallEX(EXPts, zn, zc, firstWallCenters, projectionSurfaces)
+    else: return connector.changeWallEX(EXPts, zn, zc, firstWallCenters, projectionSurfaces, planarTol)
 
 #----------------------------------------------------------------------------------------------
 # Pour determiner les frontieres de projection double wall, dans le cas ou les frontieres

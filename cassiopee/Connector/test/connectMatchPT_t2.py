@@ -12,10 +12,10 @@ a2 = G.cart((1., 0.5, 0.), (0.1, 0.1, 0.1), (11, 21, 2))
 a2 = C.addBC2Zone(a2, 'wall1', 'BCWall', 'jmax')
 a2 = C.addBC2Zone(a2, 'overlap1', 'BCOverlap', 'jmin')
 # --- champ aux centres
-a2 = C.initVars(a2, 'centers:Density', 1.)
+C._initVars(a2, 'centers:Density', 1.)
 # --- champ aux noeuds
-a2 = C.initVars(a2, 'cellN', 2.)
-t = C.newPyTree(['Base']); t[2][1][2] += [a, a2]
+C._initVars(a2, 'cellN', 2.)
+t = C.newPyTree(['Base',a,a2])
 # --- Equation state
 t[2][1] = C.addState(t[2][1], 'EquationDimension', 3)
 t = X.connectMatch(t)

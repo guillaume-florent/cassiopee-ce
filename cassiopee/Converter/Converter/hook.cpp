@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -24,34 +24,8 @@
 using namespace K_FUNC;
 using namespace K_FLD;
 using namespace std;
-
-# define BLOCKSORTSTRUCT    \
-  std::vector<E_Float> sxp; sxp.reserve(4); \
-  std::vector<E_Float> syp; syp.reserve(4); \
-  std::vector<E_Float> szp; szp.reserve(4);\
-  std::vector<E_Int> vertices; vertices.reserve(4);\
-  vertices.push_back(ind1); \
-  vertices.push_back(ind2);\
-  vertices.push_back(ind3);\
-  vertices.push_back(ind4);\
-  std::sort(vertices.begin(), vertices.end());\
-  vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end());\
-  for (E_Int nov = 0; nov < vertices.size(); nov++)\
-  {\
-    E_Int indv = vertices[nov];\
-    sxp.push_back(xp[indv]);\
-    syp.push_back(yp[indv]);\
-    szp.push_back(zp[indv]);\
-  }\
-  std::sort(sxp.begin(), sxp.end());\
-  std::sort(syp.begin(), syp.end());\
-  std::sort(szp.begin(), szp.end());\
-  E_Float xf=0., yf=0., zf=0.;\
-  for (E_Int nov = 0; nov < sxp.size(); nov++)\
-  {xf += sxp[nov]; yf += syp[nov]; zf += szp[nov];}\
-  E_Float inv = 1./E_Float(sxp.size());\
-  xf *= inv; yf *= inv; zf *= inv; \
-  cx[ind]=xf; cy[ind]=yf; cz[ind]=zf;
+# include "ExtArith/quad_double.hpp"
+using namespace ExtendedArithmetics;
 
 // ============================================================================
 /* Enregistre les centres des faces de a dans un KdTree 
@@ -67,8 +41,8 @@ PyObject* K_CONVERTER::registerFaces(PyObject* self, PyObject* args)
   E_Int nil, njl, nkl, res;
   FldArrayF* f; FldArrayI* cnl;
   char* varString; char* eltType;
-  res = K_ARRAY::getFromArray(array, varString, 
-                              f, nil, njl, nkl, cnl, eltType, true);
+  res = K_ARRAY::getFromArray2(array, varString, 
+                               f, nil, njl, nkl, cnl, eltType);
 
   if (res != 1 && res != 2)
   {
@@ -113,13 +87,10 @@ PyObject* K_CONVERTER::registerFaces(PyObject* self, PyObject* args)
     E_Float* cy = centers->begin(2);
     E_Float* cz = centers->begin(3);
     E_Float inv0 = E_Float(0.25);
+    quad_double qinv0 = quad_double(0.25);
 
 #pragma omp parallel default(shared)
     {
-
-#ifdef SORTHOOK
-
-#endif
     E_Int ind,ind1,ind2,ind3,ind4,ip,jp,kp;
       
     // interface en i
@@ -136,13 +107,36 @@ PyObject* K_CONVERTER::registerFaces(PyObject* self, PyObject* args)
           ind2 = i+jp*ni+k*nij;
           ind3 = i+j*ni+kp*nij;
           ind4 = i+jp*ni+kp*nij;
-#ifdef SORTHOOK
-          BLOCKSORTSTRUCT;
-#else
 
+#ifdef QUADDOUBLE
+          quad_double qxp[4], qyp[4], qzp[4], qcx, qcy, qcz;
+          qxp[0] = quad_double(xp[ind1]);
+          qxp[1] = quad_double(xp[ind2]);
+          qxp[2] = quad_double(xp[ind3]);
+          qxp[3] = quad_double(xp[ind4]);
+          qcx = qinv0*(qxp[0]+qxp[1]+qxp[2]+qxp[3]);
+          qyp[0] = quad_double(yp[ind1]);
+          qyp[1] = quad_double(yp[ind2]);
+          qyp[2] = quad_double(yp[ind3]);
+          qyp[3] = quad_double(yp[ind4]);
+          qcy = qinv0*(qyp[0]+qyp[1]+qyp[2]+qyp[3]);
+          qzp[0] = quad_double(zp[ind1]);
+          qzp[1] = quad_double(zp[ind2]);
+          qzp[2] = quad_double(zp[ind3]);
+          qzp[3] = quad_double(zp[ind4]);
+          qcz = qinv0*(qzp[0]+qzp[1]+qzp[2]+qzp[3]);
+          cx[ind] = E_Float(qcx);
+          cy[ind] = E_Float(qcy);
+          cz[ind] = E_Float(qcz);
+#else
+          {
+          #ifdef __INTEL_COMPILER
+          #pragma float_control(precise, on)
+          #endif
           cx[ind] = inv0*(xp[ind1]+xp[ind2]+xp[ind3]+xp[ind4]);
           cy[ind] = inv0*(yp[ind1]+yp[ind2]+yp[ind3]+yp[ind4]);
           cz[ind] = inv0*(zp[ind1]+zp[ind2]+zp[ind3]+zp[ind4]);
+          }
 #endif
         }
     // interface en j
@@ -161,12 +155,36 @@ PyObject* K_CONVERTER::registerFaces(PyObject* self, PyObject* args)
             ind2 = ip+j*ni+k*nij;
             ind3 = i+j*ni+kp*nij;
             ind4 = ip+j*ni+kp*nij;
-#ifdef SORTHOOK
-            BLOCKSORTSTRUCT;      
+
+#ifdef QUADDOUBLE
+          quad_double qxp[4], qyp[4], qzp[4], qcx, qcy, qcz;
+          qxp[0] = quad_double(xp[ind1]);
+          qxp[1] = quad_double(xp[ind2]);
+          qxp[2] = quad_double(xp[ind3]);
+          qxp[3] = quad_double(xp[ind4]);
+          qcx = qinv0*(qxp[0]+qxp[1]+qxp[2]+qxp[3]);
+          qyp[0] = quad_double(yp[ind1]);
+          qyp[1] = quad_double(yp[ind2]);
+          qyp[2] = quad_double(yp[ind3]);
+          qyp[3] = quad_double(yp[ind4]);
+          qcy = qinv0*(qyp[0]+qyp[1]+qyp[2]+qyp[3]);
+          qzp[0] = quad_double(zp[ind1]);
+          qzp[1] = quad_double(zp[ind2]);
+          qzp[2] = quad_double(zp[ind3]);
+          qzp[3] = quad_double(zp[ind4]);
+          qcz = qinv0*(qzp[0]+qzp[1]+qzp[2]+qzp[3]);
+          cx[ind] = E_Float(qcx);
+          cy[ind] = E_Float(qcy);
+          cz[ind] = E_Float(qcz);
 #else
+          {
+            #ifdef __INTEL_COMPILER
+            #pragma float_control(precise, on)
+            #endif
             cx[ind] = inv0*(xp[ind1]+xp[ind2]+xp[ind3]+xp[ind4]);
             cy[ind] = inv0*(yp[ind1]+yp[ind2]+yp[ind3]+yp[ind4]);
             cz[ind] = inv0*(zp[ind1]+zp[ind2]+zp[ind3]+zp[ind4]);
+          }
 #endif
           }
     }
@@ -187,12 +205,35 @@ PyObject* K_CONVERTER::registerFaces(PyObject* self, PyObject* args)
             ind3 = i+jp*ni+k*nij;
             ind4 = ip+jp*ni+k*nij;
     
-#ifdef SORTHOOK
-            BLOCKSORTSTRUCT;              
+#ifdef QUADDOUBLE
+          quad_double qxp[4], qyp[4], qzp[4], qcx, qcy, qcz;
+          qxp[0] = quad_double(xp[ind1]);
+          qxp[1] = quad_double(xp[ind2]);
+          qxp[2] = quad_double(xp[ind3]);
+          qxp[3] = quad_double(xp[ind4]);
+          qcx = qinv0*(qxp[0]+qxp[1]+qxp[2]+qxp[3]);
+          qyp[0] = quad_double(yp[ind1]);
+          qyp[1] = quad_double(yp[ind2]);
+          qyp[2] = quad_double(yp[ind3]);
+          qyp[3] = quad_double(yp[ind4]);
+          qcy = qinv0*(qyp[0]+qyp[1]+qyp[2]+qyp[3]);
+          qzp[0] = quad_double(zp[ind1]);
+          qzp[1] = quad_double(zp[ind2]);
+          qzp[2] = quad_double(zp[ind3]);
+          qzp[3] = quad_double(zp[ind4]);
+          qcz = qinv0*(qzp[0]+qzp[1]+qzp[2]+qzp[3]);
+          cx[ind] = E_Float(qcx);
+          cy[ind] = E_Float(qcy);
+          cz[ind] = E_Float(qcz);            
 #else
+          {
+            #ifdef __INTEL_COMPILER
+            #pragma float_control(precise, on)
+            #endif
             cx[ind] = inv0*(xp[ind1]+xp[ind2]+xp[ind3]+xp[ind4]);
             cy[ind] = inv0*(yp[ind1]+yp[ind2]+yp[ind3]+yp[ind4]);
             cz[ind] = inv0*(zp[ind1]+zp[ind2]+zp[ind3]+zp[ind4]);
+          }
 #endif
           }
     }
@@ -201,53 +242,47 @@ PyObject* K_CONVERTER::registerFaces(PyObject* self, PyObject* args)
   }
   else if (res == 2 && strcmp(eltType, "NGON") == 0) // NGON
   {
-    E_Int nfaces = (*cnl)[0];
+    E_Int nfaces = cnl->getNFaces();
     centers = new FldArrayF(nfaces, 3);
     E_Float* cx = centers->begin(1);
     E_Float* cy = centers->begin(2);
     E_Float* cz = centers->begin(3);
+    E_Int* ptr;
+    if (cnl->isNGon() == 2) ptr = cnl->getNGon();
+    else ptr = cnl->begin();
     FldArrayI posFace; K_CONNECT::getPosFaces(*cnl, posFace);
-    E_Int* ptr = cnl->begin();
 
 # pragma omp parallel for default(shared)
     for (E_Int i = 0; i < nfaces; i++)
     {
       E_Int posf = posFace[i];
       E_Int* ptrFace = &ptr[posf];
-
-#ifdef SORTHOOK
-      std::vector<E_Float> sxp; sxp.reserve(1024);
-      std::vector<E_Float> syp; syp.reserve(1024);
-      std::vector<E_Float> szp; szp.reserve(1024);
-      std::vector<E_Int> vertices; vertices.reserve(1024);
-#endif
-
-      E_Int nv = ptrFace[0]; 
+      E_Int nv = ptrFace[0];
       E_Float xf=0., yf=0., zf=0.;
       
-#ifdef SORTHOOK
-      for (E_Int n = 1; n <= nv; n++){vertices.push_back(ptrFace[n]-1);}
-      std::sort(vertices.begin(), vertices.end());
-      vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end());
-
-      for (E_Int nov = 0; nov < vertices.size(); nov++)
-      {
-        E_Int indv = vertices[nov];
-        sxp.push_back(xp[indv]);
-        syp.push_back(yp[indv]);
-        szp.push_back(zp[indv]);
+#ifdef QUADDOUBLE
+      quad_double qxf, qyf, qzf;
+      quad_double qinv = quad_double(nv);
+      for (E_Int n = 1; n <= nv; n++)
+      { 
+        E_Int ind = ptrFace[n]-1; 
+        qxf = qxf+quad_double(xp[ind]); 
+        qyf = qyf+quad_double(yp[ind]); 
+        qzf = qzf+quad_double(zp[ind]); 
       }
-      std::sort(sxp.begin(), sxp.end());
-      std::sort(syp.begin(), syp.end());
-      std::sort(szp.begin(), szp.end());
-      for (E_Int n = 0; n < sxp.size(); n++) {xf += sxp[n]; yf += syp[n]; zf += szp[n];}
-      E_Float inv = 1./E_Float(sxp.size()); xf *= inv; yf *= inv; zf *= inv;
-
+      qxf = qxf/qinv; qyf = qyf/qinv; qzf = qzf/qinv;
+      xf = E_Float(qxf); yf = E_Float(qyf); zf = E_Float(qzf);
 #else
-    for (E_Int n = 1; n <= nv; n++)
-    { E_Int ind = ptrFace[n]-1; xf += xp[ind]; yf += yp[ind]; zf += zp[ind];}
+      {
+      #ifdef __INTEL_COMPILER
+      #pragma float_control(precise, on)
+      #endif
+      for (E_Int n = 1; n <= nv; n++)
+      { 
+        E_Int ind = ptrFace[n]-1; xf += xp[ind]; yf += yp[ind]; zf += zp[ind];
+      }
       E_Float inv = 1./E_Float(nv); xf *= inv; yf *= inv; zf *= inv;
-
+      }
 #endif
 
       cx[i] = xf; cy[i] = yf; cz[i] = zf;
@@ -255,7 +290,7 @@ PyObject* K_CONVERTER::registerFaces(PyObject* self, PyObject* args)
   }
   else // Basic elements
   {
-    E_Int nelts = cnl->getSize(); 
+    E_Int nelts = cnl->getSize();
     E_Int nof = 0; E_Int nfaces = 0;
     E_Int face[6][4];
     if (strcmp(eltType, "BAR") == 0) 
@@ -321,6 +356,7 @@ PyObject* K_CONVERTER::registerFaces(PyObject* self, PyObject* args)
     E_Float* cy = centers->begin(2);
     E_Float* cz = centers->begin(3);
     E_Float inv = E_Float(1./nof);
+    quad_double qinv = quad_double(nof);
 
 #pragma omp parallel default(shared)
     {
@@ -332,41 +368,33 @@ PyObject* K_CONVERTER::registerFaces(PyObject* self, PyObject* args)
       for (E_Int f = 0; f < nfaces; f++)
       {
         ind = f + i*nfaces;
-        cx[ind] = 0.; cy[ind] = 0.; cz[ind] = 0.;
 
-#ifdef SORTHOOK
-        std::vector<E_Float> sxp; sxp.reserve(1024);
-        std::vector<E_Float> syp; syp.reserve(1024);
-        std::vector<E_Float> szp; szp.reserve(1024);
-        std::vector<E_Int> vertices; vertices.reserve(1024);
-
+#ifdef QUADDOUBLE
+        quad_double qcx, qcy, qcz;
         for (E_Int n = 0; n < nof; n++)
-        {indl = (*cnl)(i,face[f][n])-1; vertices.push_back(indl);}
-        
-        std::sort(vertices.begin(), vertices.end());
-        vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end());
-        for (E_Int nov = 0; nov < vertices.size(); nov++)
         {
-          E_Int indv = vertices[nov];
-          sxp.push_back(xp[indv]);
-          syp.push_back(yp[indv]);
-          szp.push_back(zp[indv]);
+          indl = (*cnl)(i,face[f][n])-1;
+          qcx = qcx+quad_double(xp[indl]); 
+          qcy = qcy+quad_double(yp[indl]); 
+          qcz = qcz+quad_double(zp[indl]);
         }
-        std::sort(sxp.begin(), sxp.end());
-        std::sort(syp.begin(), syp.end()); 
-        std::sort(szp.begin(), szp.end());
-
-        for (E_Int n = 0; n < sxp.size(); n++)
-        {cx[ind] += sxp[n]; cy[ind] += syp[n]; cz[ind] += szp[n];}
-        E_Float inv = 1./E_Float(sxp.size()); 
-        cx[ind] *= inv; cy[ind] *= inv; cz[ind] *= inv;
+        qcx = qcx/qinv; qcy = qcy/qinv; qcz = qcz/qinv;
+        cx[ind] = E_Float(qcx);
+        cy[ind] = E_Float(qcy);
+        cz[ind] = E_Float(qcz);
 #else
+        {
+        #ifdef __INTEL_COMPILER
+        #pragma float_control(precise, on)
+        #endif
+        cx[ind] = 0.; cy[ind] = 0.; cz[ind] = 0.;
         for (E_Int n = 0; n < nof; n++)
         {
           indl = (*cnl)(i,face[f][n])-1;
           cx[ind] += xp[indl]; cy[ind] += yp[indl]; cz[ind] += zp[indl];
         }
         cx[ind] *= inv; cy[ind] *= inv; cz[ind] *= inv;
+        }
 #endif
       }// loop on faces 
     }// loop on elts
@@ -553,8 +581,8 @@ PyObject* K_CONVERTER::registerNodes(PyObject* self, PyObject* args)
   E_Int nil, njl, nkl, res;
   FldArrayF* f; FldArrayI* cnl;
   char* varString; char* eltType;
-  res = K_ARRAY::getFromArray(array, varString, 
-                              f, nil, njl, nkl, cnl, eltType, true);
+  res = K_ARRAY::getFromArray2(array, varString, 
+                              f, nil, njl, nkl, cnl, eltType);
 
   if (res != 1 && res != 2)
   {
@@ -628,8 +656,8 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
   E_Int nil, njl, nkl, res;
   FldArrayF* f; FldArrayI* cnl;
   char* varString; char* eltType;
-  res = K_ARRAY::getFromArray(array, varString, 
-                              f, nil, njl, nkl, cnl, eltType, true);
+  res = K_ARRAY::getFromArray2(array, varString, 
+                               f, nil, njl, nkl, cnl, eltType);
 
   if (res != 1 && res != 2)
   {
@@ -669,6 +697,7 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
     E_Float* cy = centers->begin(2);
     E_Float* cz = centers->begin(3);
     E_Float inv = E_Float(0.125);
+    quad_double qinv = quad_double(8.);
 
 #pragma omp parallel for default(shared)
     for (E_Int k = 0; k < nk1; k++)
@@ -691,35 +720,27 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
           indT[7] = ip + jp*nil + kp*nij;
 
           E_Float xf=0., yf=0.,zf=0.;
-          
-#ifdef SORTHOOK
-          std::vector<E_Float> sxp; sxp.reserve(8);
-          std::vector<E_Float> syp; syp.reserve(8);
-          std::vector<E_Float> szp; szp.reserve(8);
-          std::vector<E_Int> vertices; vertices.reserve(8);
+          quad_double qxf, qyf, qzf;
 
+#ifdef QUADDOUBLE
           for (E_Int nov = 0; nov < 8; nov++)
-            vertices.push_back(indT[nov]);
-          std::sort(vertices.begin(), vertices.end());
-          vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end());
-
-          for (E_Int nov = 0; nov < vertices.size(); nov++)
           {
-            E_Int indv = vertices[nov];
-            sxp.push_back(xp[indv]);
-            syp.push_back(yp[indv]);
-            szp.push_back(zp[indv]);
+            E_Int indv = indT[nov];
+            qxf = qxf+quad_double(xp[indv]); 
+            qyf = qyf+quad_double(yp[indv]); 
+            qzf = qzf+quad_double(zp[indv]); 
           }
-          std::sort(sxp.begin(), sxp.end());
-          std::sort(syp.begin(), syp.end());
-          std::sort(szp.begin(), szp.end());
-          for (E_Int nov = 0; nov < sxp.size(); nov++) 
-          {
-            xf+=sxp[nov]; yf+=syp[nov]; zf+=szp[nov];
-          }
-          E_Float inv = 1./E_Float(sxp.size()); xf *= inv; yf *= inv; zf *= inv; 
-          cx[indcell]=xf; cy[indcell]=yf; cz[indcell]=zf;
+          qxf =qxf/qinv;
+          qyf =qyf/qinv;
+          qzf =qzf/qinv;
+          cx[indcell]=E_Float(qxf);
+          cy[indcell]=E_Float(qyf);
+          cz[indcell]=E_Float(qzf);
 #else
+          {
+          #ifdef __INTEL_COMPILER
+          #pragma float_control(precise, on)
+          #endif
           for (E_Int nov = 0; nov < 8; nov++)
           {
             E_Int indv = indT[nov];
@@ -727,19 +748,22 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
           }
           xf*=inv; yf*=inv; zf*=inv;
           cx[indcell]=xf; cy[indcell]=yf; cz[indcell]=zf;
+          }
 #endif     
         }
   }
   else if (res == 2 && strcmp(eltType, "NGON") == 0)
   {
-    E_Int* ptr = cnl->begin();
-    E_Int sizef = ptr[1];
-    E_Int nelts = ptr[sizef+2];
+    E_Int nelts = cnl->getNElts();
     centers = new FldArrayF(nelts, 3);
     E_Float* cx = centers->begin(1);
     E_Float* cy = centers->begin(2);
-    E_Float* cz = centers->begin(3); 
-    E_Int* ptrElt = cnl->begin(); ptrElt += ptrElt[1]+4;
+    E_Float* cz = centers->begin(3);
+    E_Int* ptrf; E_Int* ptre;
+    if (cnl->isNGon() == 2) ptrf = cnl->getNGon();
+    else ptrf = cnl->begin();
+    if (cnl->isNGon() == 2) ptre = cnl->getNFace();
+    else ptre = cnl->begin();
     FldArrayI posFace; K_CONNECT::getPosFaces(*cnl, posFace);
     FldArrayI posElt; K_CONNECT::getPosElts(*cnl, posElt);
     
@@ -747,60 +771,44 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
     for (E_Int i = 0; i < nelts; i++)
     {
       E_Int pose = posElt[i];
-      E_Int* ptrElt = &ptr[pose];
+      E_Int* ptrElt = &ptre[pose];
       E_Int nf = ptrElt[0];
       E_Float xf=0., yf=0.,zf=0.;
       E_Int c = 0;
-
-#ifdef SORTHOOK
-      std::vector<E_Float> sxp;
-      sxp.reserve(1024);
-      std::vector<E_Float> syp;
-      syp.reserve(1024);
-      std::vector<E_Float> szp;
-      szp.reserve(1024);
-      std::vector<E_Int> vertices; vertices.reserve(1024);
-
-#endif      
+      quad_double qxf, qyf, qzf;
 
       for (E_Int n = 1; n <= nf; n++)
       { 
         E_Int ind = ptrElt[n]-1;
         E_Int pos = posFace[ind];
-        E_Int* ptrFace = &ptr[pos];
+        E_Int* ptrFace = &ptrf[pos];
         E_Int nv = ptrFace[0];
 
-#ifdef SORTHOOK
+#ifdef QUADDOUBLE
         for (E_Int p = 1; p <= nv; p++)
         {
           ind = ptrFace[p]-1; 
-          vertices.push_back(ind);
+          qxf = qxf+quad_double(xp[ind]); 
+          qyf = qyf+quad_double(yp[ind]); 
+          qzf = qzf+quad_double(zp[ind]); 
+          c++;
         }
       }
-      std::sort(vertices.begin(), vertices.end());
-      vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end() );
-      for (E_Int nov = 0; nov < vertices.size(); nov++)
-      {
-        E_Int indv = vertices[nov];
-        sxp.push_back(xp[indv]); syp.push_back(yp[indv]); szp.push_back(zp[indv]); 
-      }
-      std::sort(sxp.begin(), sxp.end());
-      std::sort(syp.begin(), syp.end());
-      std::sort(szp.begin(), szp.end());
-
-      for (E_Int p = 0; p < sxp.size(); p++) {xf += sxp[p]; yf += syp[p]; zf += szp[p];}
-      E_Float inv = 1./E_Float(sxp.size()); xf *= inv; yf *= inv; zf *= inv;
+      quad_double qinv = quad_double(c);
+      qxf = qxf/qinv; qyf = qyf/qinv; qzf = qzf/qinv;
+      xf = E_Float(qxf); yf = E_Float(qyf); zf = E_Float(qzf);
 
 #else
-      for (E_Int p = 1; p <= nv; p++)
-      {
-        ind = ptrFace[p]-1; xf += xp[ind]; yf += yp[ind]; zf += zp[ind]; c++;
+        //#pragma float_control(precise, on)
+        for (E_Int p = 1; p <= nv; p++)
+        {
+          ind = ptrFace[p]-1; xf += xp[ind]; yf += yp[ind]; zf += zp[ind]; c++;
+        }
       }
-    }
-    E_Float inv = 1./E_Float(c); xf *= inv; yf *= inv; zf *= inv;
+      E_Float inv = 1./E_Float(c); xf *= inv; yf *= inv; zf *= inv;
 #endif
       
-    cx[i] = xf; cy[i] = yf; cz[i] = zf;
+      cx[i] = xf; cy[i] = yf; cz[i] = zf;
   } // loop on elts
   }// NGON
   else
@@ -808,6 +816,7 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
     E_Int nelts = cnl->getSize();
     E_Int nv = cnl->getNfld();
     E_Float inv = E_Float(1./nv);
+    quad_double qinv = quad_double(nv);
     centers = new FldArrayF(nelts, 3);
     E_Float* cx = centers->begin(1);
     E_Float* cy = centers->begin(2);
@@ -822,34 +831,19 @@ PyObject* K_CONVERTER::registerElements(PyObject* self, PyObject* args)
     {
       E_Float xf=0., yf=0., zf=0.;
 
-#ifdef SORTHOOK
-      std::vector<E_Float> sxp; sxp.reserve(1024);
-      std::vector<E_Float> syp; syp.reserve(1024);
-      std::vector<E_Float> szp; szp.reserve(1024);
-      std::vector<E_Int> vertices; vertices.reserve(1024);
-
+#ifdef QUADDOUBLE
+      quad_double qxf, qyf, qzf;
       for (E_Int j = 1; j <= nv; j++)
-      { 
-        ind = (*cnl)(i,j)-1;
-        vertices.push_back(ind);
-      }
-
-      std::sort(vertices.begin(), vertices.end());
-      vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end() );
-
-      for (E_Int nov = 0; nov < vertices.size(); nov++)
       {
-        E_Int indv = vertices[nov];
-        sxp.push_back(xp[indv]); syp.push_back(yp[indv]); szp.push_back(zp[indv]); 
+        ind = (*cnl)(i,j)-1;
+        qxf = qxf+quad_double(xp[ind]); 
+        qyf = qyf+quad_double(yp[ind]); 
+        qzf = qzf+quad_double(zp[ind]); 
       }
-      std::sort(sxp.begin(), sxp.end());
-      std::sort(syp.begin(), syp.end());
-      std::sort(szp.begin(), szp.end());
-      for (E_Int j = 0; j < sxp.size(); j++)
-      {xf+= sxp[j]; yf += syp[j]; zf += szp[j];}
-      E_Float inv0 = 1./E_Float(sxp.size()); xf *= inv0; yf *= inv0; zf *= inv0; 
-      cx[i] = xf; cy[i] = yf; cz[i] = zf;
+      qxf = qxf/qinv; qyf = qyf/qinv; qzf = qzf/qinv;
+      cx[i] = E_Float(qxf); cy[i] = E_Float(qyf); cz[i] = E_Float(qzf);
 #else
+      //#pragma float_control(precise, on) 
       for (E_Int j = 1; j <= nv; j++)
       {
         ind = (*cnl)(i,j)-1;

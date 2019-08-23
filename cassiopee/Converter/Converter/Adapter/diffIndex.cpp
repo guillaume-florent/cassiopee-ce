@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -51,7 +51,6 @@ PyObject* K_CONVERTER::diffIndex(PyObject* self, PyObject* args)
                     "diffIndex: arrayB numpy is invalid.");
     return NULL;
   }
-
 
   // Construit la difference
   E_Int sizeA = indexA->getSize();

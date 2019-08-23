@@ -3,4 +3,5 @@ import Geom.PyTree as D
 import Converter.PyTree as C
 
 A = D.sphere6((0,0,0), 1., 20)
-C.convertPyTree2File(A, 'out.cgns')
+b = D.sphere6((3,0,0), 1.2, N=20, ntype='QUAD')
+C.convertPyTree2File(A+[b], 'out.cgns')

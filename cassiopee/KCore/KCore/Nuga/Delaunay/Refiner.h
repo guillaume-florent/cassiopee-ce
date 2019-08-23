@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -26,6 +26,13 @@
 #include "MeshData.h"
 #include "macros.h"
 
+#ifdef DEBUG_METRIC
+#include "Linear/DelaunayMath.h"
+#include "iodata.h"
+#include "IO/io.h"
+#endif
+#include "GeomMetric.h"
+
 namespace DELAUNAY
 {
 
@@ -42,35 +49,37 @@ namespace DELAUNAY
 
   public:
 
-    Refiner(MetricType& metric):_metric(metric), _threshold(0.5){}
+    Refiner(MetricType& metric, E_Float growth_ratio, E_Int nb_smooth_iter, E_Bool symmetrize):_metric(metric), _threshold(0.5), 
+            _gr(growth_ratio), _nb_smooth_iter(nb_smooth_iter), _symmetrize(symmetrize), _debug(false){}
 
     ~Refiner(void){}
 
-    void computeRefinePoints(MeshData& data, const int_set_type& box_nodes,
+    void computeRefinePoints(E_Int iter, MeshData& data, const int_set_type& box_nodes,
                              const non_oriented_edge_set_type& hard_edges,
-                             int_vector_type& refine_nodes);
+                             int_vector_type& refine_nodes, E_Int N0/*for metrics changes when smoothing*/);
 
     void filterRefinePoints(MeshData& data, const int_set_type& box_nodes,
                             int_vector_type& refine_nodes,
                             tree_type& filter_tree);
 
   private:
-    void __compute_refine_points(K_FLD::FloatArray& pos, size_type Ni, size_type Nj,
-                                 std::vector<std::pair<E_Int, size_type> >& length_to_points);
-
-  private:
     MetricType&             _metric;
     std::vector<size_type>  _tmpNodes;
     E_Float                 _threshold;
+    E_Float                 _gr;
+    E_Int                   _nb_smooth_iter;
+    E_Bool                  _symmetrize;
+  public:
+    E_Bool                  _debug;    
   };
 
   ///
   template <typename MetricType>
   void
     Refiner<MetricType>::computeRefinePoints
-    (MeshData& data, const int_set_type& box_nodes,
+    (E_Int iter, MeshData& data, const int_set_type& box_nodes,
      const non_oriented_edge_set_type& hard_edges,
-     int_vector_type& refine_nodes)
+     int_vector_type& refine_nodes, E_Int N0/*for metrics changes when smoothing*/)
   {
     refine_nodes.clear();
 
@@ -78,7 +87,7 @@ namespace DELAUNAY
 
     K_FLD::IntArray::const_iterator pS;
 
-    // Get all the triangulation edges which are not hard edges.
+    // Get all the inner edges (non-hard).
     size_type cols = data.connectM.cols();
     for (size_type j = 0; j < cols; ++j)
     {
@@ -103,26 +112,45 @@ namespace DELAUNAY
       }
     }
 
-    //size_type Ni, Nj;
-
     //smooth the metric at each nodes.
-    //fixme : a tuner/ voir si ameliore la qualite...
-    /*E_Float eps = 0.5;
-    for (non_oriented_edge_set_type::const_iterator i = all_edges.begin(); i != all_edges.end(); ++i)
-    {
-    const int_pair_type& Ei = *i;
-    Ni = Ei.first;
-    Nj = Ei.second;
-    _metric.smooth(Ni, Nj, eps);
-    }*/
+    // so do it at leat once whatever the user ask for to impovre the overall
+    // mesh quality by setting the right metrics at bone nodes (__init_refine_points)
+    _metric._N0 = N0;
 
-    std::vector<std::pair<E_Int, size_type> > length_to_points;
+    bool do_smooth  = (_nb_smooth_iter > 0) && (iter > 1);
+         do_smooth |= (_symmetrize && (iter == 1)); // T3 Mesher use : always smooth at first iter for skeleton nodes.
 
-    for (std::set<K_MESH::NO_Edge>::const_iterator i = all_edges.begin(); i != all_edges.end(); ++i)
+    if(do_smooth)
     {
-      const K_MESH::NO_Edge& Ei = *i;
-      __compute_refine_points(*data.pos, Ei.node(0), Ei.node(1), length_to_points);
+    
+#ifdef DEBUG_METRIC
+      {
+        std::ostringstream o;
+        o << "ellipse_beforesmooth_iter_" << iter << ".mesh";
+        _metric.draw_ellipse_field(o.str().c_str(), *data.pos, data.connectM, &data.mask);
+      }
+#endif
+      
+      _metric.smoothing_loop(all_edges, _gr, _nb_smooth_iter, N0);
+
+#ifdef DEBUG_METRIC
+      {
+        std::ostringstream o;
+        o << "ellipse_aftersmooth_iter_" << iter << ".mesh";
+        _metric.draw_ellipse_field(o.str().c_str(), *data.pos, data.connectM, &data.mask);
+      }
+#endif
+    
     }
+
+    std::vector<std::pair<E_Float, size_type> > length_to_points;
+    if (_symmetrize && iter== 0)
+      // Compute the bone mesh (for a 2D mesh, not a Geom Mesh)
+      for (const auto& Ei : all_edges)
+        _metric.__init_refine_points(*data.pos, Ei.node(0), Ei.node(1), _threshold, length_to_points, _tmpNodes);
+    else
+      for (const auto& Ei : all_edges)
+        _metric.__compute_refine_points(*data.pos, Ei.node(0), Ei.node(1), _threshold, length_to_points, _tmpNodes);
 
     std::sort(ALL(length_to_points));
 
@@ -171,8 +199,32 @@ namespace DELAUNAY
 
         const typename MetricType::value_type& Mn = _metric[nodes[n]];
 
-        discard = (_metric.lengthEval(Ni, Mi, nodes[n], Mi) < coeff) // Regarding Mi metric
-          || (_metric.lengthEval(Ni, Mn, nodes[n], Mn) < coeff);     // Regarding Mn metric
+        E_Float dmi = _metric.lengthEval(Ni, Mi, nodes[n], Mi);
+        E_Float dmn = _metric.lengthEval(Ni, Mn, nodes[n], Mn);
+        discard = (dmi < coeff) || (dmn < coeff); // Regarding Mi or Mn metric
+
+        
+#ifdef DEBUG_METRIC
+        /*if (discard && Ni == 19551)
+        {
+          K_FLD::FloatArray crdo;
+          K_FLD::IntArray cnto;
+          
+          E_Int E[] = {0,1};
+          crdo.pushBack(data.pos->col(Ni), data.pos->col(Ni) + 2);
+          crdo.pushBack(data.pos->col(nodes[n]), data.pos->col(nodes[n]) + 2);
+          
+          if (dmi < coeff)
+            _metric.append_unity_ellipse(*data.pos, Ni, crdo, cnto);
+          if (dmn < coeff)
+            _metric.append_unity_ellipse(*data.pos, nodes[n], crdo, cnto);
+          
+          cnto.pushBack(E, E+2);
+          std::ostringstream o;
+          o << "discarded_" << Ni << ".mesh";
+          MIO::write(o.str().c_str(), crdo, cnto, "BAR");     
+        }*/
+#endif
       }
 
       if (!discard)
@@ -180,81 +232,6 @@ namespace DELAUNAY
         refine_nodes.push_back(Ni);
         filter_tree.insert(Ni);
       }
-    }
-  }
-
-  ///
-  template <typename MetricType>
-  void
-    Refiner<MetricType>::__compute_refine_points
-    (K_FLD::FloatArray& pos, size_type Ni, size_type Nj,
-    std::vector<std::pair<E_Int, size_type> >& length_to_points)
-  {
-    _tmpNodes.clear();
-    E_Float   d = _metric.length(Ni, Nj, _threshold, _tmpNodes);
-    size_type n = std::max(size_type(d), 1);
-
-    if ((n * (n + 1)) < (d * d))
-      ++n;
-
-    if (n == 1) // Saturated
-      return;
-
-    size_type ni = 0, ii = 0, dim(pos.rows()), nb_nodes;
-    E_Float l = 0.;
-    size_type Nstart = Ni, Nk = Ni, Nl = Ni;
-    E_Float x = 1.;//fixme
-    std::vector<std::pair<E_Float, size_type> > length_to_point;
-    length_to_point.push_back(std::make_pair(0., Ni));
-    E_Float* pNi = pos.col(Ni);
-
-    nb_nodes = (size_type)_tmpNodes.size();
-    for (size_type i = 0; i < nb_nodes; ++i)
-    {
-      Nk = _tmpNodes[i];
-      x = K_FUNC::sqrDistance(pNi, pos.col(Nk), dim);
-      length_to_point.push_back(std::make_pair(x, Nk));
-    }
-    length_to_point.push_back(std::make_pair(K_CONST::E_MAX_FLOAT, Nj));
-
-    std::sort(length_to_point.begin(), length_to_point.end());
-
-    E_Float newP[2], r, xx;
-    while (ni++ < n)
-    {
-      l = 0.;
-      while (l < 1.)
-      {
-        Nk = (l == 0.) ? Nstart : length_to_point[ii].second;
-        Nl = length_to_point[++ii].second;
-        if (Nl == Nj)
-          break;
-        x = _metric.lengthEval(Nk, _metric[Nk], Nl, _metric[Nl]);
-        if ((l+x) < 1.)
-          l += x;
-        else
-          break;
-      }
-
-      if (Nl == Nj)
-        break;
-
-      r = ((1 - l)/x);
-      
-      K_FUNC::diff<2>(pos.col(Nl), pos.col(Nk), newP);
-
-      for (size_type j = 0; j < 2; ++j)
-      {
-        xx = pos(j, Nk);
-        newP[j] = xx + r * newP[j];
-      }
-
-      pos.pushBack(newP, newP+2);
-      Nstart = pos.cols()-1;
-
-      _metric.setMetric(Nstart, _metric.computeMetric(Nstart, Nk, Nl, r));
-
-      length_to_points.push_back(std::make_pair(-n, Nstart));
     }
   }
 

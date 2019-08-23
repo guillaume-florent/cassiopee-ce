@@ -8,9 +8,9 @@ c = D.polyline([(0.,0.,0.), (1.,1.,0.), (2.,1.,0.), \
                 (3.,0.,0.), (4.,-1.,0.), (5.,6.,0.), \
                 (6.,1.,0.), (7.,2.,0.), (8.,1.,0.), \
                 (9.,-1.,0.), (10.,1.,0.), (11.,-1.,0.)])
-# Avec un nombre de pts specifie
+# With a specified number of points
 d = D.spline(c, 3, N=100)
-# Avec une densite de points specifiee
+# With a specified density of points
 e = D.spline(c, 3, density=10.)
 C.convertArrays2File([c, d, e], 'out.plt')
 

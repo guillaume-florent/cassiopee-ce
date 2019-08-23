@@ -1,16 +1,14 @@
 // RecvBuffer.hpp
 #ifndef _CMP_RECVBUFFER_HPP_
 #define _CMP_RECVBUFFER_HPP_
+#if defined(_WIN64)
+# define __int64 long long
+#endif
 #include <mpi.h>
 #include <cassert>
 #include <string>
-#if __cplusplus > 199711L
 #include <memory>
 using std::shared_ptr;
-#else
-#include "shared_ptr.hpp"
-using CMP::shared_ptr;
-#endif
 #include "vector_view.hpp"
 
 namespace CMP {

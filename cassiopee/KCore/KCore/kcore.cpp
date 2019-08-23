@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -16,7 +16,6 @@
     You should have received a copy of the GNU General Public License
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Python.h"
 #define K_ARRAY_UNIQUE_SYMBOL
 #include "kcore.h"
 
@@ -40,16 +39,54 @@ static PyMethodDef Pykcore [] =
   {NULL, NULL}
 };
 
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+struct module_state {
+    PyObject *error;
+};
+static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+static int myextension_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "kcore",
+        NULL,
+        sizeof(struct module_state),
+        Pykcore,
+        NULL,
+        myextension_traverse,
+        myextension_clear,
+        NULL
+};
+#endif
+
 // ============================================================================
 /* Init of module */
 // ============================================================================
 extern "C"
 {
-  void initkcore();
-  void initkcore()
+#if PY_MAJOR_VERSION >= 3
+  PyMODINIT_FUNC PyInit_kcore();
+  PyMODINIT_FUNC PyInit_kcore()
+#else
+  PyMODINIT_FUNC initkcore();
+  PyMODINIT_FUNC initkcore()
+#endif
   {
+#if PY_MAJOR_VERSION >= 3
+    PyObject* module = PyModule_Create(&moduledef);
+#else
     Py_InitModule("kcore", Pykcore);
+#endif
     import_array();
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
   }
 }
 

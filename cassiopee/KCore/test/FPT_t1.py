@@ -7,8 +7,8 @@ def F(x): return x
 
 # Une zone
 a = G.cart( (0,0,0), (1,1,1), (10,10,10) )
-a = C.initVars(a, 'F={CoordinateX}+{CoordinateY}')
-a = C.initVars(a, 'centers:G={CoordinateX}+{CoordinateY}')
+a = C.initVars(a, '{F}={CoordinateX}+{CoordinateY}')
+a = C.initVars(a, '{centers:G}={centers:CoordinateX}+{centers:CoordinateY}')
 a = C.addBC2Zone(a, 'wall', 'BCWall', 'imin')
 b = F(a)
 test.testT(b, 1)

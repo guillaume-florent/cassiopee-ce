@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -343,7 +343,7 @@ TRI_Conformizer<DIM>::__run_correction_gamma
   std::vector<bool> ukeep(keep);
   K_CONNECT::IdTool::negative(ukeep);
   K_FLD::IntArray tmp(connect);
-  K_CONNECT::keep upred(ukeep);
+  K_CONNECT::keep<bool> upred(ukeep);
   K_CONNECT::IdTool::compress(tmp, upred);
   MIO::write("Oremoved.mesh", pos, tmp, "TRI");
   TRI_debug::write_wired("OremovedN.mesh", pos, tmp, true);
@@ -353,13 +353,13 @@ TRI_Conformizer<DIM>::__run_correction_gamma
     keep2[i] = (good_cols.find(colors[i]) != good_cols.end());
   }
   K_FLD::IntArray tmp2(connect);
-  K_CONNECT::keep gpred(keep2);
+  K_CONNECT::keep<bool> gpred(keep2);
   K_CONNECT::IdTool::compress(tmp2, gpred);
   MIO::write("Okept.mesh", pos, tmp2, "TRI");
   TRI_debug::write_wired("OkeptN.mesh", pos, tmp2, true);
 #endif
   
-  K_CONNECT::keep pred(keep);
+  K_CONNECT::keep<bool> pred(keep);
   K_CONNECT::IdTool::compress(connect, pred);
   K_CONNECT::IdTool::compress(ancestors, pred);
   std::vector<E_Int> nids;

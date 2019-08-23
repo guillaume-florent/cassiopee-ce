@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -30,7 +30,6 @@
 void DataDL::displaySMesh()
 {
   if (_numberOfStructZones == 0) return;
-
   int zone, isDL;
 
   // Enable blending

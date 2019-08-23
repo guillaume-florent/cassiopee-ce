@@ -10,5 +10,4 @@ m = C.addVars(m, ['Density', 'centers:MomentumX'])
 # Rename a list of variables
 m2 = P.renameVars(m, ['Density', 'centers:MomentumX'], ['Density_M', 'centers:MomentumX_M'])
 
-C.convertPyTree2File([m2], 'out.cgns')
-
+C.convertPyTree2File(m2, 'out.cgns')

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -64,18 +64,18 @@ class BlkInterpWithKMesh : public BlkInterpData
      */
     virtual short getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
                                                E_Int ic, E_Int jc, E_Int kc,
-                                               FldArrayF& cf,
+                                               FldArrayF& cf, E_Float cfMax,
                                                InterpolationType interpType,
-                                               InterpMeshType interpMeshType = EXT_CENTERS);
+                                               InterpMeshType interpMeshType=EXT_CENTERS);
     
     virtual short getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
                                                E_Int ic, E_Int jc, E_Int kc,
                                                FldArrayF& cf,
                                                const FldArrayI& cellNatureField,
                                                E_Int testNature, E_Int order,
-                                               E_Int& is, E_Int& js, E_Int& ks,
+                                               E_Int& is, E_Int& js, E_Int& ks, E_Float cfMax,
                                                InterpolationType interpType,
-                                               InterpMeshType interpMeshType = EXT_CENTERS);
+                                               InterpMeshType interpMeshType=EXT_CENTERS);
 
     /** Find the extrapolation cell (ic,jc,kc) for point (x,y,z) on structured meshes (nearest boundary cell) */
     virtual short getExtrapolationCell(E_Float x, E_Float y, E_Float z,
@@ -83,14 +83,16 @@ class BlkInterpWithKMesh : public BlkInterpData
                                        FldArrayF& cf,
                                        const FldArrayI& cellNatureField,
                                        E_Int testNature,
+                                       E_Float& test,
                                        InterpolationType interpType,
-                                       InterpMeshType interpMeshType = EXT_CENTERS);
+                                       InterpMeshType interpMeshType=EXT_CENTERS,
+                                       E_Float cfMax=30.);
 
     /** Find the extrapolation cell (ic,jc,kc) for point (x,y,z) on structured meshes */
     virtual short getExtrapolationCellStruct(E_Float x, E_Float y, E_Float z,
                                              FldArrayI& indi,
                                              FldArrayF& cf,
-                                             E_Int order,
+                                             E_Int order, E_Float cfMax,
                                              const FldArrayF& cellNatureField,
                                              InterpolationType interpType);
 
@@ -240,7 +242,7 @@ class BlkInterpWithKMesh : public BlkInterpData
     short searchExtrapolationCell(E_Float x, E_Float y, E_Float z,
                                   E_Int& ic, E_Int& jc, E_Int& kc,
                                   FldArrayF& cf,
-                                  E_Int order,
+                                  E_Int order, E_Float cfMax,
                                   const FldArrayF& cellNatureField) = 0;
 
     void coordHexa(E_Int ind, E_Int ni, E_Int nj,

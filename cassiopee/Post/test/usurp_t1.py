@@ -28,4 +28,4 @@ ib2 = C.initVars(ib2, 'cellN', 1)
 ibc = [ib1, ib2]
 
 r = P.usurp(cyln, ibc)
-test.testA(r,1)
+if r is not None: test.testA(r,1)

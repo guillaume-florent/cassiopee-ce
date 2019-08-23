@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -20,7 +20,6 @@
 # ifndef _DISTRIBUTOR2_DISTRIBUTOR2_H_
 # define _DISTRIBUTOR2_DISTRIBUTOR2_H_
 
-# include "Python.h"
 # include "kcore.h"
 # include <vector>
 
@@ -38,6 +37,13 @@ void genetic(std::vector<E_Float>& nbPts, std::vector<E_Int>& setBlocks,
              std::vector<E_Int>& out, E_Float& meanPtsPerProc, E_Float& varMin,
              E_Float& varMax, E_Float& varRMS, E_Int& nptsCom, 
              E_Float& volRatio, E_Float& bestAdapt);
+void graph(std::vector<E_Float>& nbPts, std::vector<E_Int>& setBlocks,
+           E_Int NProc, int* com, std::vector<E_Float>& solver,
+           std::vector<E_Float>& latence, std::vector<E_Float>& comSpeed,
+           E_Int param,
+           std::vector<E_Int>& out, E_Float& meanPtsPerProc, E_Float& varMin,
+           E_Float& varMax, E_Float& varRMS, E_Int& nptsCom, 
+           E_Float& volRatio, E_Float& bestAdapt);
 void gradient(std::vector<E_Float>& nbPts, std::vector<E_Int>& setBlocks,
               E_Int NProc, int* com, std::vector<E_Float>& solver,
               std::vector<E_Float>& latence, std::vector<E_Float>& comSpeed,

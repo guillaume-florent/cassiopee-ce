@@ -9,7 +9,7 @@ c2 = T.subzone(a,(1,50,1),(50,50,1))
 c3 = T.subzone(a,(1,1,1),(1,50,1))
 c = [c1,c2,c3]; c = C.convertArray2Hexa(c)
 c = T.join(c)
-c = C.initVars(c,'F',1.); c = C.initVars(c,'centers:G',2.)
+C._initVars(c,'F',1.); C._initVars(c,'centers:G',2.)
 res = T.splitTBranches(c)
 t = C.newPyTree(['Base', 1]); t[2][1][2] += res
 test.testT(t)

@@ -5,7 +5,7 @@ import KCore.test as test
 
 def identify(a):
     f = P.exteriorElts(a)
-    if (isinstance(a[0], list) == True): a=a[0]
+    if isinstance(a[0], list): a=a[0]
     hook = C.createHook(a, function='elementCenters')
     elts = C.identifyElements(hook, f)
     C.freeHook(hook)

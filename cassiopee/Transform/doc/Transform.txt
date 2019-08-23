@@ -1,4 +1,31 @@
 ===============================================================================
+Transform 2.9 [06/2019]
+Require: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.9
+Optional: pyTree interface requires Converter 2.9
+Optional: splitMultiplePts function requires Connector 2.9
+===============================================================================
+Transform 2.8 [12/2018]
+Require: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.8
+Optional: pyTree interface requires Converter 2.8
+Optional: splitMultiplePts function requires Connector 2.8
+- Transform: amelioration de la doc
+===============================================================================
+Transform 2.7 [07/2018]
+Require: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.7
+Optional: pyTree interface requires Converter 2.7
+Optional: splitMultiplePts function requires Connector 2.7
+===============================================================================
+Transform 2.6 [03/2018]
+Require: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.6
+Optional: pyTree interface requires Converter 2.6
+Optional: splitMultiplePts function requires Connector 2.6
+===============================================================================
+Transform 2.5 [20/09/2017]
+Require: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.5
+Optional: pyTree interface requires Converter 2.5
+Optional: splitMultiplePts function requires Connector 2.5
+- Transform : cart2Cyl
+===============================================================================
 Transform 2.4 [29/11/2017]
 Require: C++ compiler, f77 compiler, python > 2.4, numpy > 1.0, KCore 2.4
 Optional: pyTree interface requires Converter 2.4

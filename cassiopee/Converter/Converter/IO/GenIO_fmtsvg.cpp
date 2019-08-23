@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -329,7 +329,6 @@ E_Int K_IO::GenIO::svgread(
             }
             if (reread == true) res = readWord(ptrFile, buf);
             else res = -1;
-
           } // while res >= 0
           found = true;
           res = readGivenKeyword(ptrFile, ">"); // fin du bloc path
@@ -396,7 +395,7 @@ E_Int K_IO::GenIO::svgwrite(
   posx++; posy++; posz++;
 
   // Build writing data format
-  char format1[20], format2[20], format3[20], format4[20];
+  char format1[82], format2[85], format3[84], format4[85];
   char dataFmtl[40];
   strcpy(dataFmtl, dataFmt);
   int l = strlen(dataFmt); 

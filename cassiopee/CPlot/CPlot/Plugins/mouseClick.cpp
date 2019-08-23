@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -275,7 +275,7 @@ int Data::findBlockContaining(double x, double y, double z,
   {
     Zone* zone = _zones[nz];
     if (zone->active == 1 || 
-        (zone->active == 0 && ptrState->ghostifyDeactivatedZones == 1) )
+        (zone->active == 0 && ptrState->ghostifyDeactivatedZones == 1))
     {
       xma = zone->xmax + eps;
       xmi = zone->xmin - eps;
@@ -481,7 +481,7 @@ int findElement(double xp, double yp, double zp,
 {
   int ne = zone->ne;
   int nv = zone->eltSize;
-  double nvi = 1./nv;
+  double nvi = 1./MAX(nv,1);
   int* c = zone->connect;
   double* x = zone->x;
   double* y = zone->y;
@@ -490,7 +490,6 @@ int findElement(double xp, double yp, double zp,
   double xc, yc, zc, dist, dx, dy, dz;
   distMin = 1.e6; 
   int best = 0;
-
   if (zone->eltType != 10) // basic elements
   {
     for (i = 0; i < ne; i++)
@@ -499,9 +498,7 @@ int findElement(double xp, double yp, double zp,
       for (v = 0; v < nv; v++)
       {
         indl = c[i+ne*v]-1;
-        xc += x[indl];
-        yc += y[indl];
-        zc += z[indl];
+        xc += x[indl]; yc += y[indl]; zc += z[indl];
       }
       xc = xc * nvi; yc = yc * nvi; zc = zc * nvi;
       dx = xp-xc; dy = yp-yc; dz = zp-zc;

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -92,12 +92,18 @@ E_Int Triangulator::run
   DELAUNAY::MesherMode mode;
   mode.mesh_mode = mode.TRIANGULATION_MODE;
   mode.do_not_shuffle = do_not_shuffle; 
+  mode.silent_errors = true;
   DELAUNAY::T3Mesher<E_Float> mesher(mode);
   DELAUNAY::MeshData data(Wpos, connectE2b);
   
 #ifdef FLAG_STEP
   tcreate +=c.elapsed();
   c.start();
+#endif
+  
+#if defined(DEBUG_TRIANGULATOR) && defined(DEBUG_MESHER)
+  if (dbg_enabled)
+    mesher.dbg_flag=true;
 #endif
     
   E_Int err = mesher.run(data);
@@ -197,8 +203,8 @@ E_Int Triangulator::__set_connectE2
   const E_Int* p = pNodes;
   for (E_Int i = 0; i < nb_nodes-1; ++i, ++p)
   {
-    E[0]=(*p)-1;
-    E[1]=*(p+1)-1;
+    E[0]=(*p)-index_start;
+    E[1]=*(p+1)-index_start;
     connectE2.pushBack(&E[0], &E[0]+2);
   }
   

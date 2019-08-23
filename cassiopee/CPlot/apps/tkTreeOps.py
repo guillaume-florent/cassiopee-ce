@@ -1,5 +1,6 @@
 # - Tree operations -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -8,8 +9,7 @@ import Converter.Internal as Internal
 import numpy
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 # Cree une liste des bases de l'arbre (optionMenu)
@@ -30,7 +30,7 @@ def updateBaseNameList2(event=None):
     bases = Internal.getBases(CTK.t)
     vars = []
     for b in bases: vars.append(b[0])
-    if WIDGETS.has_key('base'):
+    if 'base' in WIDGETS:
         WIDGETS['base']['values'] = vars
 
 #==============================================================================
@@ -58,7 +58,7 @@ def moveSelection():
         CTK.t = C.addBase2PyTree(CTK.t, baseName, 3)
         base = Internal.getNodesFromName1(CTK.t, baseName)
 
-    base = base[0] 
+    base = base[0]
     CTK.saveTree()
     Z = []
     deletedZoneNames = []
@@ -119,7 +119,7 @@ def moveNodeUp():
 def moveNodeDown():
     if CTK.t == []: return
     node = CTK.TKTREE.getCurrentSelectedNode()
-    if (node[3] == 'CGNSTree_t'): return # Tree node can not move
+    if node[3] == 'CGNSTree_t': return # Tree node can not move
     (p, c) = Internal.getParentOfNode(CTK.t, node)
     if c == len(p[2])-1: return # already last
 
@@ -172,17 +172,17 @@ def showNodeValue(event=None):
     if isinstance(v, float): v = str(v); index = 0
     elif isinstance(v, int): v = str(v); index = 0
     elif isinstance(v, numpy.ndarray):
-        if v.dtype == 'c': v = v.tostring(); index = 0
+        if v.dtype == 'c': v = Internal.getValue(node); index = 0
         else:
             try: vf = v.ravel(order='F')
             except: vf = v.flat
-            if (index >= v.size): index = v.size-1; VARS[1].set(str(index))
+            if index >= v.size: index = v.size-1; VARS[1].set(str(index))
             # Construit une chaine representant le tableau a plat
             if index > 3:
-                if (v.size <= index+1): flatView = ']'
-                elif (v.size <= index+2):
+                if v.size <= index+1: flatView = ']'
+                elif v.size <= index+2:
                     flatView = ' '+str(vf[index+1])+']'
-                elif (v.size <= index+3):
+                elif v.size <= index+3:
                     flatView = ' '+str(vf[index+1])+' '+str(vf[index+2])+']'
                 else:
                     flatView = ' '+str(vf[index+1])+' '+str(vf[index+2])+'...'
@@ -194,10 +194,10 @@ def showNodeValue(event=None):
                 CTK.TXT.insert('START', flatView)
                 
             elif index == 2:
-                if (v.size <= index+1): flatView = ']'
-                elif (v.size <= index+2):
+                if v.size <= index+1: flatView = ']'
+                elif v.size <= index+2:
                     flatView = ' '+str(vf[index+1])+']'
-                elif (v.size <= index+3):
+                elif v.size <= index+3:
                     flatView = ' '+str(vf[index+1])+' '+str(vf[index+2])+']'
                 else:
                     flatView = ' '+str(vf[index+1])+' '+str(vf[index+2])+'...'
@@ -208,11 +208,11 @@ def showNodeValue(event=None):
                 flatView = '['+str(vf[index-2])+' '+str(vf[index-1])+' '
                 CTK.TXT.insert('START', flatView)
                   
-            elif (index == 1):
-                if (v.size <= index+1): flatView = ']'
-                elif (v.size <= index+2):
+            elif index == 1:
+                if v.size <= index+1: flatView = ']'
+                elif v.size <= index+2:
                     flatView = ' '+str(vf[index+1])+']'
-                elif (v.size <= index+3):
+                elif v.size <= index+3:
                     flatView = ' '+str(vf[index+1])+' '+str(vf[index+2])+']'
                 else:
                     flatView = ' '+str(vf[index+1])+' '+str(vf[index+2])+'...'
@@ -223,11 +223,11 @@ def showNodeValue(event=None):
                 flatView = '['+str(vf[index-1])+' '
                 CTK.TXT.insert('START', flatView)
                  
-            elif (index == 0):
-                if (v.size <= index+1): flatView = ']'
-                elif (v.size <= index+2):
+            elif index == 0:
+                if v.size <= index+1: flatView = ']'
+                elif v.size <= index+2:
                     flatView = ' '+str(vf[index+1])+']'
-                elif (v.size <= index+3):
+                elif v.size <= index+3:
                     flatView = ' '+str(vf[index+1])+' '+str(vf[index+2])+']'
                 else:
                     flatView = ' '+str(vf[index+1])+' '+str(vf[index+2])+'...'
@@ -340,7 +340,7 @@ def createApp(win):
     
     #BB = CTK.infoBulle(parent=Frame, text='Operations on pyTree.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)

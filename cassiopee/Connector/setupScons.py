@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
-import os, sys
+import os
 
 #=============================================================================
 # Connector requires:
@@ -36,29 +36,31 @@ libraries = ["connector", "kcore"]
 libraryDirs += paths; libraries += libs
 (ok, libs, paths) = Dist.checkCppLibs([], additionalLibPaths)
 libraryDirs += paths; libraries += libs
+includeDirs = [numpyIncDir, kcoreIncDir]
+ADDITIONALCPPFLAGS=[]
 if mpi:
     libraryDirs.append(mpiLibDir)
-    #includeDirs.append(mpiIncDir)
-    #ADDITIONALCPPFLAGS = ['-D_MPI']
-if mpi: libraries.append('mpi')
-
+    includeDirs.append(mpiIncDir)
+    ADDITIONALCPPFLAGS = ['-D_MPI']
+    if Dist.getSystem()[0] == 'mingw': libraries.append('msmpi')
+    else: libraries.append('mpi')
 
 # setup =======================================================================
 listExtensions = []
 listExtensions.append(
     Extension('Connector.connector',
               sources=['Connector/connector.cpp'],
-              include_dirs=["Connector"]+additionalIncludePaths+[numpyIncDir, kcoreIncDir],
+              include_dirs=["Connector"]+additionalIncludePaths+includeDirs,
               library_dirs=additionalLibPaths+libraryDirs,
               libraries=libraries+additionalLibs,
-              extra_compile_args=Dist.getCppArgs(),
+              extra_compile_args=Dist.getCArgs()+ADDITIONALCPPFLAGS,
               extra_link_args=Dist.getLinkArgs()
               ) )
 
 # setup ======================================================================
 setup(
     name="Connector",
-    version="2.5",
+    version="2.9",
     description="Connector for *Cassiopee* modules.",
     author="Onera",
     package_dir={"":"."},

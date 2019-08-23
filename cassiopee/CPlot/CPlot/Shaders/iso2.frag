@@ -16,8 +16,10 @@ void main()
 {
   float r, g, b, f;
   f = color.r;
-  vec3 val;      
-  val = vec3(texture1D(colormap, alpha*f+beta));
+  vec3 val;
+  f = alpha*f+beta;
+  f = clamp(f, 0.0f, 1.0f);
+  val = vec3(texture1D(colormap, f));
   
   vec4 color2 = vec4(val.r, val.g, val.b, blend);
 

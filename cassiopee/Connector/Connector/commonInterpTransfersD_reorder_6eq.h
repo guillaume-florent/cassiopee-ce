@@ -46,9 +46,9 @@ switch (type)
     break;
     
   case 2: // Structure Lineaire O2 par tetra
-#ifdef _OPENMP4
-    #pragma omp simd
-#endif
+// #ifdef _OPENMP4
+//     #pragma omp simd
+// #endif
     for (E_Int noind = pt_deb; noind < pt_fin; noind++)
     {
       ind000 = donorPts[noind];
@@ -125,9 +125,9 @@ switch (type)
     break;
     
   case 22:// O2CF 2D
-#ifdef _OPENMP4
-    #pragma omp simd
-#endif
+// #ifdef _OPENMP4
+//     #pragma omp simd
+// #endif
     for (E_Int noind = pt_deb; noind < pt_fin; noind++)
     {
       ind00 = donorPts[noind];
@@ -208,9 +208,9 @@ switch (type)
     break;
       
   case 4: // Tetra O2
-#ifdef _OPENM4
-    #pragma omp simd
-#endif
+// #ifdef _OPENM4
+//     #pragma omp simd
+// #endif
     for (E_Int noind = pt_deb; noind < pt_fin; noind++)
     {
       indD0 = donorPts[noind];  //car type 0 est toujour traité en dernier. Sinon noind pas valable

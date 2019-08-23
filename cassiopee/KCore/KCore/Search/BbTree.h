@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -24,6 +24,7 @@
 #include "Fld/ArrayAccessor.h"
 #include "Def/DefContainers.h"
 #include "MeshElement/Triangle.h"
+#include "Nuga/include/macros.h"
 
 namespace K_SEARCH
 {
@@ -87,8 +88,8 @@ public:
   bool is_included(const BoundingBox& rhs){
     for (E_Int i = 0; i < DIM; ++i)
     {
-      if (minB[i] < rhs.minB[i]) return false;
-      if (maxB[i] > rhs.maxB[i]) return false;
+      if (minB[i] + ZERO_M < rhs.minB[i]) return false;
+      if (maxB[i] > rhs.maxB[i] + ZERO_M) return false;
     }
     
     return true;
@@ -113,6 +114,75 @@ public:
     }
 
     return true;
+  }
+  
+  template<typename ng_t>
+  void convert2NG(K_FLD::FloatArray&crd, ng_t& ng)
+  {
+    ng.clear();
+    crd.clear();
+    crd.resize(3, 8);
+    
+    //P0
+    crd(0,0) = minB[0];
+    crd(1,0) = minB[1];
+    crd(2,0) = minB[2];
+    
+    //P1
+    crd(0,1) = maxB[0];
+    crd(1,1) = minB[1];
+    crd(2,1) = minB[2];
+    
+    //P2
+    crd(0,2) = maxB[0];
+    crd(1,2) = maxB[1];
+    crd(2,2) = minB[2];
+    
+    //P3
+    crd(0,3) = minB[0];
+    crd(1,3) = maxB[1];
+    crd(2,3) = minB[2];
+    
+    //P4
+    crd(0,4) = minB[0];
+    crd(1,4) = minB[1];
+    crd(2,4) = maxB[2];
+    
+    //P5
+    crd(0,5) = maxB[0];
+    crd(1,5) = minB[1];
+    crd(2,5) = maxB[2];
+    
+    //P6
+    crd(0,6) = maxB[0];
+    crd(1,6) = maxB[1];
+    crd(2,6) = maxB[2];
+    
+    //P7
+    crd(0,7) = minB[0];
+    crd(1,7) = maxB[1];
+    crd(2,7) = maxB[2];
+    
+    
+    E_Int Q4bot[] =  {1,4,3,2};
+    E_Int Q4top[] =  {5,6,7,8};
+    E_Int Q4left[]=  {1,5,8,4};
+    E_Int Q4right[]= {2,3,7,6};
+    E_Int Q4front[]= {1,2,6,5};
+    E_Int Q4back[]=  {3,4,8,7};
+    
+    ng.PGs.add(4, Q4bot);
+    ng.PGs.add(4, Q4top);
+    ng.PGs.add(4, Q4left);
+    ng.PGs.add(4, Q4right);
+    ng.PGs.add(4, Q4front);
+    ng.PGs.add(4, Q4back);
+    
+    E_Int PH[] = {1,2,3,4,5,6};
+    ng.PHs.add(6, PH);
+    
+    ng.PGs.updateFacets();
+    ng.PHs.updateFacets();
   }
 
   ~BoundingBox()
@@ -178,6 +248,25 @@ public:
   }
   
   ///
+  void compute
+  (const K_FLD::FloatArray& pos)
+  {
+    const E_Float* Pi;
+    for (E_Int i = 0; i < DIM; ++i)
+    {minB[i] = K_CONST::E_MAX_FLOAT; maxB[i] = -K_CONST::E_MAX_FLOAT;}
+
+    for (E_Int i = 0; i < pos.cols(); ++i)
+    {
+      Pi = pos.col(i);
+      for (E_Int j = 0; j < DIM; ++j)
+      {
+        minB[j] = (minB[j] > Pi[j]) ? Pi[j] : minB[j];
+        maxB[j] = (maxB[j] < Pi[j]) ? Pi[j] : maxB[j];
+      }
+    }
+  }
+  
+  ///
   template<typename CoordinateArray_t>
   void compute
   (const CoordinateArray_t& pos, const E_Int* nodes, size_t n, E_Int index_start = 0)
@@ -200,7 +289,7 @@ public:
   ///
   template<typename CoordinateArray_t>
   void compute
-  (const K_FLD::ArrayAccessor<CoordinateArray_t>& pos, const E_Int* nodes, size_t n)
+  (const K_FLD::ArrayAccessor<CoordinateArray_t>& pos, const E_Int* nodes, size_t n, E_Int index_start = 0)
   {
     E_Float Pi[DIM];
     for (E_Int i = 0; i < DIM; ++i)
@@ -208,7 +297,7 @@ public:
 
     for (size_t i = 0; i < n; ++i)
     {
-      pos.getEntry(nodes[i], Pi);
+      pos.getEntry(nodes[i] - index_start, Pi);
       for (E_Int j = 0; j < DIM; ++j)
       {
         minB[j] = (minB[j] > Pi[j]) ? Pi[j] : minB[j];
@@ -239,6 +328,7 @@ class BbTree {
     typedef           BbTree                                self_type;
     typedef           K_CONT_DEF::size_type                 size_type;
     typedef           K_FLD::IntArray                       tree_array_type;
+    typedef           BBoxType                              box_type;
    
 
 #define BBTREE_ROWS 2 // the first row contains the node id, the second(third) contains the left(right) child column id.
@@ -247,12 +337,20 @@ class BbTree {
 
     /// Builds a tree and inserts the boxes from begin to end.
     BbTree(const std::vector<BBoxType*>& boxes, E_Float tolerance=E_EPSILON);
+    
+    template <typename array_t>
+    BbTree(const K_FLD::FloatArray& crd, const array_t& ng, E_Float tolerance);
+    //fixme : hack overload rather than specialization to distinghuish ngon_unit (viso icc 15 compil issue)
+    template <typename array_t>
+    BbTree(const K_FLD::FloatArray& crd, const array_t& pgs);
 
     /// Destructor.
     ~BbTree()
     {
       if (_root_id != 0)
         for (size_t i = _root_id; i < _boxes.size(); ++i) delete _boxes[i];
+      
+      if (_owes_boxes) delete [] _pool;
     };
 
   public: /** Query methods */
@@ -261,7 +359,7 @@ class BbTree {
     /** Warning: out is not cleared upon entry.*/
     void getOverlappingBoxes(const E_Float* minB, const E_Float* maxB, std::vector<size_type>& out) const;
     
-    /// Returns true if an overlapping box is found (flase otherwise).
+    /// Returns true if an overlapping box is found (false otherwise).
     bool hasAnOverlappingBox(const E_Float* minB, const E_Float* maxB) const;
 
     /// Returns all the boxes which intersects the input ray defined by P0 and P1.
@@ -332,6 +430,10 @@ public:
 
     /// 
     size_type                _root_id;
+    
+    ///
+    bool                    _owes_boxes;
+    BBoxType*               _pool;
     
 }; // End class BbTree
 

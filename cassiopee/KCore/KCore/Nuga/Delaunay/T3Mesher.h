@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -30,16 +30,26 @@ template <typename T>
 class T3Mesher
 {
 public:
-  T3Mesher(){}
-  T3Mesher(MesherMode& mode):_mode(mode){}
+  T3Mesher()
+#ifdef DEBUG_MESHER
+   :dbg_flag(false)
+#endif
+  {}
+  T3Mesher(MesherMode& mode):_mode(mode)
+#ifdef DEBUG_MESHER
+   ,dbg_flag(false)
+#endif
+  {}
   ~T3Mesher(void){}
   E_Int run (MeshData& data);
   
   MesherMode& _mode;
-#ifdef DEBUG_MESHER
+#if defined(DEBUG_MESHER)
     public:
       bool dbg_flag;
 #endif
+  public:
+    std::vector<edge_error_t>  _edge_errors;
 };
 
 template <typename T>
@@ -48,19 +58,25 @@ T3Mesher<T>::run (MeshData& data)
 {
   typedef VarMetric<T>          MetricType;
   typedef Mesher<T, MetricType> MesherType;
+    
+  typename MetricType::eInterpType interpol = (_mode.metric_interpol_type == _mode.LINEAR) ?
+                                              MetricType::eInterpType::LINEAR : MetricType::eInterpType::GEOMETRIC;
 
-  MetricType metric(*data.pos, _mode.hmin, _mode.hmax);
+  MetricType metric(*data.pos, _mode.hmin, _mode.hmax, interpol);
 
   //std::cout << data.metrics << std::endl;
   metric.init_metric(data.metrics, *data.pos, *data.connectB, data.hardNodes);
 
   MesherType mesher(metric, _mode);
   
-#ifdef DEBUG_MESHER
+  
+#if defined(DEBUG_MESHER)
   mesher.dbg_flag=dbg_flag;
 #endif
 
   E_Int err = mesher.run (data);
+  
+  _edge_errors = mesher._edge_errors;
 
   return err;
 }

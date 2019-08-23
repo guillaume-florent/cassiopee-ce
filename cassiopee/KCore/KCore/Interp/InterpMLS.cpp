@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -27,7 +27,7 @@ using namespace K_ARRAY;
 extern "C"
 {
   void k6compvolofstructcell_(E_Int& ni, E_Int& nj, E_Int& nk,
-                              E_Int& indcell, E_Float* x,
+                              E_Int& indcell, E_Int& indnode, E_Float* x,
                               E_Float* y, E_Float* z,
                               E_Float& vol);
 
@@ -86,12 +86,12 @@ E_Int K_INTERP::getInterpCoefMLS(E_Int order, E_Int dimPb, E_Int sizeBasis,
 
   // Matrix B = P.TW | (P.TW)ij = pi(xj)*W(X,xj)
   ok = matrixB(nDnrPts, sizeBasis, dnrIndices, xtDnr, ytDnr, ztDnr, order, dimPb, pt, radius, axis, axisConst, &B[0]);
-  if ( ok == -1) return -4;
+  if (ok == -1) return -4;
 
   // Matrix A = P.TW.P | (P.TW.P)ij = sum(k, 1, nDnrPts) pi(xk)*W(X,xk) pj(xk)
   //                      P.TW.P    = sum(k, 1, nDnrPts) p(xk) p(xk).T W(X,xk)
   ok = matrixA(nDnrPts, sizeBasis, dnrIndices, xtDnr, ytDnr, ztDnr, order, dimPb, pt, radius, axis, axisConst, &A[0]);
-  if ( ok == -1) return -3;
+  if (ok == -1) return -3;
 
   // Find rows such as basis(0) != 0
   zeros[0] = 0.; zeros[1] = 0.; zeros[2] = 0.;
@@ -651,12 +651,19 @@ void K_INTERP::findRadius(
   // On met alors le rayon a 1 pour ne pas diviser par 0 ensuite
   for (E_Int i = 0; i < 3; i++)
   {
+    /*
     if (K_FUNC::fEqual(radius[i], 0., 1.e-13) == true)
     {
       radius[i] = 1.;
       //axisConst[i] = 1;
     }
     //else axisConst[i] = 0;
+    */
+    // Tentative pour rendre le code plus portable
+    if (K_FUNC::fEqual(radius[i], 0., 1.e-8) == true)
+    {
+      radius[i] = 1.e-8;
+    }
   }
 
 }
@@ -1048,6 +1055,9 @@ void K_INTERP::getBestDonor(
   vector<E_Int> blkCandidates;
   vector<E_Float> volCandidates;
   E_Int pen;
+  E_Int inddummy=-1;// a laisser absolument a -1 pour k6compvolofstructcell
+
+
   for (E_Int no = 0; no < nDnrZones; no++)
   {
     // donnees du donneur
@@ -1074,13 +1084,12 @@ void K_INTERP::getBestDonor(
       E_Int ni = *(E_Int*)a2[no];
       E_Int nj = *(E_Int*)a3[no];
       E_Int nk = *(E_Int*)a4[no];
-
       // Calcul du volume de la cellule donneuse
       if ((ni==1)||(nj==1)||(nk==1))   // 2D
         k6compsurfofstructcell_(ni, nj, nk, temp,
                                 xtDnr, ytDnr, ztDnr, vol);
       else if ((ni>1)&&(nj>1)&&(nk>1)) //3D
-        k6compvolofstructcell_(ni, nj, nk, temp,
+        k6compvolofstructcell_(ni, nj, nk, inddummy, temp,
                                xtDnr, ytDnr, ztDnr, vol);
       realVol = vol;
       // On penalise la cellule si elle a des voisins de cellN != 1 et si elle est sur le bord

@@ -36,7 +36,8 @@ if [ $? -eq 0 ]; then
     fi
     scons install prefix="$INSTALLPATH" "$SCONSOPT"
     [ $? != 0 ] && exit;
-    touch Transform/transform.cpp
+    #touch Transform/transform.cpp
+    rm -f build/lib.*/Transform/transform.*
     python setupScons.py install --prefix="$INSTALLPATH"
 else
     python setup.py install --prefix="$INSTALLPATH"

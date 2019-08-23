@@ -25,6 +25,7 @@ test.testT(t2,1)
 b = T.merge(t, alphaRef=45.)
 t2 = C.newPyTree(['Surface', 2]); t2[2][1][2] = b
 test.testT(t2,2)
+
 #
 # cas d'angles vifs
 #
@@ -54,4 +55,3 @@ t = C.fillEmptyBCWith(t,'wall','BCWall',dim=3)
 b = T.merge(t, dir=2)
 t = C.newPyTree(['Base']); t[2][1][2] += b
 test.testT(t,4)
-

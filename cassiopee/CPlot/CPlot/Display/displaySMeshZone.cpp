@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -113,7 +113,7 @@ void Data::displaySMeshZone(StructZone* zonep, int zone)
   // Zones 1D: on ajoute les noeuds
   if (nj*nk == 1 || ni*nk == 1 || ni*nj == 1)
   {
-    glBegin(GL_QUADS);  
+    glBegin(GL_QUADS);
     if (zonep->blank == 0)
     {
       // No blanking

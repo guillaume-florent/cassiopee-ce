@@ -3,10 +3,13 @@
 #
 # Python Interface to make basic transformations on pyTrees
 #
-import Transform
-import transform
+from . import Transform
+from . import transform
 import numpy
 __version__ = Transform.__version__
+
+try: range = xrange
+except: pass
 
 try:
     import Converter.PyTree as C
@@ -46,20 +49,12 @@ def _cyl2Cart(t, center, axis):
 def translate(t, transvect):
     """Translate a zone.
     Usage: translate(z, (v1,v2,v3))"""
-    return C.TZGC(t, 'nodes', Transform.translate, transvect)
+    return C.TZGC2(t, Transform.translate, 'nodes', False, transvect)
 
-#def _translate(t, transvect):
-#    """Translate a zone.
-#    Usage: translate(z, (v1,v2,v3))"""
-#    return C._TZGC2(t, 'nodes', Transform._translate, transvect)
-
-# translate in-place + getFromZone
 def _translate(t, transvect):
-    for z in Internal.getZones(t):
-        transform._translate(z, transvect, Internal.__GridCoordinates__, Internal.__FlowSolutionNodes__, Internal.__FlowSolutionCenters__)
-    return None
+    return C.__TZGC2(t, Transform._translate, transvect)
 
-def rotate(a, center, arg1, arg2=None, 
+def rotate(a, center, arg1, arg2=None,
            vectors=[['VelocityX','VelocityY','VelocityZ'],['MomentumX','MomentumY','MomentumZ']]):
     """Rotate a mesh defined by an array around vector n of center Xc
     and of angle teta.
@@ -69,7 +64,7 @@ def rotate(a, center, arg1, arg2=None,
     for vect in vectors:
         if len(vect) == 3:
             loc = 0; vectname=[]
-            for nov in xrange(3):
+            for nov in range(3):
                 spl = vect[nov].split(':')
                 if len(spl) == 2:
                     vectname.append(spl[1])
@@ -78,18 +73,18 @@ def rotate(a, center, arg1, arg2=None,
                 else: vectname.append(spl[0]); loc += 4
             if loc == 3: vectorsC += [vectname]
             elif loc == 12: vectorsN += [vectname]
-    return C.TZA(a, 'both', 'both',
-                 Transform.rotate, Transform.rotate,
-                 center, arg1, arg2, vectorsN,
-                 center, arg1, arg2, vectorsC)
+    return C.TZANW(a, 'both', 'both',
+                   Transform.rotate, Transform.rotate,
+                   center, arg1, arg2, vectorsN,
+                   center, arg1, arg2, vectorsC)
 
-def _rotate(a, center, arg1, arg2=None, 
+def _rotate(a, center, arg1, arg2=None,
             vectors=[['VelocityX','VelocityY','VelocityZ'],['MomentumX','MomentumY','MomentumZ']]):
     vectorsN = []; vectorsC = []
     for vect in vectors:
         if len(vect) == 3:
             loc = 0; vectname=[]
-            for nov in xrange(3):
+            for nov in range(3):
                 spl = vect[nov].split(':')
                 if len(spl) == 2:
                     vectname.append(spl[1])
@@ -98,55 +93,49 @@ def _rotate(a, center, arg1, arg2=None,
                 else: vectname.append(spl[0]); loc += 4
             if loc == 3: vectorsC += [vectname]
             elif loc == 12: vectorsN += [vectname]
-    return C._TZA(a, 'both', 'both',
-                  Transform.rotate, Transform.rotate,
-                  center, arg1, arg2, vectorsN,
-                  center, arg1, arg2, vectorsC)
+    return C._TZANW(a, 'both', 'both',
+                    Transform.rotate, Transform.rotate,
+                    center, arg1, arg2, vectorsN,
+                    center, arg1, arg2, vectorsC)
 
 def homothety(a, center, alpha):
     """Make for a mesh defined by an array an homothety of center Xc and
     of factor alpha.
     Usage: homothety(a, (xc,yc,zc), alpha)"""
-    return C.TZGC(a, 'nodes', Transform.homothety, center, alpha)
+    return C.TZGC2(a, Transform.homothety, 'nodes', False, center, alpha)
 
 def _homothety(a, center, alpha):
-    return C._TZGC(a, 'nodes', Transform.homothety, center, alpha)
+    return C.__TZGC2(a, Transform._homothety, center, alpha)
 
 def contract(a, center, dir1, dir2, alpha):
     """Contract a mesh around a plane defined by (center, dir1, dir2) and of factor alpha.
     Usage: contract(a, (xc,yc,zc), dir1, dir2, alpha)"""
-    return C.TZGC(a, 'nodes', Transform.contract, center, dir1, dir2, alpha)
+    return C.TZGC2(a, Transform.contract, 'nodes', False, center, dir1, dir2, alpha)
 
 def _contract(a, center, dir1, dir2, alpha):
-    return C._TZGC(a, 'nodes', Transform.contract, center, dir1, dir2, alpha)
+    return C.__TZGC2(a, Transform._contract, center, dir1, dir2, alpha)
 
 def scale(a, factor=1.):
-    return C.TZGC(a, 'nodes', Transform.scale, factor)
+    return C.TZGC2(a, Transform.scale, 'nodes', False, factor)
 
 def _scale(a, factor=1.):
-    return C._TZGC(a, 'nodes', Transform.scale, factor)
+    return C.__TZGC2(a, Transform._scale, factor)
 
 def symetrize(a, point, vector1, vector2):
     """Make a symetry of mesh from plane passing by point and of director vector: vector1 and vector2.
     Usage: symetrize(a, (xc,yc,zc), (v1x,v1y,v1z), (v2x,v2y,v2z))"""
-    return C.TZAGC(a, 'both', 'both',
-                   Transform.symetrize, Transform.symetrize,
-                   point, vector1, vector2,
-                   point, vector1, vector2)
+    return C.TZGC2(a, Transform.symetrize, 'nodes', False, point, vector1, vector2)
 
 def _symetrize(a, point, vector1, vector2):
-    return C._TZAGC(a, 'both', 'both',
-                    Transform.symetrize, Transform.symetrize,
-                    point, vector1, vector2,
-                    point, vector1, vector2)
+    return C.__TZGC2(a, Transform._symetrize, point, vector1, vector2)
 
 def perturbate(a, radius, dim=3):
     """Perturbate a mesh randomly of radius
     Usage: perturbate(a, radius, dim)"""
-    return C.TZA(a, 'nodes', 'nodes', Transform.perturbate, None, radius, dim)
+    return C.TZANW(a, 'nodes', 'nodes', Transform.perturbate, None, radius, dim)
 
 def _perturbate(a, radius, dim=3):
-    return C._TZA(a, 'nodes', 'nodes', Transform.perturbate, None, radius, dim)
+    return C._TZANW(a, 'nodes', 'nodes', Transform.perturbate, None, radius, dim)
 
 def smooth(t, eps=0.5, niter=4, type=0, fixedConstraints=[],
            projConstraints=[], delta=1., point=(0,0,0), radius=-1.):
@@ -159,12 +148,12 @@ def smooth(t, eps=0.5, niter=4, type=0, fixedConstraints=[],
 
 def _smooth(t, eps=0.5, niter=4, type=0, fixedConstraints=[],
             projConstraints=[], delta=1., point=(0,0,0), radius=-1.):
-    if (fixedConstraints != []):
+    if fixedConstraints != []:
         c = []
         for z in fixedConstraints:
             c.append(C.getFields(Internal.__GridCoordinates__, z)[0])
         fixedConstraints = c
-    if (projConstraints != []):
+    if projConstraints != []:
         c = []
         for z in projConstraints:
             c.append(C.getFields(Internal.__GridCoordinates__, z)[0])
@@ -175,7 +164,7 @@ def _smooth(t, eps=0.5, niter=4, type=0, fixedConstraints=[],
     coordsp = Transform.smooth(coords, eps, niter, type,
                                fixedConstraints, projConstraints, delta,
                                point, radius)
-    C.setFields(coordsp, t, 'nodes')
+    C.setFields(coordsp, t, 'nodes', writeDim=False)
     return None
 
 def deform(t, vector=['dx','dy','dz']):
@@ -186,8 +175,8 @@ def deform(t, vector=['dx','dy','dz']):
     return tp
 
 def _deform(t, vector=['dx','dy','dz']):
-    if (len(vector) != 3): raise ValueError("deform: 3 variables are required.")
-    return C._TZA(t, 'nodes', 'nodes', Transform.deform, None, vector)
+    if len(vector) != 3: raise ValueError("deform: 3 variables are required.")
+    return C._TZANW(t, 'nodes', 'nodes', Transform.deform, None, vector)
 
 def deformNormals(t, alpha, niter=1):
     """Deform a a surface of alpha times the surface normals.
@@ -260,7 +249,7 @@ def merge(t, sizeMax=1000000000, dir=0, tol=1.e-10, alphaRef=180.):
         for i in res: zones += [C.convertArrays2ZoneNode('zone',[i])]
     else:
         nzones = len(res[0])
-        for noi in xrange(nzones):
+        for noi in range(nzones):
             z = C.convertArrays2ZoneNode('zone',[res[0][noi]])
             z = C.setFields([res[1][noi]], z, 'centers')
             zones += [z]
@@ -271,28 +260,27 @@ def mergeCart(t, sizeMax=1000000000, tol=1.e-10):
     """Merge Cartesian grids defined as a list of zones using Rigby algorithm.
     Usage: mergeCart(t, sizeMax, tol)"""
     allBCInfos = C.extractBCInfo(t)
-    A = C.getAllFields(t, 'nodes')
+    A = C.getAllFields(t, 'nodes',api=2)
     A = Transform.mergeCart(A, sizeMax, tol)
-    zones = []
-    for i in A:
-        zones.append(C.convertArrays2ZoneNode('Cart',[i]))
-    zones = C.identifyBC(zones,allBCInfos)
-    return zones
+    for noz in range(len(A)):
+        A[noz] = C.convertArrays2ZoneNode('Cart',[A[noz]])
+    A = C.identifyBC(A, allBCInfos)
+    return A
 
 def patch(t1, t2, position=None, nodes=None):
+    """Patch mesh2 defined by t2 in mesh1 defined by t1
+    at position (i,j,k).
+    Usage: patch(t1, t2, (i,j,k))"""
     tp1 = Internal.copyRef(t1)
     _patch(tp1, t2, position=position, nodes=nodes)
     return tp1
 
 def _patch(t1, t2, position=None, nodes=None):
-    """Patch mesh2 defined by t2 in mesh1 defined by t1
-    at position (i,j,k).
-    Usage: patch(t1, t2, (i,j,k))"""
     zones1 = Internal.getZones(t1)
     zones2 = Internal.getZones(t2)
     for z1,z2 in zip(zones1,zones2):
-      a2=C.getAllFields(z2, 'nodes')[0]
-      z1[:]=C.TZA(z1, 'nodes', 'nodes', Transform.patch, None, a2 , position, nodes)
+      a2 = C.getAllFields(z2, 'nodes')[0]
+      C._TZA(z1, 'nodes', 'nodes', Transform.patch, None, a2, position, nodes)
     return None
 
 #===============
@@ -310,7 +298,7 @@ def _oneovernBC__(t, N):
             w0 = w0[1]
             i1 = w0[0,0]; j1 = w0[1,0]; k1 = w0[2,0]
             i2 = w0[0,1]; j2 = w0[1,1]; k2 = w0[2,1]
-            addi1=0; addi2=0; addj1=0; addj2=0;addk1=0; addk2=0
+            addi1=0; addi2=0; addj1=0; addj2=0; addk1=0; addk2=0
             i1n = math.floor(1.*(i1-1)/N[0])+1
             i2n = math.floor(1.*(i2-1)/N[0])+1
             j1n = math.floor(1.*(j1-1)/N[1])+1
@@ -368,7 +356,8 @@ def oneovern(t, N):
 def _oneovern(t, N):
     C._TZA(t, 'both', 'both',
            Transform.oneovern, Transform.oneovern, N, 1, N, 0)
-    # oneovern on BCs
+    #C._TZA2(t, Transform.oneovern, 'nodes', 'nodes',  1, N)
+    #C._TZA2(t, Transform.oneovern, 'centers', 'centers', 0, N)
     _oneovernBC__(t, N)
     return None
 
@@ -417,7 +406,7 @@ def isWindowInSubzone__(w, dim, imin, imax, jmin, jmax, kmin, kmax,
     j1 = min(jo1,jo2); j2 = max(jo1,jo2)
     k1 = min(ko1,ko2); k2 = max(ko1,ko2)
     isout = 0
-    if (dim == 2):
+    if dim == 2:
         if ((i1 == i2 and i1 == 1 and imin > 1) or \
             (i1 == i2 and i1 == ni0 and imax < ni0) or \
             (j1 == j2 and j1 == 1 and jmin > 1) or \
@@ -480,9 +469,9 @@ def subzoneBC__(t, z, dim, imin, imax, jmin, jmax, kmin, kmax, \
 # Subzone la GridConnectivity de type BCOverlap
 def subzoneGC__(z, dim, imin, imax, jmin, jmax, kmin, kmax, \
                 dim0, nip, njp, nkp, ni0, nj0, nk0):
-    nodes = Internal.getNodesFromType(z, 'GridConnectivity_t')
-    if (nodes == []): return z
-    ranges = []
+    nodes = Internal.getNodesFromType2(z, 'GridConnectivity_t')
+    if nodes == []: return z
+    ranges = []; ddDnrs = []; bcnames = []
     for i in nodes:
         pr = Internal.getNodeFromName1(i, 'PointRange')
         if pr is None: break
@@ -490,12 +479,18 @@ def subzoneGC__(z, dim, imin, imax, jmin, jmax, kmin, kmax, \
                                     imin, imax, jmin, jmax, kmin, kmax,
                                     ni0, nj0, nk0)
 
-        r = Internal.getNodesFromType(i, 'GridConnectivityType_t')
+        r = Internal.getNodeFromType1(i, 'GridConnectivityType_t')
         (parent, d) = Internal.getParentOfNode(z, i)
-        if r != []:
-            val = Internal.getValue(r[0])
-            if (val == 'Overset'):
-                if (isout == 0):
+        if r is not None:
+            val = Internal.getValue(r)
+            if val == 'Overset':
+                if isout == 0:
+                    DDDnrName=None
+                    for UDN in Internal.getNodesFromType1(i,'UserDefinedData_t'):
+                        if Internal.getNodeFromName1(UDN,'doubly_defined') is not None:
+                            DDDnrName=Internal.getValue(i)
+                            break
+
                     w0 = pr[1]
                     range0 = getBCRange__(w0, imin, imax, jmin, jmax, kmin, kmax)
                     notvalid = 0
@@ -514,8 +509,15 @@ def subzoneGC__(z, dim, imin, imax, jmin, jmax, kmin, kmax, \
                             elif kmin == kmax and (kmin == 1 or kmin == nkp):
                                 range0 = [range0[0], range0[1], range0[2], range0[3],1,1]
                         ranges.append(range0)
+                        ddDnrs.append(DDDnrName)
+                        bcnames.append(Internal.getName(i))
     C._rmBCOfType(z, 'BCOverlap')
-    for r in ranges: C._addBC2Zone(z,C.getBCName('overlap'), 'BCOverlap', r)
+    for nor in range(len(ranges)):
+        if ddDnrs[nor] is None:
+            C._addBC2Zone(z,C.getBCName('overlap'), 'BCOverlap', ranges[nor])
+        else: # doubly defined
+            C._addBC2Zone(z,C.getBCName(bcnames[nor]),'BCOverlap', wrange=ranges[nor],\
+                          zoneDonor=[ddDnrs[nor]], rangeDonor='doubly_defined')
     return z
 
 def subzone(t, minIndex, maxIndex=(), type=None):
@@ -534,7 +536,7 @@ def subzoneUnstruct__(t, indices, type):
         fb = C.getFields(Internal.__FlowSolutionCenters__, z)[0]
         if fa != []: fc = Converter.addVars([fc, fa])
         if fb == []: # no flow sol at centers
-            nodes =Transform.subzone(fc, indices, type=type)
+            nodes = Transform.subzone(fc, indices, type=type)
             C.setFields([nodes], z, 'nodes')
         else:
             if dimz[0]=='Structured': # faceList as global indices of structured interfaces
@@ -556,7 +558,7 @@ def subzoneUnstruct__(t, indices, type):
                 else:
                     [nodes, centers] = Transform.transform.subzoneUnstructBoth(fc, fb, indices)
                     C.setFields([nodes], z, 'nodes')
-                    C.setFields([centers], z, 'centers')                   
+                    C.setFields([centers], z, 'centers')
         z[0] = C.getZoneName(z[0])
     return tp
 
@@ -592,7 +594,7 @@ def subzoneStruct__(t, minIndex, maxIndex):
         z2 = subzoneGC__(z2, dim, imin, imax, jmin, jmax, kmin, kmax, \
                          dimt0[4], dimt0[1], dimt0[2], dimt0[3], ni0, nj0, nk0)
         noz += 1
-        if parent is not None: 
+        if parent is not None:
             if Internal.isStdNode(t2) == 0: parent[nb] = z2
             else: parent[2][nb] = z2
         else: t2 = z2
@@ -607,36 +609,34 @@ def _reorderBC__(t, order):
     nodes = Internal.getZones(t)
     for z in nodes:
         dim = Internal.getZoneDim(z)
-        if (dim[0] == 'Structured' and len(order) == 3):
+        if dim[0] == 'Structured' and len(order) == 3:
             oi = order[0]; oj = order[1]; ok = order[2]
             wins = Internal.getNodesFromType(z, 'BC_t')
             for w in wins:
-                (parent, d) = Internal.getParentOfNode(z, w)
-                w0 = Internal.getNodeFromName1(w, 'PointRange')[1]
-                range0 = reorderIndices__(w0, dim, oi, oj, ok)
+                w0 = Internal.getNodeFromName1(w, 'PointRange')
+                range0 = reorderIndices__(w0[1], dim, oi, oj, ok)
                 r2 = Internal.window2Range(range0)
-                parent[2][d][2][0][1] = r2
+                w0[1] = r2
     return None
 
-# Reorder du range d un BCOverlap dans le cas ou
+# Reorder du range d'une BCOverlap dans le cas ou
 # la zone contenant ce BCOverlap est reordonnee
 def _reorderBCOverlap__(a, order):
     nodes = Internal.getZones(a)
     for z in nodes:
         dim = Internal.getZoneDim(z)
-        if (dim[0] == 'Structured' and len(order) == 3):
+        if dim[0] == 'Structured' and len(order) == 3:
             oi = order[0]; oj = order[1]; ok = order[2]
             connect = Internal.getNodesFromType(z, 'GridConnectivity_t')
             for i in connect:
                 pr = Internal.getNodeFromName1(i, 'PointRange')
                 r = Internal.getNodesFromType(i, 'GridConnectivityType_t')
-                (parent, d) = Internal.getParentOfNode(i, pr)
                 if r != []:
                     val = Internal.getValue(r[0])
                     if val == 'Overset':
-                        range0 = reorderIndices__(pr[1],dim,oi,oj,ok)
+                        range0 = reorderIndices__(pr[1], dim, oi, oj, ok)
                         r2 = Internal.window2Range(range0)
-                        parent[2][d][1] = r2
+                        pr[1] = r2
     return None
 
 def reorderIndices__(w0, dim, oi, oj, ok):
@@ -708,8 +708,8 @@ def reorderTrirac__(transfo, order=[1,2,3]):
     OM = numpy.zeros((nt,nt), numpy.int32) # matrice transposee de order:  son inverse
     BM = numpy.zeros((nt,nt), numpy.int32) # T.R^-1 pour reordonner la transfo
     from numpy import linalg
-    for i in xrange(nt):
-        for j in xrange(nt):
+    for i in range(nt):
+        for j in range(nt):
             a = transfo[j]
             if abs(a) == i+1:
                 if a > 0: TM[i,j] = 1
@@ -723,11 +723,11 @@ def reorderTrirac__(transfo, order=[1,2,3]):
     BM = numpy.dot(TM,OM)
     trirac = [1,2,3]
     if nt == 2: trirac = [1,2]
-    for i in xrange(nt):
-        for j in xrange(nt):
+    for i in range(nt):
+        for j in range(nt):
             if BM[j,i] > 0: trirac[i] = j+1
             elif BM[j,i] < 0: trirac[i] = -(j+1)
-    for i in xrange(nt): transfo[i] = trirac[i]
+    for i in range(nt): transfo[i] = trirac[i]
     return transfo
 
 def reorderTriracOpp__(transfo, order=[1,2,3]):
@@ -736,8 +736,8 @@ def reorderTriracOpp__(transfo, order=[1,2,3]):
     OM = numpy.zeros((nt,nt), numpy.int32) # matrice transposee de order appliquee a z1:  son inverse
     BM = numpy.zeros((nt,nt), numpy.int32) # R.T pour reordonner la transfo
     from numpy import linalg
-    for i in xrange(nt):
-        for j in xrange(nt):
+    for i in range(nt):
+        for j in range(nt):
             a = transfo[j]
             if abs(a) == i+1:
                 if a > 0: TM[i,j] = 1
@@ -750,11 +750,11 @@ def reorderTriracOpp__(transfo, order=[1,2,3]):
     BM = numpy.dot(OM,TM)
     trirac = [1,2,3]
     if nt == 2: trirac = [1,2]
-    for i in xrange(nt):
-        for j in xrange(nt):
+    for i in range(nt):
+        for j in range(nt):
             if BM[j,i] > 0: trirac[i] = j+1
             elif BM[j,i] < 0: trirac[i] = -(j+1)
-    for i in xrange(nt): transfo[i] = trirac[i]
+    for i in range(nt): transfo[i] = trirac[i]
     return transfo
 
 # Reorder in a the PointRange for zones and the PointRangeDonor for donor zones of name in zoneNames
@@ -787,10 +787,10 @@ def _reorderBCNearMatch__(a, order, zoneNames):
                             for nmratio in nmratios:
                                 (parent,d) = Internal.getParentOfNode(cn, nmratio)
                                 triracnm = numpy.zeros((3), numpy.int32)
-                                for i in xrange(3): triracnm[i] = i+1
+                                for i in range(3): triracnm[i] = i+1
                                 triracnm = reorderTrirac__(triracnm,[abs(oi),abs(oj),abs(ok)])
                                 nmr = nmratio[1]
-                                for i in xrange(3): nmr[i] = nmr[triracnm[i]-1]
+                                for i in range(3): nmr[i] = nmr[triracnm[i]-1]
                             break
 
                     # modif du PointRangeDonor si la donor est dans la liste
@@ -860,7 +860,7 @@ def _reorderBCMatch__(a, order, zoneNames):
                             transfos = Internal.getNodesFromName1(cn, 'Transform')
                             for transfo in transfos:
                                 (parent, d) = Internal.getParentOfNode(cn, transfo)
-                                trirac=reorderTriracOpp__(transfo[1],order)
+                                trirac = reorderTriracOpp__(transfo[1],order)
                                 parent[2][d][1] = trirac
                             break
     return None
@@ -1032,13 +1032,13 @@ def _makeCartesianXYZ(t):
             elif abs(dz_k) > 0.: dirk = 3
             dirs = [0,0,0]
             if diri == 1: dirs[0] = 1
-            elif diri==2: dirs[1] = 1 
+            elif diri==2: dirs[1] = 1
             else: dirs[2] = 1
             if dirj == 1: dirs[0] = 2
-            elif dirj==2: dirs[1] = 2 
+            elif dirj==2: dirs[1] = 2
             else: dirs[2] = 2
             if dirk == 1: dirs[0] = 3
-            elif dirk==2: dirs[1] = 3 
+            elif dirk==2: dirs[1] = 3
             else: dirs[2] = 3
             _reorder(z,(dirs[0], dirs[1], dirs[2]))
             dims = Internal.getZoneDim(z)
@@ -1069,18 +1069,33 @@ def _makeDirect(t):
     for z in zones:
         dim = Internal.getZoneDim(z)
         if dim[0] == 'Structured':
-            i = dim[1]/2; j = dim[2]/2; k = dim[3]/2
+            i = dim[1]//2; j = dim[2]//2; k = dim[3]//2
             i = max(i,1); j = max(j,1); k = max(k,1)
             ip1 = i+1; jp1 = j+1; kp1 = k+1
             ip1 = min(ip1,dim[1]); jp1 = min(jp1,dim[2]); kp1 = min(kp1,dim[3])
-            P0 = C.getValue(z, Internal.__GridCoordinates__, (i,j,k))
-            P1 = C.getValue(z, Internal.__GridCoordinates__, (ip1,j,k))
-            P2 = C.getValue(z, Internal.__GridCoordinates__, (i,jp1,k))
-            P3 = C.getValue(z, Internal.__GridCoordinates__, (i,j,kp1))
+
+            P0 = [] ; P1 = [] ; P2 = [] ; P3 = []
+
+            x0 = C.getValue(z,'CoordinateX',(i,j,k)) ; P0.append(x0)
+            y0 = C.getValue(z,'CoordinateY',(i,j,k)) ; P0.append(y0)
+            z0 = C.getValue(z,'CoordinateZ',(i,j,k)) ; P0.append(z0)
+
+            x1 = C.getValue(z,'CoordinateX',(ip1,j,k)) ; P1.append(x1)
+            y1 = C.getValue(z,'CoordinateY',(ip1,j,k)) ; P1.append(y1)
+            z1 = C.getValue(z,'CoordinateZ',(ip1,j,k)) ; P1.append(z1)
+
+            x2 = C.getValue(z,'CoordinateX',(i,jp1,k)) ; P2.append(x2)
+            y2 = C.getValue(z,'CoordinateY',(i,jp1,k)) ; P2.append(y2)
+            z2 = C.getValue(z,'CoordinateZ',(i,jp1,k)) ; P2.append(z2)
+
+            x3 = C.getValue(z,'CoordinateX',(i,j,kp1)) ; P3.append(x3)
+            y3 = C.getValue(z,'CoordinateY',(i,j,kp1)) ; P3.append(y3)
+            z3 = C.getValue(z,'CoordinateZ',(i,j,kp1)) ; P3.append(z3)
+
             l1 = Vector.sub(P1,P0); ln1 = Vector.norm2(l1)
             l2 = Vector.sub(P2,P0); ln2 = Vector.norm2(l2)
             l3 = Vector.sub(P3,P0); ln3 = Vector.norm2(l3)
-            if (ln1 > 0 and ln2 > 0 and ln3 > 0):
+            if ln1 > 0 and ln2 > 0 and ln3 > 0:
                 c = Vector.cross(l1,l2)
                 c = Vector.dot(c,l3)
                 if c < 0: _reorder(z, (1,2,-3))
@@ -1129,7 +1144,7 @@ def _projectAllDirs(t1, t2, vect=['nx','ny','nz'], oriented=0):
     a1 = Converter.extractVars(a1,['CoordinateX','CoordinateY','CoordinateZ']+vect)
     a2 = C.getFields(Internal.__GridCoordinates__, t2)
     res = Transform.projectAllDirs(a1, a2, vect, oriented)
-    for noz in xrange(len(zones)):
+    for noz in range(len(zones)):
         C.setFields([res[noz]], zones[noz], 'nodes')
     return None
 
@@ -1145,12 +1160,12 @@ def _projectDir(t1, t2, dir, smooth=0, oriented=0): # t1 is modified
     a1 = C.getFields(Internal.__GridCoordinates__, zones)
     a2 = C.getFields(Internal.__GridCoordinates__, t2)
     res = Transform.projectDir(a1, a2, dir, smooth, oriented)
-    for noz in xrange(len(zones)):
+    for noz in range(len(zones)):
         C.setFields([res[noz]], zones[noz], 'nodes')
     return None
 
 def projectOrtho(t1, t2):
-    """Project a surface array onto surface arrays orthogonally.
+    """Project a surface t1 onto surface t2 orthogonally.
     Usage: projectOrtho(t1, t2)"""
     t = Internal.copyRef(t1)
     _projectOrtho(t, t2)
@@ -1161,7 +1176,7 @@ def _projectOrtho(t1, t2): # t1 is modified
     a1 = C.getFields(Internal.__GridCoordinates__, zones)
     a2 = C.getFields(Internal.__GridCoordinates__, t2)
     res = Transform.projectOrtho(a1, a2)
-    for noz in xrange(len(zones)):
+    for noz in range(len(zones)):
         C.setFields([res[noz]], zones[noz], 'nodes')
     return None
 
@@ -1177,7 +1192,7 @@ def _projectOrthoSmooth(t1, t2, niter=1): # t1 is modified
     a1 = C.getFields(Internal.__GridCoordinates__, zones)
     a2 = C.getFields(Internal.__GridCoordinates__, t2)
     res = Transform.projectOrthoSmooth(a1, a2, niter)
-    for noz in xrange(len(zones)):
+    for noz in range(len(zones)):
         C.setFields([res[noz]], zones[noz], 'nodes')
     return None
 
@@ -1193,39 +1208,39 @@ def _projectRay(t1, t2, Pt): # t1 is modified
     a1 = C.getFields(Internal.__GridCoordinates__, zones)
     a2 = C.getFields(Internal.__GridCoordinates__, t2)
     res = Transform.projectRay(a1, a2, Pt)
-    for noz in xrange(len(zones)):
+    for noz in range(len(zones)):
         C.setFields([res[noz]], zones[noz], 'nodes')
     return None
 
 # Split au milieu
 def splitSize__(z, N, zoneName, multigrid, dirs):
     dim = Internal.getZoneDim(z)
-    if (dim[0] == 'Unstructured'):
-        print 'Warning: splitSize: unstructured zone not treated.'
+    if dim[0] == 'Unstructured':
+        print('Warning: splitSize: unstructured zone not treated.')
         return [z]
-    if (dim[0] == 'Structured'):
+    if dim[0] == 'Structured':
         ni = dim[1]; nj = dim[2]; nk = dim[3]
-        if (ni*nj*nk > N):
+        if ni*nj*nk > N:
             dirl = Transform.getSplitDir__(ni, nj, nk, dirs)
-            if (dirl == 1):
+            if dirl == 1:
                 ns = Transform.findMGSplit__(ni, level=multigrid)
-                if (ns > 0):
+                if ns > 0:
                     z[0] = C.getZoneName(zoneName)
                     z1 = subzone(z, (1,1,1), (ns,nj,nk))
                     z[0] = C.getZoneName(zoneName)
                     z2 = subzone(z, (ns,1,1), (ni,nj,nk))
                 else: return [z]
-            elif (dirl == 2):
+            elif dirl == 2:
                 ns = Transform.findMGSplit__(nj, level=multigrid)
-                if (ns > 0):
+                if ns > 0:
                     z[0] = C.getZoneName(zoneName)
                     z1 = subzone(z, (1,1,1), (ni,ns,nk))
                     z[0] = C.getZoneName(zoneName)
                     z2 = subzone(z, (1,ns,1), (ni,nj,nk))
                 else: return [z]
-            elif (dirl == 3):
+            elif dirl == 3:
                 ns = Transform.findMGSplit__(nk, level=multigrid)
-                if (ns > 0):
+                if ns > 0:
                     z[0] = C.getZoneName(zoneName)
                     z1 = subzone(z, (1,1,1), (ni,nj,ns))
                     z[0] = C.getZoneName(zoneName)
@@ -1233,7 +1248,7 @@ def splitSize__(z, N, zoneName, multigrid, dirs):
                 else: return [z]
             else:
                 ns = Transform.findMGSplit__(ni, level=multigrid)
-                if (ns > 0):
+                if ns > 0:
                     z[0] = C.getZoneName(zoneName)
                     z1 = subzone(z, (1,1,1), (ns,nj,nk))
                     z[0] = C.getZoneName(zoneName)
@@ -1247,34 +1262,34 @@ def splitSize__(z, N, zoneName, multigrid, dirs):
 # Split decentre
 def splitSizeUp__(z, N, zoneName, multigrid, dirs):
     dim = Internal.getZoneDim(z)
-    if (dim[0] == 'Unstructured'):
-        print 'Warning: splitSize: unstructured zone not treated.'
+    if dim[0] == 'Unstructured':
+        print('Warning: splitSize: unstructured zone not treated.')
         return [z]
-    if (dim[0] == 'Structured'):
+    if dim[0] == 'Structured':
         ni = dim[1]; nj = dim[2]; nk = dim[3]
         nij = ni*nj; nik = ni*nk; njk = nj*nk
-        if (ni*nj*nk > N):
+        if ni*nj*nk > N:
             dirl = Transform.getSplitDir__(ni, nj, nk, dirs)
 
-            if (dirl == 1):
+            if dirl == 1:
                 ns = Transform.findMGSplitUp__(ni, int(N/njk), level=multigrid)
-                if (ns > 0):
+                if ns > 0:
                     z[0] = C.getZoneName(zoneName)
                     z1 = subzone(z, (1,1,1), (ns,nj,nk))
                     z[0] = C.getZoneName(zoneName)
                     z2 = subzone(z, (ns,1,1), (ni,nj,nk))
                 else: return [z]
-            elif (dirl == 2):
+            elif dirl == 2:
                 ns = Transform.findMGSplitUp__(nj, int(N/nik), level=multigrid)
-                if (ns > 0):
+                if ns > 0:
                     z[0] = C.getZoneName(zoneName)
                     z1 = subzone(z, (1,1,1), (ni,ns,nk))
                     z[0] = C.getZoneName(zoneName)
                     z2 = subzone(z, (1,ns,1), (ni,nj,nk))
                 else: return [z]
-            elif (dirl == 3):
+            elif dirl == 3:
                 ns = Transform.findMGSplitUp__(nk, int(N/nij), level=multigrid)
-                if (ns > 0):
+                if ns > 0:
                     z[0] = C.getZoneName(zoneName)
                     z1 = subzone(z, (1,1,1), (ni,nj,ns))
                     z[0] = C.getZoneName(zoneName)
@@ -1282,7 +1297,7 @@ def splitSizeUp__(z, N, zoneName, multigrid, dirs):
                 else: return [z]
             else:
                 ns = Transform.findMGSplitUp__(ni, int(N/njk), level=multigrid)
-                if (ns > 0):
+                if ns > 0:
                     z[0] = C.getZoneName(zoneName)
                     z1 = subzone(z, (1,1,1), (ns,nj,nk))
                     z[0] = C.getZoneName(zoneName)
@@ -1296,7 +1311,7 @@ def splitSizeUp__(z, N, zoneName, multigrid, dirs):
 # Return the number of cells in zone
 def getNCells(z):
     dim = Internal.getZoneDim(z)
-    if (dim[0] == 'Unstructured'): return dim[2]
+    if dim[0] == 'Unstructured': return dim[2]
     else:
         ni = dim[1]; nj = dim[2]; nk = dim[3]
         ni1 = max(1, ni-1); nj1 = max(1, nj-1); nk1 = max(1, nk-1)
@@ -1311,13 +1326,12 @@ def splitSizeUpR__(t, N, R, multigrid, dirs, minPtsPerDir):
         for z in zones:
             dim = Internal.getZoneDim(z)
             if dim[0] == 'Unstructured':
-                print 'Warning: splitSize: unstructured zone not treated.'
+                print('Warning: splitSize: unstructured zone not treated.')
             if dim[0] == 'Structured':
                 ni = dim[1]; nj = dim[2]; nk = dim[3]
                 ni1 = max(1, ni-1); nj1 = max(1, nj-1); nk1 = max(1, nk-1)
                 SP.append((ni1*nj1*nk1,z,b)); Nl += ni1*nj1*nk1
-    if (N == 0): N = Nl*1. / R
-    #print 'average cells ', N
+    if N == 0: N = Nl*1. / R
     from operator import itemgetter
 
     # Init le vecteur des ressources
@@ -1333,6 +1347,143 @@ def splitSizeUpR__(t, N, R, multigrid, dirs, minPtsPerDir):
         base = SP[0][2]
         dim = Internal.getZoneDim(a)
         ni = dim[1]; nj = dim[2]; nk = dim[3]
+        ni1 = max(1, ni-1); nj1 = max(1, nj-1); nk1 = max(1, nk-1)
+        nik = ni1*nk1; njk = nj1*nk1; nij = ni1*nj1
+        Nr = min(N, N-Rs[0])
+        ncells = ni1*nj1*nk1
+        if ncells > Nr:
+            # Calcul le meilleur split
+            nc = int(round(Nr*1./njk,0))+1
+            ns = Transform.findMGSplitUp__(ni, nc, level=multigrid)
+            if ns-1 < mins: ns = 5
+            delta1 = ns-1
+            delta2 = ni-ns
+            if delta2 < mins: delta2 -= 1.e6
+            delta3 = abs((ns-1)*njk - Nr)/njk
+            deltai = delta3-delta1-delta2
+            nc = int(round(Nr*1./nik,0))+1
+            ns = Transform.findMGSplitUp__(nj, nc, level=multigrid)
+            if ns-1 < mins: ns = 5
+            delta1 = ns-1
+            delta2 = nj-ns
+            if delta2 < mins: delta2 -= 1.e6
+            delta3 = abs(ni1*(ns-1)*nk1 - Nr)/nik
+            deltaj = delta3-delta1-delta2
+            nc = int(round(Nr*1./nij,0))+1
+            ns = Transform.findMGSplitUp__(nk, nc, level=multigrid)
+            if ns-1 < mins: ns = 5
+            delta1 = ns-1
+            delta2 = nk-ns
+            if delta2 < mins: delta2 -= 1.e6
+            delta3 = abs(ni1*nj1*(ns-1) - Nr)/nij
+            deltak = delta3-delta1-delta2
+            dirl = 1
+            if (deltai <= deltaj  and deltai <= deltak):
+                if (1 in dirs): dirl = 1
+                elif (deltaj <= deltak and 2 in dirs): dirl = 2
+                elif (3 in dirs): dirl = 3
+            elif (deltaj <= deltai and deltaj <= deltak):
+                if (2 in dirs): dirl = 2
+                elif (deltai <= deltak and 1 in dirs): dirl = 1
+                elif (3 in dirs): dirl = 3
+            elif (deltak <= deltai and deltak <= deltaj):
+                if (3 in dirs): dirl = 3
+                elif (deltai <= deltaj and 1 in dirs): dirl = 1
+                elif (2 in dirs): dirl = 2
+
+            trynext = 1
+            if dirl == 1:
+                nc = int(round(Nr*1./njk,0))+1
+                ns = Transform.findMGSplitUp__(ni, nc, level=multigrid)
+                if (ns-1 >= mins and ni-ns >= mins):
+                    a1 = subzone(a, (1,1,1), (ns,nj,nk))
+                    a2 = subzone(a, (ns,1,1), (ni,nj,nk))
+                    SP[0] = (getNCells(a2), a2, base)
+                    out += [a1, base]; Rs[0] += getNCells(a1)
+                    trynext = 0
+            elif dirl == 2:
+                nc = int(round(Nr*1./nik,0))+1
+                ns = Transform.findMGSplitUp__(nj, nc, level=multigrid)
+                if (ns-1 >= mins and nj-ns >= mins):
+                    a1 = subzone(a, (1,1,1), (ni,ns,nk))
+                    a2 = subzone(a, (1,ns,1), (ni,nj,nk))
+                    SP[0] = (getNCells(a2), a2, base)
+                    out += [a1, base]; Rs[0] += getNCells(a1)
+                    trynext = 0
+            elif dirl == 3:
+                nc = int(round(Nr*1./nij,0))+1
+                ns = Transform.findMGSplitUp__(nk, nc, level=multigrid)
+                if (ns-1 >= mins and nk-ns >= mins):
+                    a1 = subzone(a, (1,1,1), (ni,nj,ns))
+                    a2 = subzone(a, (1,1,ns), (ni,nj,nk))
+                    SP[0] = (getNCells(a2), a2, base)
+                    out += [a1, base]; Rs[0] += getNCells(a1)
+                    trynext = 0
+            if trynext == 1:
+                out += [a, base]; Rs[0] += getNCells(a); del SP[0]
+        else:
+            out += [a, base]; Rs[0] += getNCells(a); del SP[0]
+
+    # Suppression des zones des bases
+    for b in bases:
+        rem = []
+        for i in b[2]:
+            if i[3] != 'Zone_t': rem.append(i)
+        b[2] = rem
+
+    # Remises dans les bonnes bases
+    l = len(out)//2
+    for i in range(l):
+        zone = out[2*i]
+        base = out[2*i+1]
+        base[2] += [zone]
+
+    #print 'ress:', Rs
+    #Tot = 0
+    #for i in Rs: Tot += i
+    #print 'Tot', Tot
+    return t
+
+# Split size decentre avec ressources
+def splitSizeUpR_OMP__(t, N, R, multigrid, dirs, minPtsPerDir):
+    ific = 0
+    bases = Internal.getBases(t)
+    SP = []; Nl = 0
+    zsplit = []
+    for b in bases:
+        zones = Internal.getNodesFromType1(b, 'Zone_t')
+        for z in zones:
+            dim = Internal.getZoneDim(z)
+            if dim[0] == 'Unstructured':
+                print('Warning: splitSize: unstructured zone not treated.')
+            if dim[0] == 'Structured':
+                ni = dim[1]-2*ific; nj = dim[2]-2*ific; nk = dim[3]-2*ific
+                ni1 = max(1, ni-1); nj1 = max(1, nj-1); nk1 = max(1, nk-1)
+                SP.append((ni1*nj1*nk1,[z[0],[ni,nj,nk]])); Nl += ni1*nj1*nk1
+                zsplit.append(([1,ni1,1,nj1,1,nk1],(ni,nj,nk),z[0],"master",z[0]))
+
+    if N == 0: N = Nl*1. / R
+    #print 'average cells ', N
+    from operator import itemgetter
+
+    # Init le vecteur des ressources
+    Rs = [0]*R
+    Thread_z=[([0],1,[])]
+    for ith in range(2,R+1): Thread_z.append(([0],ith,[])) # Thread_z = [Nbpoints,ithread,corresponding work]
+
+    mins = minPtsPerDir-1 # nbre de cellules mini des blocs par direction
+
+    out = []
+    nbl = 0
+    while len(SP) > 0:
+        SP = sorted(SP, key=itemgetter(0), reverse=True)
+        Rs = sorted(Rs)
+        Thread_z = sorted(Thread_z, key=itemgetter(0))
+        #print 'ress', Rs[0], C.getNCells(SP[0][1])
+        a = SP[0][1] # le plus gros
+        dim = a[1]
+
+        ni = dim[0]; nj = dim[1]; nk = dim[2]
         ni1 = max(1, ni-1); nj1 = max(1, nj-1); nk1 = max(1, nk-1)
         nik = ni1*nk1; njk = nj1*nk1; nij = ni1*nj1
         Nr = min(N, N-Rs[0])
@@ -1364,73 +1515,175 @@ def splitSizeUpR__(t, N, R, multigrid, dirs, minPtsPerDir):
             delta3 = abs(ni1*nj1*(ns-1) - Nr)/nij
             deltak = delta3-delta1-delta2
             dirl = 1
-            if (deltai <= deltaj  and deltai <= deltak):
-                if (1 in dirs): dirl = 1
-                elif (deltaj <= deltak and 2 in dirs): dirl = 2
-                elif (3 in dirs): dirl = 3
-            elif (deltaj <= deltai and deltaj <= deltak):
-                if (2 in dirs): dirl = 2
-                elif (deltai <= deltak and 1 in dirs): dirl = 1
-                elif (3 in dirs): dirl = 3
-            elif (deltak <= deltai and deltak <= deltaj):
+#            if (deltai <= deltaj  and deltai <= deltak):
+#                if (1 in dirs): dirl = 1
+#                elif (deltaj <= deltak and 2 in dirs): dirl = 2
+#                elif (3 in dirs): dirl = 3
+#            elif (deltaj <= deltai and deltaj <= deltak):
+#                if (2 in dirs): dirl = 2
+#                elif (deltai <= deltak and 1 in dirs): dirl = 1
+#                elif (3 in dirs): dirl = 3
+#            elif (deltak <= deltai and deltak <= deltaj):
+#                if (3 in dirs): dirl = 3
+#                elif (deltai <= deltaj and 1 in dirs): dirl = 1
+#                elif (2 in dirs): dirl = 2
+#
+            if (deltak <= deltai and deltak <= deltaj):            # Favor k split over j and i
                 if (3 in dirs): dirl = 3
                 elif (deltai <= deltaj and 1 in dirs): dirl = 1
                 elif (2 in dirs): dirl = 2
+            elif (deltaj <= deltai and deltaj <= deltak):          # then try j split
+                if (2 in dirs): dirl = 2
+                elif (deltai <= deltak and 1 in dirs): dirl = 1
+                elif (3 in dirs): dirl = 3
+            elif (deltai <= deltaj  and deltai <= deltak):         # and i split if needed
+                if (1 in dirs): dirl = 1
+                elif (deltaj <= deltak and 2 in dirs): dirl = 2
+                elif (3 in dirs): dirl = 3
+
 
             trynext = 1
-            if (dirl == 1):
-                nc = int(round(Nr*1./njk,0))+1
-                ns = Transform.findMGSplitUp__(ni, nc, level=multigrid)
-                if (ns-1 >= mins and ni-ns >= mins):
-                    a1 = subzone(a, (1,1,1), (ns,nj,nk))
-                    a2 = subzone(a, (ns,1,1), (ni,nj,nk))
-                    SP[0] = (getNCells(a2), a2, base)
-                    out += [a1, base]; Rs[0] += getNCells(a1)
-                    trynext = 0
-            elif (dirl == 2):
-                nc = int(round(Nr*1./nik,0))+1
-                ns = Transform.findMGSplitUp__(nj, nc, level=multigrid)
-                if (ns-1 >= mins and nj-ns >= mins):
-                    a1 = subzone(a, (1,1,1), (ni,ns,nk))
-                    a2 = subzone(a, (1,ns,1), (ni,nj,nk))
-                    SP[0] = (getNCells(a2), a2, base)
-                    out += [a1, base]; Rs[0] += getNCells(a1)
-                    trynext = 0
-            elif (dirl == 3):
+
+            if dirl == 3:
                 nc = int(round(Nr*1./nij,0))+1
                 ns = Transform.findMGSplitUp__(nk, nc, level=multigrid)
                 if (ns-1 >= mins and nk-ns >= mins):
-                    a1 = subzone(a, (1,1,1), (ni,nj,ns))
-                    a2 = subzone(a, (1,1,ns), (ni,nj,nk))
-                    SP[0] = (getNCells(a2), a2, base)
-                    out += [a1, base]; Rs[0] += getNCells(a1)
+                    #a1 = subzone(a, (1,1,1), (ni,nj,ns))
+                    #a2 = subzone(a, (1,1,ns), (ni,nj,nk))
+                    a1 = ["leafl"+str(('%05d' % nbl)),[ni,nj,ns]]
+                    a2 = ["leafr"+str(('%05d' % nbl)),[ni,nj,nk-ns+1]]
+                    SP[0] = ((ni-1)*(nj-1)*(nk-ns),a2)
+                    nbl=nbl+1
+                    Rs[0] += (ni-1)*(nj-1)*(ns-1)
+                    Thread_z[0][0][0] += (ni-1)*(nj-1)*(ns-1)
+                    Thread_z[0][2].append(a1[0])
                     trynext = 0
-            if (trynext == 1):
-                out += [a, base]; Rs[0] += getNCells(a); del SP[0]
+            elif dirl == 2:
+                nc = int(round(Nr*1./nik,0))+1
+                ns = Transform.findMGSplitUp__(nj, nc, level=multigrid)
+                if (ns-1 >= mins and nj-ns >= mins):
+                    #a1 = subzone(a, (1,1,1), (ni,ns,nk))
+                    #a2 = subzone(a, (1,ns,1), (ni,nj,nk))
+                    #SP[0] = (getNCells(a2), a2, base)
+                    a1 = ["leafl"+str(('%05d' % nbl)),[ni,ns,nk]]
+                    a2 = ["leafr"+str(('%05d' % nbl)),[ni,nj-ns+1,nk]]
+                    SP[0] = ((ni-1)*(nj-ns)*(nk-1),a2)
+                    nbl=nbl+1
+                    Rs[0] += (ni-1)*(ns-1)*(nk-1)
+                    Thread_z[0][0][0] += (ni-1)*(ns-1)*(nk-1)
+                    Thread_z[0][2].append(a1[0])
+                    trynext = 0
+            elif dirl == 1:
+                nc = int(round(Nr*1./njk,0))+1
+                ns = Transform.findMGSplitUp__(ni, nc, level=multigrid)
+                if (ns-1 >= mins and ni-ns >= mins):
+                    #a1 = subzone(a, (1,1,1), (ns,nj,nk))
+                    #a2 = subzone(a, (ns,1,1), (ni,nj,nk))
+                    #SP[0] = (getNCells(a2), a2, base)
+                    a1 = ["leafl"+str(('%05d' % nbl)),[ns,nj,nk]]
+                    a2 = ["leafr"+str(('%05d' % nbl)),[ni-ns+1,nj,nk]]
+                    SP[0] = ((ni-ns)*(nj-1)*(nk-1),a2)
+                    nbl=nbl+1
+                    Rs[0] += (ns-1)*(nj-1)*(nk-1);
+                    Thread_z[0][0][0] += (ns-1)*(nj-1)*(nk-1)
+                    Thread_z[0][2].append(a1[0])
+                    trynext = 0
+
+            if ((dirl>=1)&(trynext==0)):
+                test=[s for s in zsplit if a[0] in s]
+
+                dima1=a1[1]
+                dima2=a2[1]
+
+                if(test != []):
+
+                    indexleft  = numpy.zeros(6, numpy.int32)
+                    indexright = numpy.zeros(6, numpy.int32)
+                    indexfather=test[0][0]
+                    dimfather  =test[0][1]
+
+
+                    indexleft[0]=indexfather[0];indexleft[1]=indexfather[1]
+                    indexleft[2]=indexfather[2];indexleft[3]=indexfather[3]
+                    indexleft[4]=indexfather[4];indexleft[5]=indexfather[5]
+
+                    indexright[0]=indexfather[0];indexright[1]=indexfather[1]
+                    indexright[2]=indexfather[2];indexright[3]=indexfather[3]
+                    indexright[4]=indexfather[4];indexright[5]=indexfather[5]
+
+                    if(dima1[0] != dimfather[0]):
+                        indexleft[1]  = indexleft[0] + dima1[0] -2-2*ific
+                        indexright[0] = indexleft[1] + 1
+                    if(dima1[1] != dimfather[1]):
+                        indexleft[3]  = indexleft[2] + dima1[1] -2-2*ific
+                        indexright[2] = indexleft[3] + 1
+                    if(dima1[2] != dimfather[2]):
+                        indexleft[5]  = indexleft[4] + dima1[2] -2-2*ific
+                        indexright[4] = indexleft[5] + 1
+
+                    zsplit.append(([ indexleft[0] ,indexleft[1] ,indexleft[2] ,indexleft[3], indexleft[4], indexleft[5]],(dima1[0]-2*ific,dima1[1]-2*ific,dima1[2]-2*ific),a1[0],a[0],test[0][4]))
+                    zsplit.append(([indexright[0],indexright[1],indexright[2],indexright[3],indexright[4],indexright[5]],(dima2[0]-2*ific,dima2[1]-2*ific,dima2[2]-2*ific),a2[0],a[0],test[0][4]))
+
+            if trynext == 1:
+                Thread_z[0][0][0] += (a[1][0]-1)*(a[1][1]-1)*(a[1][2]-1)
+                Thread_z[0][2].append(a[0])
+                Rs[0] += (a[1][0]-1)*(a[1][1]-1)*(a[1][2]-1); del SP[0]
+
         else:
-            out += [a, base]; Rs[0] += getNCells(a); del SP[0]
+            Rs[0] += (a[1][0]-1)*(a[1][1]-1)*(a[1][2]-1); del SP[0]
+            Thread_z[0][0][0] += (a[1][0]-1)*(a[1][1]-1)*(a[1][2]-1)
+            Thread_z[0][2].append(a[0])
 
-    # Suppression des zones des bases
+    zomp_threads={}
+
+    for z in zones:
+        th={}
+        for r in range(1,R+1):
+            th[r]=[]
+        zomp_threads[z[0]]=th
+
+    for ith, listth in enumerate(Thread_z): # get the subzone list for each threads
+        for zleaf in enumerate(Thread_z[ith][2]):
+            zind= [s for s in zsplit if zleaf[1] in s[2][:] ] # get the indexes
+            zomp_threads[zind[0][4]][ith+1].append((zleaf[1],zind[0][0]))
+
+
+    t=C.addVars(t,'centers:thread_number')
+    t=C.addVars(t,'centers:thread_subzone')
+    bases = Internal.getBases(t)
     for b in bases:
-        rem = []
-        for i in b[2]:
-            if (i[3] != 'Zone_t'): rem.append(i)
-        b[2] = rem
+        zones = Internal.getNodesFromType1(b, 'Zone_t')
+        for z in zones:
+            solverParam=Internal.createChild(z,'.Solver#Param','UserDefinedData_t',value=None,children=[],pos=-1)
+            ompthread  =Internal.createChild(solverParam,  'omp_threads'  ,'UserDefinedData_t',value=None,children=[],pos=-1)
+            sol  = Internal.getNodeFromName1(z, 'FlowSolution#Centers')
+            solth=Internal.getNodeFromName1(sol, 'thread_number')
+            solsz=Internal.getNodeFromName1(sol, 'thread_subzone')
+            for i in range(1,R+1):
+                thnode=[]
+                thnode=Internal.createChild(ompthread,str(i),'UserDefinedData_t',value=None,children=[],pos=-1)
+                isb=0
+                for ilisth in range(0,len(zomp_threads[z[0]][i])):
+                    isb=isb+1
+                    if (zomp_threads[z[0]][i][ilisth][1] != []):
+                        Internal.createChild(thnode,'subzone'+str(isb),'DataArray_t',value=zomp_threads[z[0]][i][ilisth][1],children=[],pos=-1)
+                        ind=zomp_threads[z[0]][i][ilisth][1]
+                        l=0
+                        for iths in range(ind[0]-1,ind[1]):
+                            for jths in range(ind[2]-1,ind[3]):
+                                for kths in range(ind[4]-1,ind[5]):
+                                    solth[1][iths][jths][kths]=i
+                                    solsz[1][iths][jths][kths]=isb
 
-    # Remises dans les bonnes bases
-    l = len(out)/2
-    for i in xrange(l):
-        zone = out[2*i]
-        base = out[2*i+1]
-        base[2] += [zone]
-
-    #print 'ress:', Rs
-    #Tot = 0
-    #for i in Rs: Tot += i
-    #print 'Tot', Tot
+    print ('ress:', Rs)
+    Tot = 0
+    for i in Rs: Tot += i
+    print ('Tot', Tot)
+    print ("Imbalance",min(Rs)/(max(Rs)*1.0))
     return t
 
-def splitNParts__(zones, N, multigrid, dirs, recoverBC):
+
+def splitNParts__(zones, N, multigrid, dirs, recoverBC, splitDict={}):
     # Fait des paquets de zones structurees et NGON
     zonesS = []; zonesN = []
     NpS = []; NpN = [] # nbre de points
@@ -1442,11 +1695,10 @@ def splitNParts__(zones, N, multigrid, dirs, recoverBC):
             zonesS.append(z)
             NpS.append(dim[1]*dim[2]*dim[3])
             NeS.append(max(dim[1]-1,1)*max(dim[2]-1,1)*max(dim[3]-1,1))
-        elif dim[3] == 'NGON':
+        else:
             zonesN.append(z)
             NpN.append(dim[1])
             NeN.append(dim[2])
-        else: outO.append(z)
 
     SumS = 0.; SumN = 0.
     for i in NeS: SumS += i
@@ -1455,19 +1707,21 @@ def splitNParts__(zones, N, multigrid, dirs, recoverBC):
     alpha = N*1./(SumS+SumN)
     NbN = len(NeN) # nbre de grilles non structurees
     NPart = [0]*(NbN+1); Nt = 0
-    for i in xrange(NbN): NPart[i] = max(int(alpha*NeN[i]),1); Nt += NPart[i]
+    for i in range(NbN): NPart[i] = max(int(alpha*NeN[i]),1); Nt += NPart[i]
     if SumS != 0: NPart[NbN] = max(N-Nt,1)
     else: NPart[NbN-1] = max(N-Nt+NPart[NbN-1], 1)
 
     # Blocs non structures
     outN = []
-    for i in xrange(len(zonesN)):
+    for i in range(len(zonesN)):
         outL = []
         z = zonesN[i]
         a = C.getFields(Internal.__GridCoordinates__, z)[0]
         if NPart[i] > 1:
             if recoverBC: bcs = C.getBCs(z)
-            elts = transform.splitNGon(a, NPart[i])
+            if dim[3] == 'NGON':
+                elts = transform.splitNGon(a, NPart[i])
+            else: elts = transform.splitElement(a, NPart[i])
             for e in elts:
                 zL = subzone(z, e, type='elements')
                 if recoverBC: C._recoverBCs(zL, bcs)
@@ -1475,13 +1729,14 @@ def splitNParts__(zones, N, multigrid, dirs, recoverBC):
         else: outL.append(z)
         outN.append(outL)
 
+    # Blocs structures
     l = len(zonesS)
     if l == 0: return outN+outO
     NPa = NPart[NbN]
     Ns = Transform.findNsi__(l, NPa, NpS)
 
     outS = []
-    for i in xrange(l):
+    for i in range(l):
         outL = []
         a = zonesS[i]
         dimL = Internal.getZoneDim(a)
@@ -1489,11 +1744,12 @@ def splitNParts__(zones, N, multigrid, dirs, recoverBC):
         splits = Transform.findSplits__(ni, nj, nk, Ns[i], dirs, multigrid)
         for j in splits:
             a1 = subzone(a, (j[0],j[2],j[4]), (j[1],j[3],j[5]))
+            splitDict[a1[0]] = [a[0], j[0], j[1], j[2], j[3], j[4], j[5]]
             outL.append(a1)
         outS.append(outL)
     return outS+outN+outO
 
-def splitNParts(t, N, multigrid=0, dirs=[1,2,3], recoverBC=True):
+def splitNParts(t, N, multigrid=0, dirs=[1,2,3], recoverBC=True, splitDict={}):
     """Split zones in t in N parts.
     Usage: splitNParts(t, N, multigrid, dirs)"""
     tp = Internal.copyRef(t)
@@ -1503,11 +1759,11 @@ def splitNParts(t, N, multigrid=0, dirs=[1,2,3], recoverBC=True):
         C._deleteGridConnectivity__(tp, type='BCOverlap', kind='other') # enleve BCOverlap non autoattach
     else:
         C._deleteZoneBC__(tp)
-        C._deleteGridConnectivity__(tp,kind='all')
+        C._deleteGridConnectivity__(tp, kind='all')
 
     tpp, typen = Internal.node2PyTree(tp)
     zones = Internal.getZones(tpp)
-    allZones = splitNParts__(zones, N, multigrid, dirs, recoverBC)
+    allZones = splitNParts__(zones, N, multigrid, dirs, recoverBC, splitDict)
     bases = Internal.getBases(tpp)
     noc = 0
     for b in bases:
@@ -1820,9 +2076,9 @@ def splitMultiplePts__(tp, dim):
                 if val == 'Abutting':
                     range0 = Internal.getNodeFromName1(bc, 'PointRange')
                     r = range0[1]; [i1,i2,j1,j2,k1,k2] = Internal.range2Window(r)
-                    for k in xrange(k1-1,k2):
-                        for j in xrange(j1-1,j2):
-                            for i in xrange(i1-1,i2):
+                    for k in range(k1-1,k2):
+                        for j in range(j1-1,j2):
+                            for i in range(i1-1,i2):
                                 ind = i + j *ni + k *ninj
                                 taga[1][0,ind] += 1
         # BC match

@@ -1,6 +1,6 @@
 from KCore.config import *
 import os
-USURP = True
+USURP = False
 dirName = os.path.dirname(__file__)+'/Post'
 
 #==============================================================================
@@ -13,8 +13,9 @@ cpp_srcs = ["Post/coarsen.cpp",
             "Post/selectCellCenters.cpp",
             "Post/selectInteriorFaces.cpp",
             "Post/selectExteriorFaces.cpp",
-            "Post/selectExteriorElts.cpp",
             "Post/selectExteriorFacesStructured.cpp",
+            "Post/selectExteriorElts.cpp",
+            "Post/exteriorEltsStructured.cpp",
             "Post/frontFaces.cpp",
             "Post/integ.cpp",
             "Post/integNorm.cpp",
@@ -22,9 +23,12 @@ cpp_srcs = ["Post/coarsen.cpp",
             "Post/integMoment.cpp",
             "Post/integMomentNorm.cpp",
             "Post/computeVariables.cpp",
+            "Post/computeVariables2.cpp",
             "Post/computeGrad.cpp",
             "Post/computeGrad2.cpp",
             "Post/computeNormGrad.cpp",
+            "Post/computeDiv.cpp",
+            "Post/computeDiv2.cpp",
             "Post/computeCurl.cpp",
             "Post/computeNormCurl.cpp",
             "Post/perlinNoise.cpp",
@@ -55,6 +59,7 @@ cpp_srcs = ["Post/coarsen.cpp",
             "Post/isoLine.cpp",
             "Post/isoSurf.cpp",
             "Post/isoSurfMC.cpp",
+            "Post/isoSurfNGon.cpp",
             "Post/computeDiff.cpp",
             "Post/computeIndicatorValue.cpp",
             "Post/enforceIndicatorNearBodies.cpp",
@@ -63,7 +68,7 @@ cpp_srcs = ["Post/coarsen.cpp",
             "Post/sharpEdges.cpp",
             "Post/silhouette.cpp"]
 
-if (USURP == True and f90compiler != "None" and os.access(dirName+'/usurp', os.F_OK) == True):
+if USURP == True and f90compiler != "None" and os.access(dirName+'/usurp', os.F_OK) == True:
     cpp_srcs.append("Post/usurp.cpp")
     cpp_srcs += ["Post/usurp/Ctype.cpp",
                  "Post/usurp/Gpc.cpp",
@@ -99,6 +104,10 @@ for_srcs = ['Post/Fortran/IntegStructF.for',
             'Post/Fortran/CompUnstrGradF.for',
             'Post/Fortran/CompUnstrGrad2DF.for',
             'Post/Fortran/CompUnstrGrad1DF.for',
+            'Post/Fortran/CompStructDivF.for',
+            'Post/Fortran/CompStructDiv2DF.for',
+            'Post/Fortran/CompUnstrDivF.for',
+            'Post/Fortran/CompUnstrDiv2DF.for',
             'Post/Fortran/CompStructCurlF.for',
             'Post/Fortran/CompStructCurl2DF.for',
             'Post/Fortran/CompUnstrCurlF.for',

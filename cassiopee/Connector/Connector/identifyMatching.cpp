@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -66,7 +66,7 @@ PyObject* K_CONNECTOR::identifyMatchingP(PyObject* self, PyObject* args)
   E_Boolean skipNoCoord = true;
   E_Boolean skipStructured = false;
   E_Boolean skipUnstructured = false;
-  E_Boolean skipDiffVars = true;
+  E_Boolean skipDiffVars = false;//true;
   E_Int isOk = K_ARRAY::getFromArrays(
     listOfAllWins, resl, structVarString, unstrVarString,
     structF, unstrF, nit, njt, nkt, cnt, eltTypet, objst, objut, 
@@ -300,7 +300,7 @@ PyObject* K_CONNECTOR::identifyMatchingP(PyObject* self, PyObject* args)
           E_Float ecart_rel_vol = ecart_abs_vol/voltR[indR];
           ecart_rel_vol = K_FUNC::E_max(ecart_rel_vol, ecart_abs_vol/voltD[indD]);
 
-          if ( dist2 < tolmatch2)
+          if (dist2 < tolmatch2)
           {
             if (ecart_rel_vol<0.05)
             {
@@ -309,7 +309,7 @@ PyObject* K_CONNECTOR::identifyMatchingP(PyObject* self, PyObject* args)
               tagDnrp[indgopp] = 1;
             } 
           }
-          else if ( dist2 < tolmatchg2)
+          else if (dist2 < tolmatchg2)
           {
             if (ecart_rel_vol<0.15)
             {
@@ -381,7 +381,7 @@ PyObject* K_CONNECTOR::identifyMatching(PyObject* self, PyObject* args)
   E_Boolean skipNoCoord = true;
   E_Boolean skipStructured = false;
   E_Boolean skipUnstructured = false;
-  E_Boolean skipDiffVars = true;
+  E_Boolean skipDiffVars = false;//true;
 
   E_Int isOk = K_ARRAY::getFromArrays(
     listOfAllWins, resl, structVarString, unstrVarString,
@@ -509,7 +509,7 @@ PyObject* K_CONNECTOR::identifyMatching(PyObject* self, PyObject* args)
     PyObject* tpl = K_ARRAY::buildArray(nfld, structVarString[noz],
                                         nit[noz], njt[noz], nkt[noz]);
     E_Float* fp = K_ARRAY::getFieldPtr(tpl);
-    FldArrayF ftemp0(npts,nfld, fp, true); ftemp0 = *structF[noz];
+    FldArrayF ftemp0(npts, nfld, fp, true); ftemp0 = *structF[noz];
     fields.push_back(fp); sizeOfFields.push_back(npts);
     PyList_Append(l, tpl); Py_DECREF(tpl);
   }
@@ -609,7 +609,7 @@ PyObject* K_CONNECTOR::identifyMatchingNM(PyObject* self, PyObject* args)
   E_Boolean skipNoCoord = true;
   E_Boolean skipStructured = false;
   E_Boolean skipUnstructured = true;
-  E_Boolean skipDiffVars = true;
+  E_Boolean skipDiffVars = false;//true;
 
   E_Int isOk = K_ARRAY::getFromArrays(
     listOfAllWinsR, reslR, structVarStringR, unstrVarStringR,

@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -415,7 +415,8 @@ void HRayClipper2D<Connectivity_t>::__intersect_hray
 {
   //
   nbands = 1; // number of bands covering the polygon
-  C0 = nrays+2;//lowest band color : initialize to a max value
+  C0 = nrays+2;//lowest band color for this polygon
+  E_Int C1 = -1; // greatest band color for this polygon ==> nband = C1 - C0
 
   E_Int Ni, Nip1, Nstart, nr, Cb/*bottom ray color*/, Ct/*top ray color*/, Cbi;
   E_Float dcol, u[2], Pt[2], uyinv;
@@ -429,23 +430,23 @@ void HRayClipper2D<Connectivity_t>::__intersect_hray
   {
     Nstart = Ni = *(pK+i)-_index_start; //Nstart == first edge index == inital Ni (in case of reverse Ni becomes Nip1)
     Nip1 = *(pK+(i+1)%nK)-_index_start;
-    
+
     // work with Ni as lowest color
     reversed = (colors[Nip1] < colors[Ni]);
     if (reversed)
       std::swap(Ni, Nip1);
-    
+
     Cbi = E_Int(colors[Ni]);                                         //bottom ray for Ni
     Cb  = std::min(Cbi, E_Int(colors[Nip1]));                        //botom ray for this edge
     Ct  = std::max(E_Int(colors[Ni]+0.5), E_Int(colors[Nip1]+0.5));  //top ray for this edge
 
     C0 = std::min(Cb, C0);
-    nbands = std::max(Ct-C0, nbands);
-    
+    C1 = std::max(Ct, C1);
+
     if ((Cb == Ct) && (Cbi==Cb))// lying on the same ray (will be recovered by clipping automatically)
       continue;
 
-    Pt[0]=xs[Nstart]; 
+    Pt[0]=xs[Nstart];
     Pt[1]=ys[Nstart];
 
     refine_crd.pushBack(Pt,Pt+2);
@@ -491,6 +492,9 @@ void HRayClipper2D<Connectivity_t>::__intersect_hray
       }
     }
   }
+  
+  nbands = std::max(C1-C0, nbands);
+  
 }
 
 #define zMIN(a,b) ((a<b) ? a: b)
@@ -510,7 +514,11 @@ void HRayClipper2D<Connectivity_t>::__clip
     const E_Int& Ni = p;
     const E_Int& Nip1 = (p+1)%sz;
     E_Int col = zMIN(colors[Ni],colors[Nip1]) - C0;
-    //assert ((col > -1) && (col < nbands));
+
+#ifdef DEBUG_CLIP
+    assert ((col > -1) && (col < nbands));
+#endif
+
     E_Int* n = _clip_data[col]._n;
     E_Int& c = _clip_data[col].count;
     n[c]=Ni; n[c+1]=Nip1;

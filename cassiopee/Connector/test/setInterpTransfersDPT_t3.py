@@ -2,7 +2,6 @@
 import Converter.PyTree as C
 import Generator.PyTree as G
 import Connector.PyTree as X
-import Geom.PyTree as D
 import Post.PyTree as P
 import numpy as N
 import Dist2Walls.PyTree as DTW

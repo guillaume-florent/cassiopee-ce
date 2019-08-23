@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -530,7 +530,6 @@
   // Pour les lignes
   if (ni*nj == 1 || ni*nk == 1 || nj*nk == 1)
   {
-    //glLineWidth(3.);
     glPolygonOffset(-1.,-10.); // force offset
     glBegin(GL_LINES);
     int nie, nje, nke;
@@ -569,5 +568,4 @@
           }
     }
     glEnd();
-    //glLineWidth(1.);
   }

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -55,7 +55,6 @@ glEnable(GL_CULL_FACE);
 glCullFace(GL_FRONT);
 //glEnable(GL_POLYGON_OFFSET_FILL);
 //glPolygonOffset(1.1, 4);
-ptrState->lockDisplay();
 if (ptrState->dim != 1)
 {
   displaySSolid(); displayUSolid();

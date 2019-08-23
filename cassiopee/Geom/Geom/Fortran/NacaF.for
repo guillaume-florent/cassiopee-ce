@@ -1,5 +1,5 @@
 C  
-C    Copyright 2013-2017 Onera.
+C    Copyright 2013-2019 Onera.
 C
 C    This file is part of Cassiopee.
 C
@@ -22,7 +22,7 @@ C  ===========================================================================
 C
 C naca avec fermeture de Van Rouzaud
 C
-      SUBROUTINE k6naca1( e, npt, x, y, z)
+      SUBROUTINE k6naca1(e, npt, x, y, z)
 C
       IMPLICIT NONE
 C

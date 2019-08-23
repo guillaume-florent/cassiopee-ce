@@ -1,18 +1,18 @@
 include ../Make.inc
 
-OBJCpp = CppDynamicBuffer.o
-OBJC = CDynamicBuffer.o
-OBJF = FDynamic.o
+OBJ1 = test_shared_ptr.o
+OBJ2 = test_vector_view.o
+OBJ3 = test_pending_message_container.o
 
-default:	CppDynamicBuffer.exe CDynamicBuffer.exe FDynamic.exe
+default:	test_pending_message_container.exe  test_shared_ptr.exe  test_vector_view.exe	
 
-CppDynamicBuffer.exe: $(OBJCpp)
+test_pending_message_container.exe: $(OBJ3)
 	$(CXX) -o $@ $< $(LINK) 
 
-CDynamicBuffer.exe: $(OBJC)
+test_shared_ptr.exe: $(OBJ1)
 	$(CC) -o $@ $<   $(LINK)
 
-FDynamic.exe: $(OBJF)
+test_vector_view.exe: $(OBJ2)
 	$(F77) -o $@ $<  $(LINK)
 
 cleanall:

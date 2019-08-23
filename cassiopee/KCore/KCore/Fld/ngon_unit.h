@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -47,19 +47,39 @@ class ngon_unit
     ///
     ngon_unit():_dirty(true){};
     ///
-    ngon_unit (const E_Int* begin);
+    explicit ngon_unit (const E_Int* begin);//Cassiopee format
     ///
     ngon_unit(const ngon_unit& ngin);
+    /// 
+    ngon_unit(const E_Int* begin, E_Int sz, E_Int nbe);
         
     /// ngon_unit& operator=(const Vector_t<E_Int>& vNGON);
     ngon_unit& operator=(const ngon_unit& ngin);
-    
+    ///
+    E_Float operator[](const E_Int i){return _NGON[i];}
     /// Refresh the facets starts.
     void updateFacets() const;
     
     /// memory
-    void reserve (E_Int sz){_NGON.reserve(sz); _facet.reserve(sz); _type.reserve(sz); _ancEs.reserve(2, sz);}
+    void reserve (E_Int sz){_NGON.reserve(sz); _facet.reserve(sz); _type.reserve(sz); _ancEs.reserve(2, sz);} //fixme : wrong for _NGON
     
+    void expand_n_fixed_stride (E_Int n, E_Int strd){
+      E_Int sz0 = _facet.size();
+      _NGON.resize(_NGON.size() + n*(strd+1), strd) ; _facet.resize(sz0 + n) ; 
+      if (!_type.empty()) _type.resize(_type.size() + n) ;
+      if (_ancEs.cols()!=0) _ancEs.resize(2, _ancEs.cols() + n);
+//      E_Int pos = _facet[sz0-1] + strd+1;
+//      // set the facets pos
+//      for (E_Int i=0; i< n; ++i, pos += strd+1)
+//        _facet[sz0 + i] = pos;
+
+      _NGON[0] += n;
+      _NGON[1] = _NGON.size() - 2;
+      // the following update has been added since the commented block above doesn't work in Basic element mode.
+      _dirty=true;
+      updateFacets(); 
+    }
+    E_Int capacity(){return _NGON.capacity();}
     // Interrogations
     /// Returns the number of facets for the i-th PH(PG)  (ArrayAccessor interface)
     inline E_Int stride(E_Int i) const {return _NGON[_facet[i]];}
@@ -80,6 +100,8 @@ class ngon_unit
     E_Int get_facets_max_id() const ;
     ///
     void get_indices_of_type (E_Int FLAG, Vector_t<E_Int>& indices) const;
+
+    void get_stride_extrema(E_Int& mins, E_Int& maxs) const;
     ///
     void flag_indices_of_type (E_Int FLAG, Vector_t<bool>& flag) const;
     ///
@@ -91,6 +113,9 @@ class ngon_unit
     void extract (const E_Int* ptr, E_Int n, ngon_unit& ng_out, Vector_t<E_Int>& oids) const;
     ///
     void extract_of_type (E_Int FLAG, ngon_unit& ng_out, Vector_t<E_Int>& oldIds) const;
+    /// 
+    template <typename Predicate_t>
+    void extract_by_predicate (const Predicate_t& P, ngon_unit& ngo, Vector_t<E_Int>& oids, Vector_t<E_Int>& nids) const;
     
     // Transformations
     ///
@@ -114,10 +139,14 @@ class ngon_unit
     ///
     E_Int remove_entities (const Vector_t<E_Int>& to_remove, Vector_t<E_Int>& nids);
     ///
-    void remove_facets(const Vector_t<E_Int>& facet_ids, Vector_t<E_Int>& nids, E_Int min_facets_nb=0); //0-based nids
+    E_Int remove_facets(const Vector_t<E_Int>& facet_ids, Vector_t<E_Int>& nids, E_Int min_facets_nb=0); //0-based nids
     
     ///
     void shift(E_Int shift);
+    
+    /// 
+    void sort_by_type(Vector_t<E_Int>& nids, Vector_t<E_Int>& oids) const;
+    
     ///
     template <typename T>
     static void shift(Vector_t<T>& vec, const T& val){for (size_t i = 0; i < vec.size(); ++i)vec[i]+=val;}
@@ -132,13 +161,15 @@ class ngon_unit
     void add(E_Int n, const E_Int* facet_ptr);
 
     //check
-    bool is_fixed_stride(E_Int& stride);
-    bool is_consistent() const ;
+    bool is_fixed_stride(E_Int& stride) const;
+    bool attributes_are_consistent() const ;
     
     /// Conversions
 
     /// convert a fixed-stride storage to a ngon_unit storage : work only for polygons and tetrahedra
     static void convert_fixed_stride_to_ngon_unit(const K_FLD::IntArray&cnt, E_Int shift, ngon_unit& nguo);
+    /// reciprocal 
+    static void convert_ngon_unit_to_fixed_stride(const ngon_unit& ngui, E_Int shift, K_FLD::IntArray& cnto);
 
     // tranfer attributes for a reduced set (tipically an agglomeration)
     void compact_attributes(const ngon_unit& ngi, const Vector_t<E_Int>& nids);
@@ -178,6 +209,77 @@ void ngon_unit::add (const Container_t<Element, Allocator_t>& molecule)
   
   if (!_dirty )
     _facet.push_back(_NGON.size()-molecule.size());
+}
+
+///
+template <typename Predicate_t>
+void ngon_unit::extract_by_predicate (const Predicate_t& P, ngon_unit& ngo, Vector_t<E_Int>& oids, Vector_t<E_Int>& nids) const
+{
+  // 0-based indices
+  
+  size_t sz = size();
+  assert (_type.size() == sz);
+  
+  oids.clear();
+  
+  updateFacets();
+  
+  nids.clear();
+  nids.resize(sz, E_IDX_NONE);
+  
+  ngo.clear();
+  
+  // resize
+  E_Int nb_ents = 0;
+  E_Int cumul_stride = 0;
+  for (size_t i = 0; i < sz; ++i){
+    if (P(i)){
+      ++nb_ents;
+      cumul_stride += stride(i);
+    }
+  }
+  
+  if (nb_ents == 0) return;
+  
+  oids.resize(nb_ents);
+  
+  ngo._NGON.resize(2 + cumul_stride + nb_ents, 0);
+  ngo._facet.resize(nb_ents);
+  
+  bool update_types = !_type.empty();
+  if (update_types) ngo._type.resize(nb_ents);
+  bool update_ancs = (_ancEs.cols() != 0);
+  if (update_ancs) ngo._ancEs.resize(2, nb_ents);
+  ngo._dirty = false;
+  
+  // fill it
+  E_Int pos(2);
+  nb_ents = 0;
+  for (size_t i = 0; i < _type.size(); ++i)
+  {
+    if (!P(i)) continue;
+    
+    oids[nb_ents] = i;
+    nids[i] = nb_ents;
+    
+    ngo._facet[nb_ents] = pos;
+
+    E_Int s = stride(i);
+    ngo._NGON[pos++] = s;
+
+    const E_Int* ptr = get_facets_ptr(i);
+    std::copy(ptr, ptr + s, &ngo._NGON[pos]);
+
+    pos += s;
+
+    if (update_types) ngo._type[nb_ents]=_type[i];
+    if (update_ancs) ngo._ancEs.pushBack(_ancEs.col(i), _ancEs.col(i) + 2);
+
+    ngo._NGON[0] = ++nb_ents; 
+  }
+  
+  ngo._NGON[1] = ngo._NGON.size() - 2;
+  
 }
 
 #ifdef DEBUG_BOOLEAN

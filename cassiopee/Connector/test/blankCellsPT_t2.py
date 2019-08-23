@@ -4,18 +4,17 @@ import Converter.PyTree as C
 import Connector.PyTree as X
 import Generator.PyTree as G
 import Geom.PyTree as D
-import Transform.PyTree as T
 import KCore.test as test
 
 surf = D.circle((0,0,0), 0.5, 20)
 
 a = G.cart((-1.,-1.,0.),(0.1,0.1,1), (20,20,1))
-a = C.addBC2Zone(a, 'ov', 'BCOverlap', 'jmin')
-t = C.newPyTree(['Cart',2]); t[2][1][2].append(a)
+C._addBC2Zone(a, 'ov', 'BCOverlap', 'jmin')
+t = C.newPyTree(['Cart',2,a])
 t[2][1] = C.addState(t[2][1], 'EquationDimension', 2)
-t = C.fillEmptyBCWith(t, 'wall', 'BCWall')
-t = C.addVars(t, 'Density')
-t = C.initVars(t, 'centers:cellN', 1.)
+C._fillEmptyBCWith(t, 'wall', 'BCWall')
+C._addVars(t, 'Density')
+C._initVars(t, 'centers:cellN', 1.)
 bodies = [[surf]]
 criterions = ['cell_intersect', 'cell_intersect_opt', 'center_in']
 # Matrice de masquage (arbre d'assemblage)

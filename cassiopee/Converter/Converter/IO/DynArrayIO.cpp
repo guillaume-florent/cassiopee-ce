@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -170,15 +170,15 @@ E_Int DynArrayIO::read
   if (rdir == "")
   {
     //const char* -> char*
-    fname = new char[l +1]();
+    fname = new char[l+1]();
     strncpy(fname, fileName, l); 
   }
   else
   {
     //const char* -> char*
-    fname = new char[l+rdir.size() +1]();
+    fname = new char[l+rdir.size()+1]();
     strncpy(fname, rdir.c_str(), rdir.size()); 
-    strncat(fname, fileName, l); 
+    strncat(fname, fileName, l);
   }
   
   const char* fileFmt = get_fmt(fileName);
@@ -358,6 +358,15 @@ E_Int DynArrayIO::write
 {
   if (coord.cols() == 0) return 0;
   
+  const K_FLD::FloatArray *pcrd(&coord);
+  K_FLD::FloatArray crd;
+  if (coord.rows() == 2){
+    crd=coord;
+    crd.resize(3, crd.cols(), 0.);
+    pcrd=&crd;
+  }
+    
+  
   const char* fileFmt = get_fmt(fileName);
   if (!fileFmt) return 1;
   
@@ -366,7 +375,7 @@ E_Int DynArrayIO::write
   std::vector<E_Int> im_dum, jm_dum, km_dum;
   char datfmt[20]; strcpy(datfmt, "%.9e ");
   char varString[128]; strcpy(varString, "x,y,z");
-  if (coord.rows() == 2) strcpy(varString, "x,y");
+  if (pcrd->rows() == 2) strcpy(varString, "x,y");
   std::vector<K_FLD::FldArrayI*> c;
   std::vector<K_FLD::FldArrayF*> ufield;
   std::vector<E_Int> et;
@@ -398,7 +407,7 @@ E_Int DynArrayIO::write
   }
     
   ufield[0] = new K_FLD::FldArrayF;
-  coord.convert(*ufield[0], 0);
+  pcrd->convert(*ufield[0], 0);
   
   E_Int id;
   if (!elt_type)

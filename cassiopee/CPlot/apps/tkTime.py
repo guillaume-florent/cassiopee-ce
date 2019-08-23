@@ -1,5 +1,6 @@
 # - time machine -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -46,8 +47,8 @@ def setTime(event=None):
     
     if CTK.__MAINTREE__ == 1:
         CTK.__MAINACTIVEZONES__ = CPlot.getActiveZones()
-    if (walls == '1' and CTK.dt == []):
-        zones = Internal.getNodesFromType(CTK.t, 'Zone_t')
+    if walls == '1' and CTK.dt == []:
+        zones = Internal.getZones(CTK.t)
         Z = buildWalls(zones)
         CTK.dt = C.newPyTree(['Base']); CTK.dt[2][1][2] += Z
 
@@ -133,7 +134,7 @@ def createApp(win):
                            text='tkTime', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Manage time.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -151,15 +152,15 @@ def createApp(win):
     # - VARS -
     # -0- t0 -
     V = TK.StringVar(win); V.set('0.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkTimeT0'): V.set(CTK.PREFS['tkTimeT0'])
+    if 'tkTimeT0' in CTK.PREFS: V.set(CTK.PREFS['tkTimeT0'])
     # -1- t -
     V = TK.StringVar(win); V.set('0.5'); VARS.append(V)
     # -2- tf -
     V = TK.StringVar(win); V.set('1.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkTimeTF'): V.set(CTK.PREFS['tkTimeTF'])
+    if 'tkTimeTF' in CTK.PREFS: V.set(CTK.PREFS['tkTimeTF'])
     # -3- Show only BCWall
     V = TK.StringVar(win); V.set('0'); VARS.append(V)
-    if CTK.PREFS.has_key('tkTimeWall'): V.set(CTK.PREFS['tkTimeWall'])
+    if 'tkTimeWall' in CTK.PREFS: V.set(CTK.PREFS['tkTimeWall'])
     # -4- time info bulle
     V = TK.StringVar(win); V.set('Time.'); VARS.append(V)
 
@@ -238,7 +239,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

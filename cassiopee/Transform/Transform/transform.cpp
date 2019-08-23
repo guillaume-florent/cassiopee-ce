@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -32,8 +32,7 @@ static PyMethodDef PyTransform[] =
   {"_cart2CylZ", K_TRANSFORM::_cart2CylZ, METH_VARARGS},
   {"_cyl2CartA", K_TRANSFORM::_cyl2CartA, METH_VARARGS},
   {"_cyl2CartZ", K_TRANSFORM::_cyl2CartZ, METH_VARARGS},
-  {"_translate", K_TRANSFORM::_translate, METH_VARARGS},
-  {"_translate2", K_TRANSFORM::_translate2, METH_VARARGS},
+  {"translate", K_TRANSFORM::translate, METH_VARARGS},
   {"rotateA1", K_TRANSFORM::rotateA1, METH_VARARGS},
   {"rotateA2", K_TRANSFORM::rotateA2, METH_VARARGS},
   {"rotateA3", K_TRANSFORM::rotateA3, METH_VARARGS},
@@ -88,19 +87,61 @@ static PyMethodDef PyTransform[] =
   {"computeDeformationVector", K_TRANSFORM::computeDeformationVector, METH_VARARGS},
   {"breakElements", K_TRANSFORM::breakElements, METH_VARARGS},
   {"splitNGon", K_TRANSFORM::splitNGon, METH_VARARGS},
+  {"splitElement", K_TRANSFORM::splitElement, METH_VARARGS},
   {"dualNGon", K_TRANSFORM::dualNGon, METH_VARARGS},
+  {"flipEdges", K_TRANSFORM::flipEdges, METH_VARARGS},
+  {"contractEdges", K_TRANSFORM::contractEdges, METH_VARARGS},
+  {"checkTriMesh", K_TRANSFORM::checkTriMesh, METH_VARARGS},
   {NULL, NULL}
 };
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+struct module_state {
+    PyObject *error;
+};
+static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+static int myextension_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "transform",
+        NULL,
+        sizeof(struct module_state),
+        PyTransform,
+        NULL,
+        myextension_traverse,
+        myextension_clear,
+        NULL
+};
+#endif
 
 // ============================================================================
 /* Init of module */
 // ============================================================================
 extern "C"
 {
-  void inittransform();
-  void inittransform()
+#if PY_MAJOR_VERSION >= 3
+  PyMODINIT_FUNC PyInit_transform();
+  PyMODINIT_FUNC PyInit_transform()
+#else
+  PyMODINIT_FUNC inittransform();
+  PyMODINIT_FUNC inittransform()
+#endif
   {
+#if PY_MAJOR_VERSION >= 3
+    PyObject* module = PyModule_Create(&moduledef);
+#else
     Py_InitModule("transform", PyTransform);
+#endif
     import_array();
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
   }
 }

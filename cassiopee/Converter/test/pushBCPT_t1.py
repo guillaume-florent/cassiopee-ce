@@ -4,9 +4,9 @@ import Converter.PyTree as C
 import KCore.test as test
 
 # STRUCT -> NGON
-a = G.cart( (0,0,0), (1,1,1), (10,10,10) )
+a = G.cart((0,0,0), (1,1,1), (10,10,10))
 a = C.addBC2Zone(a, 'wall', 'BCWall', 'kmin')
-b = G.cartNGon( (0,0,0), (1,1,1), (10,10,10) )
+b = G.cartNGon((0,0,0), (1,1,1), (10,10,10))
 b = C.pushBC(a, b)
 test.testT(b, 1)
 

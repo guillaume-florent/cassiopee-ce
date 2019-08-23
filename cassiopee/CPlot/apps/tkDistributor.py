@@ -1,5 +1,6 @@
 # - block distributor -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -11,8 +12,7 @@ import Connector.PyTree as X
 import Converter.Internal as Internal
 import numpy, math
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 STATS = {}
 
 #==============================================================================
@@ -77,7 +77,7 @@ def splitAndDistribute(event=None):
         CTK.t = X.connectMatch(CTK.t, dim=ndim)
             
         CTK.display(CTK.t)
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: distribute/split')
         CTK.TXT.insert('START', 'splitSize fails for at least one zone.\n')
         CTK.TXT.insert('START', 'Warning: ', 'Warning')
@@ -138,11 +138,11 @@ def setProcField():
         if param != []:
             nodes = Internal.getNodesFromName1(param[0], 'proc')
             (r,c) = Internal.getParentOfNode(CTK.t, z)
-            if (nodes != []):
+            if nodes != []:
                 value = nodes[0][1][0,0]
-                r[2][c] = C.initVars(z, 'proc', value)
-            else: r[2][c] = C.initVars(z, 'proc', -1.)
-        else: r[2][c] = C.initVars(z, 'proc', -1.)
+                C._initVars(z, 'proc', value)
+            else: C._initVars(z, 'proc', -1.)
+        else: C._initVars(z, 'proc', -1.)
     CTK.TXT.insert('START', 'Field proc set.\n')
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
@@ -166,19 +166,19 @@ def computeStats():
     m = 0; ntot = 0
     for z in zones:
         param = Internal.getNodesFromName1(z, '.Solver#Param')
-        if (param != []):
+        if param != []:
             proc = Internal.getNodesFromName1(param[0], 'proc')
-            if (proc != []):
+            if proc != []:
                 value = proc[0][1][0,0]
                 dim = Internal.getZoneDim(z)
-                if (dim[0] == 'Structured'): size = dim[1]*dim[2]*dim[3]
+                if dim[0] == 'Structured': size = dim[1]*dim[2]*dim[3]
                 else: size = dim[1]
                 a[value] += size
                 ntot += size
     m = ntot*1. / NProc
     varRMS = 0.; varMin = 1.e6; varMax = 0.
-    for i in xrange(NProc):
-        v = abs(a[i]-m)
+    for i in a:
+        v = abs(i-m)
         varMin = min(varMin, v)
         varMax = max(varMax, v)
         varRMS += v*v
@@ -232,17 +232,17 @@ def updateStats():
 
     m = STATS['meanPtsPerProc']
     fmin = 1.e10; fmax = 0
-    for i in xrange(NProc):
-        fmin = min(a[i], fmin); fmax = max(a[i], fmax)
+    for i in a:
+        fmin = min(i, fmin); fmax = max(i, fmax)
     
     alpha = min(1./abs(fmax-m+1.e-6), 1./abs(fmin-m+1.e-6))
     alpha = min(alpha, 1./m)
     
     barWidth = width*1. / (NProc*1.)
-    for i in xrange(NProc):
+    for i in range(NProc):
         v = -alpha*(a[i] - m*1.)
-        if (a[i] == 0): fillColor = 'yellow'
-        elif (i%2 == 0): fillColor = 'blue'
+        if a[i] == 0: fillColor = 'yellow'
+        elif i%2 == 0: fillColor = 'blue'
         else: fillColor = 'red'
        
         c.create_rectangle(i*barWidth, height/2., (i+1)*barWidth,
@@ -267,13 +267,13 @@ def updateStats():
     b.label.configure(text=stats)
 
 #==============================================================================
-# Essai d'ajuste le nbre de procs
-# (essai les classes de stelvio)
+# Essai d'ajuster le nbre de procs
+# (essai les classes de sator)
 # Note: je ne suis pas sur que ca soit tres utile
 #==============================================================================
 def adjustNProc():
     global STATS
-    if (CTK.t == []): return
+    if CTK.t == []: return
     try: NProc = int(VARS[0].get())
     except: NProc = 1
     try: comSpeed = float(VARS[1].get())
@@ -287,16 +287,16 @@ def adjustNProc():
     classes = [8,16,32,64,128,256,512]
     CTK.saveTree()
 
-    for c in xrange(len(classes)):
+    for c in range(len(classes)):
         if NProc > classes[c]: break;
     
     CTK.t, stat1 = D.distribute(CTK.t, classes[c], perfo=(1.,0.,comSpeed),
                                 useCom=useCom, algorithm=algo)
-    if (c > 0):
+    if c > 0:
         CTK.t, stat2 = D.distribute(CTK.t, classes[c-1],
                                     perfo=(1.,0.,comSpeed),
                                     useCom=useCom, algorithm=algo)
-    if (c < len(classes)-1):
+    if c < len(classes)-1:
         CTK.t, stat3 = D.distribute(CTK.t, classes[c+1],
                                     perfo=(1.,0.,comSpeed),
                                     useCom=useCom, algorithm=algo)
@@ -320,7 +320,7 @@ def createApp(win):
                            text='tkDistributor', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Distribute blocks\nover processors.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -338,25 +338,25 @@ def createApp(win):
     # - VARS -
     # -0- NProc -
     V = TK.StringVar(win); V.set('10'); VARS.append(V)
-    if CTK.PREFS.has_key('tkDistributorNProc'): 
+    if 'tkDistributorNProc' in CTK.PREFS: 
         V.set(CTK.PREFS['tkDistributorNProc'])
     # -1- ComSpeed -
     V = TK.StringVar(win); V.set('0.1'); VARS.append(V)
-    if CTK.PREFS.has_key('tkDistributorComSpeed'): 
+    if 'tkDistributorComSpeed' in CTK.PREFS: 
         V.set(CTK.PREFS['tkDistributorComSpeed'])
     # -2- Algorithm
-    V = TK.StringVar(win); V.set('gradient0'); VARS.append(V)
-    if CTK.PREFS.has_key('tkDistributorAlgorithm'): 
+    V = TK.StringVar(win); V.set('graph'); VARS.append(V)
+    if 'tkDistributorAlgorithm' in CTK.PREFS: 
         V.set(CTK.PREFS['tkDistributorAlgorithm'])
     # -3- Communication types
     V = TK.StringVar(win); V.set('all'); VARS.append(V)
-    if CTK.PREFS.has_key('tkDistributorComType'): 
+    if 'tkDistributorComType' in CTK.PREFS: 
         V.set(CTK.PREFS['tkDistributorComType'])
     # -4- Manual proc setting
     V = TK.StringVar(win); V.set('0'); VARS.append(V)
     # -5- Multigrid level
     V = TK.StringVar(win); V.set('0'); VARS.append(V)
-    if CTK.PREFS.has_key('tkDistributorMultigrid'): 
+    if 'tkDistributorMultigrid' in CTK.PREFS: 
         V.set(CTK.PREFS['tkDistributorMultigrid'])
 
     # - NProc -
@@ -376,7 +376,7 @@ def createApp(win):
     BB = CTK.infoBulle(parent=B, text='Multigrid level.')
 
     # - Algorithms -
-    B = TTK.OptionMenu(Frame, VARS[2], 'gradient0', 'gradient1', 'genetic',
+    B = TTK.OptionMenu(Frame, VARS[2], 'graph', 'gradient0', 'gradient1', 'genetic',
                        'fast')
     B.grid(row=1, column=0, columnspan=1, sticky=TK.EW)
     BB = CTK.infoBulle(parent=B, text='Distribution algorithm.')
@@ -449,7 +449,7 @@ def saveApp():
 def resetApp():
     VARS[0].set('10')
     VARS[1].set('0.1')
-    VARS[2].set('gradient0')
+    VARS[2].set('graph')
     VARS[3].set('all')
     VARS[5].set('0')
     CTK.PREFS['tkDistributorNProc'] = VARS[0].get()
@@ -462,11 +462,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

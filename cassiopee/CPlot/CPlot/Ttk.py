@@ -1,9 +1,14 @@
-import Tkinter as TK
-import Tk as CTK
+try: import Tkinter as TK
+except: import tkinter as TK
+try: import Tk as CTK 
+except: from . import Tk as CTK
 
 ttk = None
 try: import ttk
-except: ttk = None
+except: 
+    try: import tkinter.ttk as ttk
+    except: ttk = None
+#Uncomment that for a pure Tk interface
 #ttk = None
 
 #=================================================================
@@ -33,8 +38,8 @@ def setTheme(myTheme):
         available = ttk.Style().theme_names()
         if myTheme in available:
             ttk.Style().theme_use(myTheme); createStyles(); return
-        tryThemes = ["vista", "xpnative", "aquativa", 
-            "clearlook", "arc", "classic", "default"]
+        tryThemes = ["xpnative", "clearlooks", "plastik",
+                     "black", "aquativa", "classic", "default"]
         for t in tryThemes:
             if t in available:
                 ttk.Style().theme_use(t); createStyles(); return
@@ -61,6 +66,10 @@ def createStyles():
         # ScrollBar with width
         style.configure("Vertical.TKTREE.TScrollbar", width=10)
         style.configure("Horizontal.TKTREE.TScrollbar", width=10)
+        # Red bg button#117864
+        style.configure("RED.TButton", foreground='red')
+        # Red bg button
+        style.configure("GREEN.TButton", foreground='#117864')
 
 #===========================================================
 # Set global style and create specific styles
@@ -81,7 +90,7 @@ def LabelFrame(*args, **kwargs):
     if ttk is None: return TK.LabelFrame(*args, **kwargs)
     else:
         style = 0
-        if kwargs.has_key('font'): 
+        if 'font' in kwargs:
             style = 1; kwargs.pop('font', None)
         l = ttk.LabelFrame(*args, **kwargs)
         if style == 1: l.configure(style="K1.TLabelframe")
@@ -95,7 +104,7 @@ def Button(*args, **kwargs):
     if ttk is None: return TK.Button(*args, **kwargs)
     else:
         style = 0
-        if kwargs.has_key('padx'):
+        if 'padx' in kwargs:
             kwargs.pop('padx', None)
             kwargs.pop('pady', None)
             style = 1
@@ -117,7 +126,7 @@ def OptionMenu(*args, **kwargs):
 
 def ComboBox(*args, **kwargs):
     if ttk is None: # process args here
-        raise ValueError, 'No comboxbox'
+        raise ValueError('No comboxbox.')
     else: return ttk.Combobox(*args, **kwargs)
 
 def superOptionMenu(F, var, itemList, command, 
@@ -137,7 +146,7 @@ def superOptionMenu(F, var, itemList, command,
 def Scale(*args, **kwargs):
     if ttk is None:
         val = -1
-        if kwargs.has_key('value'):
+        if 'padx' in kwargs:
            val = kwargs['value']
            kwargs.pop('value', None)
         s = TK.Scale(*args, **kwargs)
@@ -146,7 +155,7 @@ def Scale(*args, **kwargs):
     else:
         style = 0
         kwargs.pop('showvalue', None) # transmit in style?
-        if kwargs.has_key('borderwidth'):
+        if 'borderwidth' in kwargs:
             style = 1
             kwargs.pop('borderwidth')
         s = ttk.Scale(*args, **kwargs)
@@ -171,9 +180,9 @@ def Text(*args, **kwargs):
 def Radiobutton(*args, **kwargs):
     if ttk is None: TK.Radiobutton(*args, **kwargs) 
     else:
-        if kwargs.has_key('offrelief'): kwargs.pop('offrelief')
-        if kwargs.has_key('selectcolor'): kwargs.pop('selectcolor')
-        if kwargs.has_key('indicatoron'): kwargs.pop('indicatoron')
+        if 'offrelief' in kwargs: kwargs.pop('offrelief')
+        if 'selectcolor' in kwargs: kwargs.pop('selectcolor')
+        if 'indicatoron' in kwargs: kwargs.pop('indicatoron')
         b = ttk.Radiobutton(*args, **kwargs)
         b.configure(style='MENU.TRadiobutton')
         return b
@@ -194,7 +203,7 @@ def Scrollbar(*args, **kwargs):
     if ttk is None: return TK.Scrollbar(*args, **kwargs)
     else:
         width = 0
-        if kwargs.has_key('width'):
+        if 'width' in kwargs:
             width = kwargs.get('width', 10)         
             kwargs.pop('width')
         b = ttk.Scrollbar(*args, **kwargs)
@@ -212,3 +221,11 @@ def raiseButton(B):
 def sunkButton(B):
     if ttk is None: B.config(relief=TK.SUNKEN)
     else: B.configure(style='SUNKEN.TButton')   
+
+def setButtonRed(B):
+    if ttk is None: B.config(bg='red')
+    else: B.configure(style='RED.TButton')   
+
+def setButtonGreen(B):
+    if ttk is None: B.config(bg='green')
+    else: B.configure(style='GREEN.TButton')   

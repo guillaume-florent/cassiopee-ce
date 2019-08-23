@@ -1,5 +1,6 @@
 # - Volume collar mesh generation -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -312,7 +313,7 @@ def createApp(win):
                            text='tkCollarMesh', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Generate collar meshes.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=2)
     Frame.columnconfigure(1, weight=2)
@@ -335,22 +336,22 @@ def createApp(win):
     V = TK.StringVar(win); V.set(''); VARS.append(V)
     # -2- hauteur de la maille dans la direction j
     V = TK.StringVar(win); V.set('1.e-1'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCollarMeshHj'): V.set(CTK.PREFS['tkCollarMeshHj'])
+    if 'tkCollarMeshHj' in CTK.PREFS: V.set(CTK.PREFS['tkCollarMeshHj'])
     # -3- nombre de layers a ajouter en j
     V = TK.StringVar(win); V.set('10'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCollarMeshNj'): V.set(CTK.PREFS['tkCollarMeshNj'])
+    if 'tkCollarMeshNj' in CTK.PREFS: V.set(CTK.PREFS['tkCollarMeshNj'])
     # -4- nombre d'iteration de lissage dans la direction j
     V = TK.StringVar(win); V.set('50'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCollarMeshSj'): V.set(CTK.PREFS['tkCollarMeshSj'])
+    if 'tkCollarMeshSj' in CTK.PREFS: V.set(CTK.PREFS['tkCollarMeshSj'])
     # -5- hauteur de la maille dans la direction k
     V = TK.StringVar(win); V.set('1.e-1'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCollarMeshHk'): V.set(CTK.PREFS['tkCollarMeshHk'])
+    if 'tkCollarMeshHk' in CTK.PREFS: V.set(CTK.PREFS['tkCollarMeshHk'])
     # -6- nombre de layers a ajouter en k
     V = TK.StringVar(win); V.set('10'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCollarMeshNk'): V.set(CTK.PREFS['tkCollarMeshNk'])
+    if 'tkCollarMeshNk' in CTK.PREFS: V.set(CTK.PREFS['tkCollarMeshNk'])
     # -7- nombre d'iteration de lissage dans la direction k
     V = TK.StringVar(win); V.set('50'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCollarMeshSk'): V.set(CTK.PREFS['tkCollarMeshSk'])
+    if 'tkCollarMeshSk' in CTK.PREFS: V.set(CTK.PREFS['tkCollarMeshSk'])
     # -8- Constraints for surface1
     V = TK.StringVar(win); V.set(''); VARS.append(V)
     # -9- Constraints for surface2
@@ -474,7 +475,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

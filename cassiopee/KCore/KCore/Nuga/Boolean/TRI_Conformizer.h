@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -74,6 +74,9 @@ public:
   ///Hook to do a merge toward the intersection line (TRI)
   E_Int __simplify_and_clean(const K_FLD::FloatArray& pos, E_Float tolerance, K_FLD::IntArray& connect,
                              K_CONT_DEF::int_vector_type& ancestors, K_CONT_DEF::bool_vector_type& xc);
+  ///Hook to do a merge toward the intersection line (TRI)
+  E_Int __simplify_and_clean2(const K_FLD::FloatArray& pos, E_Float tolerance, K_FLD::IntArray& connect,
+    K_CONT_DEF::int_vector_type& ancestors, K_CONT_DEF::bool_vector_type& xc);
   /// when duplicates are baffles
   void __process_duplicates(K_FLD::IntArray& connect, std::vector<E_Int>& ancestors, K_CONT_DEF::bool_vector_type& xc);
   
@@ -117,7 +120,8 @@ public:
 #endif
   
   ///
-  E_Int __iterative_run(DELAUNAY::T3Mesher<E_Float>& mesher, DELAUNAY::MeshData& data);
+  E_Int __iterative_run(DELAUNAY::T3Mesher<E_Float>& mesher, K_FLD::FloatArray& crd, K_FLD::IntArray& cB, 
+                        K_CONT_DEF::int_vector_type& hnodes, DELAUNAY::MeshData& data, std::vector<E_Int>& nids);
   ///
   E_Int __get_mesh_data(const K_FLD::FloatArray & pos, const K_FLD::IntArray & connect, const T3& t, edge_container_type& Edges,
                         K_FLD::FloatArray& p, K_FLD::IntArray& c, std::vector<E_Int>& oids);

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -20,8 +20,8 @@
 // Diff 2 arrays defining the same solution
 
 #include "converter.h"
-using namespace std;
 
+using namespace std;
 using namespace K_FUNC;
 using namespace K_FLD;
 
@@ -30,9 +30,11 @@ using namespace K_FLD;
 #include <math.h>
 //#define isnan __isnand
 //#define isinf __isinf
-#endif
 
-#if defined(_WIN32) || defined(_WIN64)
+#elif defined(_WIN32)
+// rien a faire maintenant
+
+#elif defined(_WIN64)
 // For Windows
 #include <float.h>
 #ifndef isnan
@@ -41,6 +43,11 @@ using namespace K_FLD;
 #ifndef isinf
 #define isinf(x) (!_finite(x))
 #endif
+
+#else
+#include <cmath>
+#define isnan std::isnan
+#define isinf std::isinf
 #endif
 
 //=============================================================================
@@ -119,7 +126,7 @@ PyObject* K_CONVERTER::diff2(PyObject* arrays1, PyObject* arrays2)
   for (int i = 0; i < n1; i++)
   {
     tpl = PyList_GetItem(arrays1, i);
-    res = K_ARRAY::getFromArray(tpl, varString1, f, ni, nj, nk, cn, eltType1, true);
+    res = K_ARRAY::getFromArray2(tpl, varString1, f, ni, nj, nk, cn, eltType1);
     object1.push_back(tpl);
     if (res == 1)
     {
@@ -165,7 +172,7 @@ PyObject* K_CONVERTER::diff2(PyObject* arrays1, PyObject* arrays2)
   for (int i = 0; i < n2; i++)
   {
     tpl = PyList_GetItem(arrays2, i);
-    res = K_ARRAY::getFromArray(tpl, varString2, f, ni, nj, nk, cn, eltType2, true);
+    res = K_ARRAY::getFromArray2(tpl, varString2, f, ni, nj, nk, cn, eltType2);
     object2.push_back(tpl);
 
     if (res == 1)
@@ -268,14 +275,14 @@ PyObject* K_CONVERTER::diff2(PyObject* arrays1, PyObject* arrays2)
   {
     if (ni1[i] != -1)
     {
-      tpl = K_ARRAY::buildArray(pos1.size(), varString, 
-                                ni1[i], nj1[i], nk1[i]);
+      tpl = K_ARRAY::buildArray2(pos1.size(), varString, 
+                                 ni1[i], nj1[i], nk1[i]);
     }
     else
     {
       E_Int csize = cn1[i]->getSize()*cn1[i]->getNfld(); 
-      tpl = K_ARRAY::buildArray(pos1.size(), varString, field1[i]->getSize(),
-                                cn1[i]->getSize(), -1, elt1[i], false, csize);
+      tpl = K_ARRAY::buildArray2(pos1.size(), varString, field1[i]->getSize(),
+                                 cn1[i]->getSize(), -1, elt1[i], false, csize);
       E_Int* cnnp = K_ARRAY::getConnectPtr(tpl);
       K_KCORE::memcpy__(cnnp, cn1[i]->begin(), csize);
     }
@@ -320,7 +327,7 @@ PyObject* K_CONVERTER::diff2(PyObject* arrays1, PyObject* arrays2)
     else { RELEASESHAREDS(object1[i], field1[i]); } 
   }
   for (int i = 0; i < sizefield2; i++) 
-  { 
+  {
     if (ni2[i] == -1) { RELEASESHAREDU(object2[i], field2[i], cn2[i]); }
     else { RELEASESHAREDS(object2[i], field2[i]); } 
   }
@@ -334,8 +341,7 @@ PyObject* K_CONVERTER::diff2(PyObject* arrays1, PyObject* arrays2)
 //=============================================================================
 /* Diff3: */
 //=============================================================================
-PyObject* 
-K_CONVERTER::diff3(PyObject* arrays1, PyObject* arrays2, PyObject* arrays3)
+PyObject* K_CONVERTER::diff3(PyObject* arrays1, PyObject* arrays2, PyObject* arrays3)
 {
   PyObject* tpl;
   E_Int res;
@@ -463,7 +469,7 @@ K_CONVERTER::diff3(PyObject* arrays1, PyObject* arrays2, PyObject* arrays3)
   
   /* Building the precond for all grids */
   printf("INFO: Preconditionning...");
-  vector<K_INTERP::InterpAdt*> adts;
+  vector<K_INTERP::InterpData*> adts;
   vector<FldArrayF*> errors;
   E_Int nzone = 0;
   E_Int isBuilt;
@@ -503,7 +509,8 @@ K_CONVERTER::diff3(PyObject* arrays1, PyObject* arrays2, PyObject* arrays3)
     K_LOC::node2ExtCenterStruct(ni, nj, nk, fn, nie, nje, nke, *fec);
     vectOfExtCenters.push_back(fec);
     //L'adt est toujours construit car le maillage est en centres etendus. Pas de verif isBuilt=1
-    K_INTERP::InterpAdt* myAdt = new K_INTERP::InterpAdt(nie*nje*nke, fec->begin(1), fec->begin(2), fec->begin(3),
+    K_INTERP::InterpAdt* myAdt = new K_INTERP::InterpAdt(nie*nje*nke, 
+                                                         fec->begin(1), fec->begin(2), fec->begin(3),
                                                          &nie, &nje, &nke, isBuilt);
     adts.push_back(myAdt);
     nzone++;
@@ -517,7 +524,7 @@ K_CONVERTER::diff3(PyObject* arrays1, PyObject* arrays2, PyObject* arrays3)
     
   // Creation des donnees pour l interpolation 
   // attention : centres etendus ici
-  K_INTERP::InterpAdt::InterpolationType interpType = K_INTERP::InterpAdt::O2CF;
+  K_INTERP::InterpData::InterpolationType interpType = K_INTERP::InterpData::O2CF;
   
   E_Int nindi = 1;
   E_Int ncf = 8;
@@ -578,7 +585,7 @@ K_CONVERTER::diff3(PyObject* arrays1, PyObject* arrays2, PyObject* arrays3)
       E_Int sizeadts = adts.size();
       for (E_Int iadt = 0; iadt < sizeadts; iadt++)
       {
-        K_INTERP::InterpAdt* adt = adts[iadt];        
+        K_INTERP::InterpData* adt = adts[iadt];        
         E_Float voli = 0.; E_Int type = 0; E_Int noblk = 0;
         E_Int nie = niet[iadt];
         E_Int nje = njet[iadt];

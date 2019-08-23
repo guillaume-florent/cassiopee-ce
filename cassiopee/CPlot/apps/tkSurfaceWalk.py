@@ -1,5 +1,6 @@
 # - surface walker -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -73,7 +74,7 @@ def walkIn():
             z = G.surfaceWalk(surfaces, c, dh, constraints=constraints,
                               niter=nit, check=1)
             zlist.append(z)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
             
     # Ajout dans la base SURFACES
@@ -81,7 +82,7 @@ def walkIn():
     bases = Internal.getNodesFromName1(CTK.t, 'SURFACES')
     nob = C.getNobOfBase(bases[0], CTK.t)
     for i in zlist: CTK.add(CTK.t, nob, -1, i)
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     if not fail: CTK.TXT.insert('START', 'Surface walk done.\n')
     else:
         Panels.displayErrors(errors, header='Error: surfaceWalk')
@@ -93,8 +94,8 @@ def walkIn():
     
 #==============================================================================
 def walkOut():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     # Constraints
@@ -152,7 +153,7 @@ def walkOut():
             z = G.surfaceWalk(surfaces, c, dh, constraints=constraints,
                               niter=nit, check=1)
             zlist.append(z)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
             
     # Ajout dans la base SURFACES
@@ -160,7 +161,7 @@ def walkOut():
     bases = Internal.getNodesFromName1(CTK.t, 'SURFACES')
     nob = C.getNobOfBase(bases[0], CTK.t)
     for i in zlist: CTK.add(CTK.t, nob, -1, i)
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     if not fail: CTK.TXT.insert('START', 'Surface walk done.\n')
     else:
         Panels.displayErrors(errors, header='Error: surfaceWalk')
@@ -217,7 +218,7 @@ def createApp(win):
                            text='tkSurfaceWalk', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Generate meshes by orthogonal\nwalk on surfaces.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -239,15 +240,15 @@ def createApp(win):
     V = TK.StringVar(win); V.set(''); VARS.append(V)
     # -2- Hauteur de chaque maille -
     V = TK.StringVar(win); V.set('1.e-1'); VARS.append(V)
-    if CTK.PREFS.has_key('tkSurfaceWalkHeight'): 
+    if 'tkSurfaceWalkHeight' in CTK.PREFS: 
         V.set(CTK.PREFS['tkSurfaceWalkHeight'])
     # -3- Nombre de layers a ajouter
     V = TK.StringVar(win); V.set('1'); VARS.append(V)
-    if CTK.PREFS.has_key('tkSurfaceWalkNLayers'): 
+    if 'tkSurfaceWalkNLayers' in CTK.PREFS: 
         V.set(CTK.PREFS['tkSurfaceWalkNLayers'])
     # -4- Nombre d'iterations de lissage
     V = TK.StringVar(win); V.set('0'); VARS.append(V)
-    if CTK.PREFS.has_key('tkSurfaceWalkSmooth'): 
+    if 'tkSurfaceWalkSmooth' in CTK.PREFS: 
         V.set(CTK.PREFS['tkSurfaceWalkSmooth'])
 
     # - Surface -
@@ -327,7 +328,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

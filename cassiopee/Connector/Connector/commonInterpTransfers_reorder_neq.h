@@ -7,7 +7,7 @@ switch (type)
    for (E_Int ne    = 0     ; ne    < nvars_loc ; ne++)
     {
      indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
-     noi       = shiftDonnor;
+     noi       = shiftDonor;
      for (E_Int noind = pt_deb; noind < pt_fin; noind++)
      {
       indR   = rcvPts[noind];
@@ -44,9 +44,9 @@ switch (type)
    for (E_Int ne    = 0     ; ne    < nvars_loc ; ne++)
     {
      indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
-#ifdef _OPENMP4
-     #pragma omp simd
-#endif
+// #ifdef _OPENMP4
+//      #pragma omp simd
+// #endif
      for (E_Int noind = pt_deb; noind < pt_fin; noind++)
      {
       indR   = rcvPts[noind];
@@ -79,9 +79,9 @@ switch (type)
     for (E_Int ne    = 0     ; ne    < nvars_loc ; ne++)
     {
     indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
-#ifdef _OPENMP4
-    #pragma omp simd
-#endif
+// #ifdef _OPENMP4
+//     #pragma omp simd
+// #endif
     for (E_Int noind = pt_deb; noind < pt_fin; noind++)
     {
       indR  = rcvPts[noind];
@@ -132,10 +132,10 @@ switch (type)
   case 4: // Tetra O2
    for (E_Int ne    = 0     ; ne    < nvars_loc ; ne++)
    {
-    indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
-#ifdef _OPENMP4
-    #pragma omp simd
-#endif
+     indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
+// #ifdef _OPENMP4
+//     #pragma omp simd
+// #endif
     for (E_Int noind = pt_deb; noind < pt_fin; noind++)
     {
       indR  = rcvPts[noind];

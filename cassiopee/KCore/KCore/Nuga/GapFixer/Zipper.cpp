@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -54,7 +54,7 @@ Zipper::setMates
   DELAUNAY::chrono c;
   c.start();
 #endif
-  nmates.resize(posT3.cols(), UNKNOWN);
+  nmates.resize(posT3.cols(), UNKNO);
 
   //std::cout << "zipping : get boundary" << std::endl;
 
@@ -315,7 +315,7 @@ Zipper::__setNodeMates
       unknown = true;
     }
     else if (nmates[Ni1] == FREE) // Reset a "non true" free node
-      nmates[Ni1] = UNKNOWN;
+      nmates[Ni1] = UNKNO;
 
     nj1 = tree.getClosest(nj0);
     assert(nj1 != E_IDX_NONE);
@@ -328,7 +328,7 @@ Zipper::__setNodeMates
       unknown = true;
     }
     else if (nmates[Nj1] == FREE) // Reset a "non true" free node
-      nmates[Nj1] = UNKNOWN;
+      nmates[Nj1] = UNKNO;
 
     if (unknown)
       continue;

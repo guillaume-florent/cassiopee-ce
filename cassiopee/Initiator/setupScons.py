@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
-import os, sys
+import os
 
 #=============================================================================
 # Initiator requires :
@@ -34,12 +34,10 @@ libraryDirs += paths; libraries += libs
 (ok, libs, paths) = Dist.checkCppLibs([], additionalLibPaths)
 libraryDirs += paths; libraries += libs
 
-import srcs
-
 # setup =======================================================================
 setup(
     name="Initiator",
-    version="2.5",
+    version="2.9",
     description="Initiator for *Cassiopee* modules.",
     author="Onera",
     package_dir={"":"."},

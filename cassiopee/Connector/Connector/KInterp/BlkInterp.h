@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -190,7 +190,7 @@ namespace K_KINTERP
     std::vector<FldArrayF*>& fieldu, std::vector<FldArrayI*>& connectu,
     std::vector<E_Int>& posxu, std::vector<E_Int>& posyu, 
     std::vector<E_Int>& poszu, std::vector<E_Int>& poscu,
-    E_Float& voli, FldArrayI& indi, FldArrayF& cf,
+    E_Float& voli, FldArrayI& indi, FldArrayF& cf, E_Float cfMax,
     BlkInterpData::InterpMeshType interpMeshType,
     BlkInterpData::InterpolationType interpType);
 
@@ -296,7 +296,7 @@ namespace K_KINTERP
     std::vector<E_Int>& posx, std::vector<E_Int>& posy, 
     std::vector<E_Int>& posz, std::vector<E_Int>& posc,
     FldArrayI& indi, 
-    FldArrayF& cf, E_Int& noblks,
+    FldArrayF& cf, E_Int& noblks, E_Float cfMax,
     BlkInterpData::InterpMeshType interpMeshType,
     BlkInterpData::InterpolationType interpType);
 

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -27,6 +27,7 @@
 #include "MeshElement/Polygon.h"
 #include "Fld/ArrayAccessor.h"
 #include <assert.h>
+#include <stack>
 
 ///
 template <typename ElementType>
@@ -156,7 +157,7 @@ K_CONNECT::EltAlgo<ElementType>::coloring
   size_type                        seed(E_IDX_NONE), S, Sn, color(0), colored(0);
   int_vector_type                  cpool;
   int_vector_type::const_iterator  itC;
-  NeighbourType::const_iterator    itV;
+  //NeighbourType::const_iterator    itV;
   ElementType                      E, En;
   BoundaryType                     B;
   K_FLD::IntArray::const_iterator  pS, pSn;
@@ -185,7 +186,7 @@ K_CONNECT::EltAlgo<ElementType>::coloring
       colors[S] = color;
       ++colored;
 
-      assert (S >= 0 && S < neighbors.size());//Error : the neighbors object is not consistent with ELTContainer.
+      assert (S >= 0 && S < neighbors.size()); //Error: the neighbors object is not consistent with ELTContainer.
 
       const std::vector<E_Int>& neigh = neighbors[S];
       sz = neigh.size();
@@ -215,7 +216,7 @@ K_CONNECT::EltAlgo<ElementType>::coloring
     ++color;
   }
 
-  assert ((E_Int)colors.size() == ELTContainer.cols());
+  //assert ((E_Int)colors.size() == ELTContainer.cols()); //unreachable
 }
 
 /// for NGONs
@@ -278,7 +279,7 @@ K_CONNECT::EltAlgo<ElementType>::coloring (const K_FLD::IntArray& neighbors, int
   int_vector_type                  cpool;
   K_FLD::IntArray::const_iterator pK;
   
-  assert (ROWS == ElementType::NB_NODES);
+  assert (ROWS == (size_t)ElementType::NB_NODES);
   
   colors.clear();
   colors.resize(NB_ELTS, E_IDX_NONE);
@@ -357,6 +358,49 @@ K_CONNECT::EltAlgo<ElementType>::coloring_pure (const K_FLD::IntArray& neighbors
     }
 
     ++color;
+  }
+}
+
+/// for NGONs
+template <typename ElementType>
+inline void
+K_CONNECT::EltAlgo<ElementType>::extrapolate (const ngon_unit& neighbors, K_FLD::IntArray& properties)
+{
+  // WARNING : colors are not cleared and suppose that contains coloured elements.
+
+  K_FLD::IntArray neighs;
+  
+  // Count the number of empty color
+  E_Int count(0), NB_ELTS(properties.cols()), ROWS(properties.rows());
+  for (E_Int i=0; i < NB_ELTS; ++i) 
+    for (E_Int p=0; p < ROWS; ++p)
+      if (properties(p,i) == E_IDX_NONE) ++count;
+
+  while (count)
+  {
+    for (E_Int i=0; i < NB_ELTS; ++i)
+    {
+      E_Int nb_neighs = neighbors.stride(i);
+      neighs.reserve(1, nb_neighs);
+      neighbors.getEntry(i, neighs.begin());
+      E_Int* ptr = neighs.begin();
+      
+      for (E_Int p=0; p < ROWS; ++p)
+      {
+        if (properties(p,i) != E_IDX_NONE) continue;
+
+        for (E_Int n = 0; n < nb_neighs; ++n)
+        {
+          E_Int j = *(ptr++);
+          if (j < E_IDX_NONE && properties(p,j) != E_IDX_NONE)
+          {
+            properties(p,i)=properties(p,j);
+            --count;
+            break;
+          }
+        }
+      }
+    } 
   }
 }
 
@@ -452,9 +496,6 @@ K_CONNECT::EltAlgo<K_MESH::Polygon>::reversi_connex
     s1 = PGs.stride(K);
     ElementType PGk(PGs.get_facets_ptr(K), s1);
     
-    if (orient[K]==-1)
-      PGk.reverse();
-    
     nb_neighs = neighbors.stride(K); // neighbor ptr;
     
     for (E_Int n = 0; n < nb_neighs; ++n)
@@ -473,6 +514,8 @@ K_CONNECT::EltAlgo<K_MESH::Polygon>::reversi_connex
       Nj = PGk.node((i+1)%s1);
       
       ElementType::getOrientation(PGkngh, Ni, Nj, reverse);
+
+      if (orient[K]==-1) reverse = !reverse;
       
       if (reverse) orient[Kngh] = -1;
       
@@ -586,6 +629,55 @@ EltAlgo<K_MESH::Triangle>::fast_swap_edges
 
   return 0;
 }
+}
+
+template <typename ElementType>
+inline void
+K_CONNECT::EltAlgo<ElementType>::smoothd1(const ngon_unit& PHs, const K_FLD::IntArray& noF2E, const std::vector<E_Int>& PHlevel, std::vector<E_Int>& adap_incr)
+{
+  std::stack<E_Int> stck;
+
+  for (size_t i = 0; i < PHs.size();  i++){
+    if (adap_incr[i] != 0){
+      stck.push(i);
+    }
+  }
+
+  while (!stck.empty()){
+
+    E_Int ind_PHi = stck.top(); // index of ith PH
+    stck.pop();
+
+    E_Int nb_edges = PHs.stride(ind_PHi); // number of edges of ith PH
+    const E_Int* pPHi = PHs.get_facets_ptr(ind_PHi); // find the PG of the ith PH
+
+    for (E_Int j = 0; j < nb_edges; j++){ 
+
+      E_Int ind_PGi = *(pPHi+j)-1; // index of jth PG
+      
+      E_Int PHG = noF2E(0,ind_PGi);
+      E_Int PHD = noF2E(1,ind_PGi);
+
+      if ( (PHD == E_IDX_NONE) || (PHG == E_IDX_NONE) )
+        continue; // external PG
+
+     
+      E_Int incrG = adap_incr[PHG] + PHlevel[PHG];
+      E_Int incrD = adap_incr[PHD] + PHlevel[PHD];
+      
+      if (abs(incrG-incrD) <= 1) // 2:1 rule
+        continue;
+      
+      if (incrG > incrD){
+        adap_incr[PHD] += 1;
+        stck.push(PHD);
+      }
+      else{
+        adap_incr[PHG] += 1;
+        stck.push(PHG);
+      }
+    }
+  }
 }
 
 #endif

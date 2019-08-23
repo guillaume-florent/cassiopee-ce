@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -192,7 +192,7 @@ E_Int K_LOC::node2centerUnstruct(FldArrayF& FNode,
 // Convertit un champ en noeuds en champ en centres en NGON
 // Retourne 1 en cas de succes, 0 en cas d'echec.
 // FCenter doit deja etre alloue au nb d'elements
-// sorted = 1 : vertices coordinates are sorted for better accuracy in summations 
+// sorted=1: vertices coordinates are sorted for better accuracy in summations 
 //===============================================================================
 E_Int K_LOC::node2centerNGon(FldArrayF& FNode, FldArrayI& cNG,
                              FldArrayF& FCenter, E_Int sorted)
@@ -260,13 +260,13 @@ E_Int K_LOC::node2centerNGon(FldArrayF& FNode, FldArrayI& cNG,
       for (E_Int nofld = 1; nofld <= nfld; nofld++)
       {
         E_Float* fnode = FNode.begin(nofld);
-        for (E_Int nov = 0; nov < vertices.size(); nov++)
+        for (size_t nov = 0; nov < vertices.size(); nov++)
         {
           E_Int indv = vertices[nov]; fsort[nov] = fnode[indv];
         }
         std::sort(fsort.begin(), fsort.end());
         E_Float* fcen = FCenter.begin(nofld);
-        for (E_Int nov = 0; nov < fsort.size(); nov++) {fcen[i] += fsort[nov];}
+        for (size_t nov = 0; nov < fsort.size(); nov++) {fcen[i] += fsort[nov];}
         E_Float inv = 1./E_Float(fsort.size()); fcen[i] *= inv;   
       }
     } 

@@ -39,17 +39,16 @@ import srcs
 if Dist.getSystem()[0] == 'mingw': tools = ['mingw']
 else: tools = None
 AR = Dist.getAR()
-env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CCFLAGS=[], CXXFLAGS=[],
+env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CPPFLAGS=[],
                   FORTRAN=f77compiler,
                   LIBPATH=additionalLibPaths+libraryDirs,
                   LIBS=libraries+additionalLibs,
                   CPPPATH=["Initiator"]+additionalIncludePaths+[pythonIncDir, numpyIncDir, kcoreIncDir],
                   SHLIBSUFFIX=so_ext, SHLIBPREFIX='',
                   LINKFLAGS=Dist.getLinkArgs(),
-                  ENV = {'PATH': Dist.getenv('PATH'),
-                         'LD_LIBRARY_PATH': Dist.getenv('LD_LIBRARY_PATH'),
-                         'LM_LICENSE_FILE': Dist.getenv('LM_LICENSE_FILE')})
-env.Replace(CPPFLAGS=Dist.getCppArgs())
+                  ENV=Dist.getEnvForScons())
+env.Replace(CXXFLAGS=Dist.getCppArgs())
+env.Replace(CFLAGS=Dist.getCArgs())
 
 env = Dist.createFortranBuilder(env, [kcoreIncDir])
 ppf = Dist.createFortranFiles(env, srcs)

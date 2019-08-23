@@ -19,7 +19,6 @@ a2 = C.addBC2Zone(a2, 'match1','BCMatch','imin',a2,'imax',[1,2,3])
 a2 = C.addBC2Zone(a2, 'match2','BCMatch','imax',a2,'imin',[1,2,3])
 a2 = C.fillEmptyBCWith(a2,'overlap','BCOverlap')
 res = G.CEBBIntersection(a1, a2)
-
 test.testO(res, 1)
 
 

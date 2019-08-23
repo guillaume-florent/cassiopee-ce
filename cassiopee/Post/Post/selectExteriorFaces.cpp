@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -720,6 +720,7 @@ short K_POST::exteriorFacesBasic3(FldArrayF& f, FldArrayI& cn,
       }
     }
   }
+  for (E_Int i = 0; i < nthreads; i++) delete cnnls[i];
   delete [] prev; delete [] nes; delete [] cnnls;
   if (boolIndir == true) 
   {

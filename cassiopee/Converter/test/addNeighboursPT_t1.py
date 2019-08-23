@@ -1,4 +1,4 @@
-# - applyBCOverlaps (pyTree) -
+# - addNeighbours (pyTree) -
 import Converter.PyTree as C
 import Connector.PyTree as X
 import Generator.PyTree as G
@@ -13,6 +13,6 @@ b = G.cart((-10.,-10.,-10.),(0.4,0.4,0.4), (50,50,50))
 t = C.newPyTree(['Cyl',a,'Cart',b])
 t = X.applyBCOverlaps(t)
 tp = elsAProfile.buildBCOverlap(t)
-tp = elsAProfile.rmGCOverlap__(tp)
-tp = elsAProfile.addNeighbours(tp)
+elsAProfile._rmGCOverlap(tp)
+tp = elsAProfile.addNeighbours__(tp)
 test.testT(tp, 1)

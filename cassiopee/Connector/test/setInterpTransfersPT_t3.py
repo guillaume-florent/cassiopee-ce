@@ -17,23 +17,23 @@ def F(x,y,z):
 # Donor mesh
 ni = 11; nj = 11; nk = 11
 m = G.cartTetra((0,0,0), (10./(ni-1),10./(nj-1),1), (ni,nj,nk))
-m = C.initVars(m, 'F', F, ['CoordinateX','CoordinateY','CoordinateZ'])
-m = C.initVars(m,'centers:G',1.)
+C._initVars(m, 'F', F, ['CoordinateX','CoordinateY','CoordinateZ'])
+C._initVars(m,'centers:G',1.)
 
 # Receiver mesh
 a = G.cart((0,0,0), (10./(ni-1),10./(nj-1),1), (ni,nj,nk)); a[0] = 'extraction'
 
 # 2nd order, nodes, direct storage
-t = C.newPyTree(['Rcv','Dnr']); t[2][1][2] = [a]; t[2][2][2] = [m]
-t[2][1]=C.initVars(t[2][1], 'cellN=2') # tag pour interpoler tous les pts
+t = C.newPyTree(['Rcv',a,'Dnr',m])
+t[2][1]=C.initVars(t[2][1], 'cellN', 2) # tag pour interpoler tous les pts
 t[2][1]=X.setInterpData(t[2][1],t[2][2],loc='nodes',storage='direct',order=2)
 t[2][1]=C.initVars(t[2][1],'F',0.)
 t[2][1]=X.setInterpTransfers(t[2][1],t[2][2],variables=['F'])
 t[2][1]=C.rmVars(t[2][1], 'cellN')
 test.testT(t,1)
 #
-t = C.newPyTree(['Rcv','Dnr']); t[2][1][2] = [a]; t[2][2][2] = [m]
-C._initVars(t[2][1], 'centers:cellN=2') # tag pour interpoler tous les pts
+t = C.newPyTree(['Rcv',a,'Dnr',m])
+C._initVars(t[2][1], 'centers:cellN', 2) # tag pour interpoler tous les pts
 t[2][1]=X.setInterpData(t[2][1],t[2][2],loc='centers',storage='direct',order=2)
 t[2][1] = C.rmVars(t[2][1],['F'])
 t[2][1] = C.initVars(t[2][1],'centers:F',0.)

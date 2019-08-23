@@ -33,7 +33,8 @@ if [ $? -eq 0 ]; then
     fi
     scons install prefix="$INSTALLPATH" "$SCONSOPT"
     [ $? != 0 ] && exit;
-    touch Compressor/compressor.cpp
+    #touch Compressor/compressor.cpp
+    rm -f build/lib.*/Compressor/compressor.*
     python setupScons.py install --prefix="$INSTALLPATH"
 else
     python setup.py install --prefix="$INSTALLPATH"

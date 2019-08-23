@@ -1,5 +1,6 @@
 # - Chimera app -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
@@ -33,12 +34,12 @@ def setPriority(event=None):
     
 #==============================================================================
 def setSurface():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (nzs == []):
+    if nzs == []:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     selected = ''
@@ -54,25 +55,24 @@ def setSurface():
 # Init le cellN a 1 pour la selection ou tout l'arbre
 #==============================================================================
 def initCellN():
-    if (CTK.t == []): return
+    if CTK.t == []: return
     type = VARS[8].get()
     CTK.saveTree()
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
-        if (type == 'node_in'):
-            CTK.t = C.initVars(CTK.t, 'cellN', 1.)
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
+        if type == 'node_in':
+            C._initVars(CTK.t, 'cellN', 1.)
         else:
-            CTK.t = C.initVars(CTK.t, 'centers:cellN', 1.)
+            C._initVars(CTK.t, 'centers:cellN', 1.)
     else:
         for nz in nzs:
             nob = CTK.Nb[nz]+1
             noz = CTK.Nz[nz]
-            z = CTK.t[2][nob][2][noz]
-            if (type == 'node_in'):
-                CTK.t[2][nob][2][noz] = C.initVars(z, 'cellN', 1.)
+            if type == 'node_in':
+                C._initVars(CTK.t[2][nob][2][noz], 'cellN', 1)
             else:
-                CTK.t[2][nob][2][noz] = C.initVars(z, 'centers:cellN', 1.)
-        CTK.t = C.fillMissingVariables(CTK.t)
+                C._initVars(CTK.t[2][nob][2][noz], 'centers:cellN', 1.)
+        #C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'cellN variable init to 1.\n')
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
@@ -81,7 +81,7 @@ def initCellN():
 # Applique les BC overlaps pour tout l'arbre
 #==============================================================================
 def applyOverlap():
-    if (CTK.t == []): return
+    if CTK.t == []: return
     CTK.saveTree()
     depth = VARS[7].get(); depth = int(depth)
     CTK.t = X.applyBCOverlaps(CTK.t, depth=depth)
@@ -94,7 +94,7 @@ def applyOverlap():
 # Applique setHoleInterpolatedPoints pour tout l'arbre
 #==============================================================================
 def setHoleInterpolatedPoints():
-    if (CTK.t == []): return
+    if CTK.t == []: return
     CTK.saveTree()
     depth = VARS[7].get(); depth = int(depth)
     CTK.t = X.setHoleInterpolatedPoints(CTK.t, depth=depth)
@@ -107,8 +107,8 @@ def setHoleInterpolatedPoints():
 # Blank la selection avec la surface fournie 
 #==============================================================================
 def blank():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
@@ -130,10 +130,10 @@ def blank():
         v = v.lstrip(); v = v.rstrip()
         sname = v.split('/', 1)
         bases = Internal.getNodesFromName1(CTK.t, sname[0])
-        if (bases != []):
+        if bases != []:
             nodes = Internal.getNodesFromType1(bases[0], 'Zone_t')
             for z in nodes:
-                if (z[0] == sname[1]): surfaces.append(z)
+                if z[0] == sname[1]: surfaces.append(z)
 
     # Reglages XRay
     delta = float(VARS[1].get())
@@ -141,7 +141,7 @@ def blank():
 
     # Creation de l'arbre temporaire
     nzs = CPlot.getSelectedZones()
-    if (nzs == []):
+    if nzs == []:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     t = C.newPyTree(['Base'])
@@ -168,7 +168,7 @@ def blank():
         CTK.t[2][nob][2][noz] = z
         c += 1
 
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'Blanking done.\n')
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
@@ -177,18 +177,18 @@ def blank():
 # Optimize Overlap
 #==============================================================================
 def optimize():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     dw = 1
-    if (VARS[0].get() == 'inactive' ): dw = 0
+    if VARS[0].get() == 'inactive': dw = 0
 
     depth = VARS[7].get(); depth = int(depth)
     
     # Creation de l'arbre temporaire
     nzs = CPlot.getSelectedZones()
-    if (nzs == []):
+    if nzs == []:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
         
@@ -207,9 +207,9 @@ def optimize():
     prios = []
     for b in bases:
         cont = Internal.getNodesFromName1(b, '.Solver#Chimera')
-        if (cont != []):
+        if cont != []:
             prio = Internal.getNodesFromName3(cont[0], 'Priority')
-            if (prio != []): prios.append(b[0]); prios.append(int(prio[0][1][0,0]))
+            if prio != []: prios.append(b[0]); prios.append(int(prio[0][1][0,0]))
 
     # Optimisation du recouvrement
     CTK.saveTree()
@@ -231,7 +231,7 @@ def optimize():
 # createOversetHoles
 #==============================================================================
 def createOversetHoles():
-    if (CTK.t == []): return
+    if CTK.t == []: return
     CTK.t = X.cellN2OversetHoles(CTK.t)
     CTK.TXT.insert('START', 'OversetHoles nodes created.\n')
     CTK.TKTREE.updateApp()
@@ -246,7 +246,7 @@ def createApp(win):
                            text='tkChimera', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Chimera connectivity.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=0)
     Frame.columnconfigure(1, weight=1)
@@ -361,8 +361,8 @@ def createApp(win):
     B = TTK.Label(Frame, text="DoubleWall")
     B.grid(row=r, column=0, sticky=TK.EW)
     B = TTK.OptionMenu(Frame, VARS[0], 'inactive', 'active')
-    B.grid(row=r, column=1, sticky=TK.EW)
-    
+    B.grid(row=r, column=3, sticky=TK.EW)
+
     # - optimizeOverlap -
     B = TTK.Button(Frame, text="Optimize overlap", command= optimize)
     B.grid(row=r, column=0, columnspan=4, sticky=TK.EW)
@@ -396,7 +396,7 @@ def updateApp(event=None): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+   
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

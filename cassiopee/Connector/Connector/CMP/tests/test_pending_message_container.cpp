@@ -3,7 +3,7 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
-#include "pending_message_container"
+#include "pending_message_container.h"
 #include "recv_buffer.hpp"
 #include "send_buffer.hpp"
 
@@ -27,8 +27,8 @@ std::ostream& operator<<( std::ostream& out, const DataTest& d ) {
 }
 int DataTest::nbDataTest = 0;
 //
-typedef typename CMP::PendingMsgContainer<CMP::RecvBuffer, DataTest> RecvQueue;
-typedef typename CMP::PendingMsgContainer<CMP::SendBuffer> SendQueue;
+typedef CMP::PendingMsgContainer<CMP::RecvBuffer, DataTest> RecvQueue;
+typedef CMP::PendingMsgContainer<CMP::SendBuffer> SendQueue;
 // ---------------------------------------------------------------------------------------
 int main( int nargs, char* argv[] ) {
     MPI_Init( &nargs, &argv );
@@ -51,6 +51,7 @@ int main( int nargs, char* argv[] ) {
     std::vector<double> sdata( nbElts );
     for ( std::size_t        i = 0; i < nbElts; ++i ) sdata[i] = rank + i + 0.5;
     CMP::vector_view<double> v_data;
+    CMP::vector_view<double> inpl_data;
     for ( int i = 0; i < szCom; ++i ) {
         if ( i != rank ) {
             squeue.push_back( new CMP::SendBuffer( i, 404 ) );
@@ -59,6 +60,11 @@ int main( int nargs, char* argv[] ) {
             CMP::RecvBuffer& rbuf = rqueue.back_message_buffer( );
             rbuf.irecv( );
             sbuf << ia << sdata;
+            CMP::SendBuffer::PackedData& pck_arr = sbuf.push_inplace_array(10*sizeof(double));
+            sbuf.finalize_and_copy();
+            double* pt_data = pck_arr.data<double>();
+            for ( int j = 0; j < pck_arr.size()/sizeof(double); ++j )
+                pt_data[j] = i+j+3.14;
             sbuf.isend( );
         }
     }
@@ -67,7 +73,7 @@ int main( int nargs, char* argv[] ) {
         RecvQueue::iterator it = rqueue.get_first_complete_message( );
         if ( it != rqueue.end( ) ) {
             CMP::RecvBuffer& rbuf = ( *it ).get_message_buffer( );
-            rbuf >> ib >> v_data;
+            rbuf >> ib >> v_data >> inpl_data;
             std::cout << "local data : " << ( *it ).get_local_data( ) << std::endl;
             for ( std::size_t i = 0; i < std::min( v_data.size( ), 10UL ); ++i )
                 std::cout << std::setprecision( 10 ) << v_data[i] << " ";
@@ -76,6 +82,9 @@ int main( int nargs, char* argv[] ) {
                 for ( std::size_t i = v_data.size( ) - 10; i < v_data.size( ); ++i )
                     std::cout << std::setprecision( 10 ) << v_data[i] << " ";
             }
+            std::cout << "\nreceived inplace data :\n";
+            for ( int i = 0; i < 10; ++i )
+                std::cout << inpl_data[i] << " "; 
             std::cout << std::endl;
             rqueue.pop( it );
         }

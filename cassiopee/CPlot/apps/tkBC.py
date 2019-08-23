@@ -1,5 +1,6 @@
 # -- view/set BCs in a pyTree --
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -9,6 +10,9 @@ import Transform.PyTree as T
 import Converter.Internal as Internal
 import Connector.PyTree as X
 import Post.PyTree as P
+
+try: range = xrange
+except: pass
 
 # local widgets list
 WIDGETS = {}; VARS = []
@@ -37,21 +41,18 @@ def getAllDefinedBC(t):
                 f = Internal.getNodeFromType1(i, 'FamilyName_t')
                 if f is not None:
                     name = Internal.getValue(f)
-                    if FamilyBC.has_key(name):
-                        results.add(FamilyBC[name])
+                    if name in FamilyBC: results.add(FamilyBC[name])
 
     for z in zones:
         # BCMatch
         nodes = Internal.getNodesFromType2(z, 'GridConnectivity1to1_t')
         for i in nodes:
-            if i is not None:
-                results.add('BCMatch')
+            if i is not None: results.add('BCMatch')
         nodes = Internal.getNodesFromType2(z, 'GridConnectivity_t')
         for i in nodes:
           r = Internal.getNodeFromType1(i, 'GridConnectivityType_t')
           if r is not None:
-            if Internal.getValue(r) == 'Abutting1to1':
-                results.add('BCMatch')
+            if Internal.getValue(r) == 'Abutting1to1': results.add('BCMatch')
 
         # BCNearMatch
         nodes = Internal.getNodesFromType2(z, 'GridConnectivity_t')
@@ -62,23 +63,18 @@ def getAllDefinedBC(t):
                 f = Internal.getNodeFromType1(i, 'FamilyName_t')
                 if f is not None and Internal.getValue(f).startswith('BCStage'):
                     results.add(Internal.getValue(f))
-                else:
-                    results.add('BCNearMatch')
+                else: results.add('BCNearMatch')
 
         # BCOverlap
         nodes = Internal.getNodesFromType2(z, 'GridConnectivity_t')
         for i in nodes:
           r = Internal.getNodeFromType1(i, 'GridConnectivityType_t')
           if r is not None:
-            if Internal.getValue(r) == 'Overset':
-                results.add('BCOverlap')
-
-    results = list(results)
+            if Internal.getValue(r) == 'Overset': results.add('BCOverlap')
 
     # FamilyBC
-    results += FamilyBC.keys()
-
-    return results
+    for i in FamilyBC: results.add(i)
+    return list(results)
 
 #==============================================================================
 # Pour view BC
@@ -93,7 +89,7 @@ def updateFamilyBCNameList1(event=None):
 def updateFamilyBCNameList1_2(event=None):
     if CTK.t == []: return
     varsp = ['Mesh', '-All BC-']+getAllDefinedBC(CTK.t)
-    if WIDGETS.has_key('BCs'): WIDGETS['BCs']['values'] = varsp
+    if 'BCs' in WIDGETS: WIDGETS['BCs']['values'] = varsp
 
 #================================================================================
 # Pour list box
@@ -134,7 +130,7 @@ def updateFamilyBCNameList2(event=None):
 def updateFamilyBCNameList2_2(event=None):
     if CTK.t == []: return
     varsp = ['-All BC-']+getAllDefinedBC(CTK.t)
-    if WIDGETS.has_key('BCs3'): WIDGETS['BCs3']['values'] = varsp
+    if 'BCs3' in WIDGETS: WIDGETS['BCs3']['values'] = varsp
 
 #==============================================================================
 # Pour set BC
@@ -153,7 +149,7 @@ def updateFamilyBCNameList3_2(event=None):
     varsl = C.getFamilyBCNamesOfType(CTK.t)
     varsp = Internal.KNOWNBCS[:]
     if len(varsl) != 0: varsp += varsl
-    if WIDGETS.has_key('BCs2'): WIDGETS['BCs2']['values'] = varsp
+    if 'BCs2' in WIDGETS: WIDGETS['BCs2']['values'] = varsp
 #==============================================================================
 # Pour fillEmptyBC
 def updateFamilyBCNameList4(event=None):
@@ -171,7 +167,7 @@ def updateFamilyBCNameList4_2(event=None):
     varsl = C.getFamilyBCNamesOfType(CTK.t)
     varsp = Internal.KNOWNBCS[:]
     if len(varsl) != 0: varsp += varsl
-    if WIDGETS.has_key('BCs4'): WIDGETS['BCs4']['values'] = varsp
+    if 'BCs4' in WIDGETS: WIDGETS['BCs4']['values'] = varsp
 
 #==============================================================================
 # DisplayUndefinedBoundaries
@@ -211,8 +207,7 @@ def view(event=None):
                                           separator=Internal.SEP1)
     CTK.dt = C.newPyTree(['Base', 'Edges'])
     active = []
-    zones = Internal.getZones(tp)
-    for z in CTK.__MAINACTIVEZONES__: active.append(zones[z])
+    for z in CTK.__MAINACTIVEZONES__: active.append(tp[2][CTK.Nb[z]+1][2][CTK.Nz[z]])
 
     Z = []
     for t in BCTypes:
@@ -237,20 +232,21 @@ def view(event=None):
                 exts += zp
 
         CTK.dt[2][2][2] += exts
-        CTK.dt = C.fillMissingVariables(CTK.dt) # bug exteriorFaces
+        C._fillMissingVariables(CTK.dt) # bug exteriorFaces
 
         # Activate
         lenZ = len(CTK.dt[2][1][2]); lenExts = len(CTK.dt[2][2][2])
-        active = [(i,1) for i in xrange(lenZ+lenExts)]
-        for i in xrange(lenZ): active[i] = (i,1)
-        for i in xrange(lenExts): active[i+lenZ] = (i+lenZ,0)
+        active = [(i,1) for i in range(lenZ+lenExts)]
+        for i in range(lenZ): active[i] = (i,1)
+        for i in range(lenExts): active[i+lenZ] = (i+lenZ,0)
 
         CTK.display(CTK.dt, mainTree=CTK.DEFINEDBC)
         CPlot.setActiveZones(active)
         CPlot.setState(edgifyDeactivatedZones=1)
     else:
         lenZ = len(CTK.dt[2][1][2])
-        active = [(i,1) for i in xrange(lenZ)]
+        active = [(i,1) for i in range(lenZ)]
+        C._fillMissingVariables(CTK.dt) # si BCDataSet != fields
         CTK.display(CTK.dt, mainTree=CTK.DEFINEDBC)
         CPlot.setActiveZones(active)
         CPlot.setState(edgifyDeactivatedZones=0)
@@ -318,22 +314,28 @@ def check():
                 zp = []
                 exts += zp
         CTK.dt[2][2][2] += exts
-        C._fillMissingVariables(CTK.dt) # bug exteriorFacesStruct
+        #C._fillMissingVariables(CTK.dt) # bug exteriorFacesStruct
         
         # Activate
         lenZ = len(CTK.dt[2][1][2]); lenExts = len(exts)
-        active = [(i,1) for i in xrange(lenZ+lenExts)]
-        for i in xrange(lenZ): active[i] = (i,1)
-        for i in xrange(lenExts): active[i+lenZ] = (i+lenZ,0)
+        active = [(i,1) for i in range(lenZ+lenExts)]
+        for i in range(lenZ): active[i] = (i,1)
+        for i in range(lenExts): active[i+lenZ] = (i+lenZ,0)
 
         CTK.display(CTK.dt, mainTree=CTK.UNDEFINEDBC)
         CPlot.setActiveZones(active)
         CPlot.setState(edgifyDeactivatedZones=1)
     else:
         lenZ = len(CTK.dt[2][1][2])
-        active = [(i,1) for i in xrange(lenZ)]
+        active = [(i,1) for i in range(lenZ)]
         CTK.display(CTK.dt, mainTree=CTK.UNDEFINEDBC)
         CPlot.setActiveZones(active)
+
+    # modifie la couleur du bouton
+    l = len(Internal.getZones(CTK.dt))
+    if l == 0: TTK.setButtonGreen(WIDGETS['undefinedBC'])
+    else: TTK.setButtonRed(WIDGETS['undefinedBC'])    
+    WIDGETS['undefinedBC'].update()
 
 #==============================================================================
 # Builds the BCDegenerateLine and BCDegeneratePoint for selected zones
@@ -358,7 +360,7 @@ def setDegeneratedBC():
             CTK.t = X.setDegeneratedBC(CTK.t, tol=eps, dim=ndim)
             CTK.TKTREE.updateApp()
             CTK.TXT.insert('START', 'Degenerated BCs successfully set.\n')
-        except Exception, e:
+        except Exception as e:
             Panels.displayErrors([0,str(e)], header='Error: setDegenratedBC')
             CTK.TXT.insert('START', 'Degenerated BCs failed.\n')
             CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -376,7 +378,7 @@ def setDegeneratedBC():
                 CTK.t[2][nob][2][noz] = sel[c]; c += 1
             CTK.TKTREE.updateApp()    
             CTK.TXT.insert('START', 'Degenerated BCs successfully set.\n')
-        except Exception, e:
+        except Exception as e:
             Panels.displayErrors([0,str(e)], header='Error: setDegeneratedBC')
             CTK.TXT.insert('START', 'Degenerated BCs failed.\n')
             CTK.TXT.insert('START', 'Error: ', 'Error')  
@@ -396,13 +398,13 @@ def connectMatch():
     if node is not None: ndim = Internal.getValue(node)
     else:
         CTK.TXT.insert('START', 'EquationDimension not found (tkState). Using 3D.\n')
-        CTK.TXT.insert('START', 'Wanrning: ', 'Warning'); ndim = 3
+        CTK.TXT.insert('START', 'Warning: ', 'Warning'); ndim = 3
         
     mode = VARS[9].get()
     translation = [0.,0.,0.]; rotationCenter = [0.,0.,0.]; rotationAngle = [0.,0.,0.]
     if mode == 'Translation': 
         mode = 1; translation = CTK.varsFromWidget(VARS[10].get(), type=1)
-    elif mode == 'Rotation':
+    elif mode == 'Rotation (Degree)':
         mode = 1; f = CTK.varsFromWidget(VARS[10].get(), type=1)
         rotationCenter = f[0:3]; rotationAngle = f[3:6]
     else: mode = 0
@@ -415,10 +417,11 @@ def connectMatch():
             else: 
                 CTK.t = X.connectMatchPeriodic(CTK.t, rotationCenter=rotationCenter,
                                                rotationAngle=rotationAngle, 
-                                               translation=translation, tol=eps, dim=ndim)
+                                               translation=translation, tol=eps, dim=ndim,
+                                               unitAngle=None)
             CTK.TKTREE.updateApp()
             CTK.TXT.insert('START', 'Matching BCs successfully set.\n')
-        except Exception, e:
+        except Exception as e:
             Panels.displayErrors([0,str(e)], header='Error: connectMatch')
             CTK.TXT.insert('START', 'Matching BCs failed.\n')
             CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -433,14 +436,15 @@ def connectMatch():
             else: 
                 sel = X.connectMatchPeriodic(sel, rotationCenter=rotationCenter,
                                              rotationAngle=rotationAngle, 
-                                             translation=translation, tol=eps, dim=ndim)
+                                             translation=translation, tol=eps, 
+                                             dim=ndim, unitAngle=None)
             c = 0
             for nz in nzs:
                 nob = CTK.Nb[nz]+1; noz = CTK.Nz[nz]
                 CTK.t[2][nob][2][noz] = sel[c]; c += 1
             CTK.TKTREE.updateApp()    
             CTK.TXT.insert('START', 'Matching BCs successfully set.\n')
-        except Exception, e:
+        except Exception as e:
             Panels.displayErrors([0,str(e)], header='Error: connectMatch')
             CTK.TXT.insert('START', 'Matching BCs failed.\n')
             CTK.TXT.insert('START', 'Error: ', 'Error')  
@@ -476,7 +480,7 @@ def connectNearMatch():
             CTK.t = X.connectNearMatch(CTK.t, ratio=ratio, tol=eps, dim=ndim)
             CTK.TKTREE.updateApp()
             CTK.TXT.insert('START', 'n/m matching BCs successfully set.\n')
-        except Exception, e:
+        except Exception as e:
             Panels.displayErrors([0,str(e)], header='Error: connectNearMatch')
             CTK.TXT.insert('START', 'n/m matching BCs failed.\n')
             CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -494,7 +498,7 @@ def connectNearMatch():
                 CTK.t[2][nob][2][noz] = sel[c]; c += 1
             CTK.TKTREE.updateApp()    
             CTK.TXT.insert('START', 'n/m matching BCs successfully set.\n')
-        except Exception, e:
+        except Exception as e:
             Panels.displayErrors([0,str(e)], header='Error: connectNearMatch')
             CTK.TXT.insert('START', 'n/m matching BCs failed.\n')
             CTK.TXT.insert('START', 'Error: ', 'Error')  
@@ -645,7 +649,7 @@ def createApp(win):
                            text='tkBC', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Manage boundary conditions.\nCtrl+c to close applet.', btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -666,7 +670,7 @@ def createApp(win):
     V = TK.StringVar(win); V.set('3D'); VARS.append(V)
     # - 2 - tol pour ConnectMatch -
     V = TK.StringVar(win); V.set('1.e-6'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBCMatchTol'): V.set(CTK.PREFS['tkBCMatchTol'])
+    if 'tkBCMatchTol' in CTK.PREFS: V.set(CTK.PREFS['tkBCMatchTol'])
     # - 3 - ratio pour ConnectNearMatch -
     V = TK.StringVar(win); V.set('2'); VARS.append(V)
     # - 4 - Type de BC pour fillEmptyBCWith -
@@ -677,14 +681,14 @@ def createApp(win):
     V = TK.StringVar(win); V.set('BCWall'); VARS.append(V)
     # - 7 - Edges des zones du calcul
     V = TK.StringVar(win); V.set('0'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBCEdges'): V.set(CTK.PREFS['tkBCEdges'])
+    if 'tkBCEdges' in CTK.PREFS: V.set(CTK.PREFS['tkBCEdges'])
     # -8- SplitFactor info bulle
     V = TK.StringVar(win); V.set('Split more or less undefined BCs. \nUsefull only for unstructured grids.'); VARS.append(V)
     # -9- Periodicity? in connectMatch
     V = TK.StringVar(win); V.set('Not periodic'); VARS.append(V)
     # -10- Periodicity field (0;0;0...)
     V = TK.StringVar(win); V.set('0;0;0;0;0;0'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBCMatchPer'): V.set(CTK.PREFS['tkBCMatchPer'])
+    if 'tkBCMatchPer' in CTK.PREFS: V.set(CTK.PREFS['tkBCMatchPer'])
 
     # - View mesh -
     B = TTK.Button(Frame, text="View Mesh", command=viewMesh)
@@ -728,6 +732,7 @@ def createApp(win):
     B = TTK.Button(Frame, text="View undefined BC",
                    command=displayUndefinedBoundaries)
     B.grid(row=2, column=0, columnspan=1, sticky=TK.EW)
+    WIDGETS['undefinedBC'] = B
     BB = CTK.infoBulle(parent=B, text='View undefined BC in ALL tree.\nUse this to setBC or fillEmptyBC.')
 
     # - Slider for splitFactor -
@@ -737,7 +742,6 @@ def createApp(win):
     B.grid(row=3, columnspan=1, sticky=TK.EW)
     BB = CTK.infoBulle(parent=B, textVariable=VARS[8])
 
-    
     # - rmBCOfType -
     B = TTK.Button(Frame, text="rm BC", command=rmBCOfType)
     B.grid(row=4, column=0, sticky=TK.EW)
@@ -799,7 +803,7 @@ def createApp(win):
     BB = CTK.infoBulle(parent=B, text='Tolerance for matching.')
 
     # - Periodicity management -
-    B = TTK.OptionMenu(Frame, VARS[9], 'Not periodic', 'Translation', 'Rotation')
+    B = TTK.OptionMenu(Frame, VARS[9], 'Not periodic', 'Translation', 'Rotation (Degree)')
     B.grid(row=9, column=0, sticky=TK.EW)
     B = TTK.Entry(Frame, textvariable=VARS[10], background='White')
     B.grid(row=9, column=1, sticky=TK.EW)
@@ -841,11 +845,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

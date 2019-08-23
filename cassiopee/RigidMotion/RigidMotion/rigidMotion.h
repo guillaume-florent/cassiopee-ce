@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -20,11 +20,11 @@
 # ifndef _RIGIDMOTION_RIGIDMOTION_H_
 # define _RIGIDMOTION_RIGIDMOTION_H_
 
-# include "Python.h"
 # include "kcore.h"
 
 namespace K_RIGIDMOTION
 { 
   PyObject* move(PyObject* self, PyObject* args);
+  PyObject* moveN(PyObject* self, PyObject* args);
 }
 #endif

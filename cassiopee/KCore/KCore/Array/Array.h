@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -21,7 +21,7 @@
 #ifndef _KCORE_ARRAY_H_
 #define _KCORE_ARRAY_H_
 #include "Fld/DynArray.h"
-#include "Python.h"
+#include "kPython.h"
 #include "Def/DefTypes.h"
 #include "Def/DefCplusPlusConst.h"
 
@@ -134,6 +134,11 @@ namespace K_ARRAY
      retourne le nombre de variables. */
   E_Int getVarName(PyObject* varNames, char* varString);
 
+  /* Analyse element string. For instance: "TRI_6" will return "TRI" and 6 */
+  E_Int eltString2TypeId(char* eltString, char* eltType, E_Int& nvpe, E_Int& loc, E_Int& typeId);
+  /* Analyse typeId. Retourne eltString, nvpe */  
+  E_Int typeId2eltString(E_Int typeId, E_Int loc, char* eltString, E_Int& nvpe);
+
   /* Get data pointers dans un PyObject array.
      Pas de verification ici. */
   E_Float* getFieldPtr(PyObject* array);
@@ -191,6 +196,20 @@ namespace K_ARRAY
                       E_Int& ni, E_Int& nj, E_Int& nk,
                       FldArrayI*& c,
                       char*& eltType);
+  E_Int getFromArray2(PyObject* o,
+                      char*& varString,
+                      FldArrayF*& f,
+                      FldArrayI*& c,
+                      char*& eltType);
+  E_Int getFromArray2(PyObject* o,
+                      FldArrayF*& f,
+                      FldArrayI*& c);
+  /* Retourne uniquement un FldArrayF (shared) sur les champs et la varstring 
+     Il faut utiliser la macro RELEASESHAREDS */
+  E_Int getFromArray2(PyObject* o,
+                      char*& varString,
+                      FldArrayF*& f);
+  E_Int getFromArray2(PyObject* o, FldArrayF*& f);
 
   /* Extrait les donnees utiles d'un objet python struct array 
      defini par: [ 'vars', a, ni, nj, nk ]
@@ -199,7 +218,7 @@ namespace K_ARRAY
      ou ELTTYPE vaut: NODE, BAR, TRI, QUAD, TETRA, PYRA, PENTA, HEXA, NGON.
      return 1: valid struct array
      f: field en stockage Dyn (champ de v1,v2,v3,...)
-     ni, nj, nk : number of points
+     ni, nj, nk: number of points
      varString
      return 2 : valid unstruct array
      f: field en stockage en stockage Dyn (champ de v1,v2,v3,...)
@@ -353,8 +372,9 @@ namespace K_ARRAY
      IN: api: 1 (array), 2 (array2)
      OUT: PyObject cree. */
   PyObject* buildArray2(E_Int nfld, const char* varString,
-                       E_Int ni, E_Int nj, E_Int nk, E_Int api=1);
-
+                        E_Int ni, E_Int nj, E_Int nk, E_Int api=1);
+  PyObject* buildArray2(FldArrayF& f, const char* varString,
+                        E_Int ni, E_Int nj, E_Int nk, E_Int api=1);
   /* Construit un array non structure a partir d'un FldArray
      IN: field: Fld champ non structure
      IN: varString: variable string
@@ -393,7 +413,9 @@ namespace K_ARRAY
                        E_Boolean center=false, 
                        E_Int sizeNGon=1, E_Int sizeNFace=1,
                        E_Int nface=1, E_Int api=1);
-                        
+ PyObject* buildArray2(FldArrayF& f, const char* varString, 
+                       FldArrayI& cn, const char* eltType, E_Int api=1);
+
   /* Construit un array structure a partir d'un DynArray
      IN: field: Dyn champ structure
      IN: varString: variable string
@@ -416,6 +438,11 @@ namespace K_ARRAY
                        K_FLD::DynArray<E_Int>& c, E_Int et, 
                        const char* etString=NULL, 
                        E_Boolean center=false);
+
+  /* Add field in array1 or array2 (in place) 
+    IN: a: array
+    IN: varName */
+  void addFieldInArray(PyObject* a, char* varName);
 
   /* Extrait les donnees utiles d'un objet python o "entiers"
      Cet objet python peut etre:

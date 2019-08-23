@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -55,23 +55,25 @@ PyObject* K_CPLOT::displayNew(PyObject* self, PyObject* args)
   int dim;
   PyObject* modeObject;
   PyObject* scalarFieldObject;
-  int vectorField1, vectorField2, vectorField3;
+  PyObject* vectorFieldObject1, *vectorFieldObject2, *vectorFieldObject3;
   int winx, winy;
   int displayBB, displayInfo, displayIsoLegend;
   int meshStyle, solidStyle, scalarStyle, vectorStyle, colormap, niso;
   E_Float xcam, ycam, zcam, xeye, yeye, zeye, dirx, diry, dirz, isoEdges;
-  E_Float stereoDist, viewAngle;
+  E_Float stereoDist, viewAngle, vectorScale, vectorDensity;
+  int vectorNormalize, vectorShowSurface, vectorShape, vectorProjection;
   char* exportFile; char* exportResolution;
   PyObject* zoneNamesObject;
   PyObject* renderTagsObject;
   PyObject* isoScales;
   int bgColor, shadow, dof, offscreen, stereo;
-  if (!PyArg_ParseTuple(args, "OiOOiiiiiiiiiiiidO(ii)(ddd)(ddd)(ddd)diiiidssOOi",
+  if (!PyArg_ParseTuple(args, "OiOOOOOiiiiiiiddiiiiiidO(ii)(ddd)(ddd)(ddd)diiiidssOOi",
                         &arrays, &dim, &modeObject, &scalarFieldObject,
-                        &vectorField1, &vectorField2, &vectorField3,
+                        &vectorFieldObject1, &vectorFieldObject2, &vectorFieldObject3,
                         &displayBB, &displayInfo, &displayIsoLegend,
                         &meshStyle, &solidStyle, &scalarStyle,
-                        &vectorStyle, &colormap,
+                        &vectorStyle, &vectorScale, &vectorDensity, &vectorNormalize, 
+                        &vectorShowSurface, &vectorShape, &vectorProjection, &colormap,
                         &niso, &isoEdges, &isoScales,
                         &winx, &winy, &xcam, &ycam, &zcam,
                         &xeye, &yeye, &zeye,
@@ -91,8 +93,6 @@ PyObject* K_CPLOT::displayNew(PyObject* self, PyObject* args)
   vector<char*> renderTags;
   getStringsFromPyObj(renderTagsObject, renderTags);
 
-  // Creation du container de donnees
-  Data* d = Data::getInstance();
 
   // Lecture des arrays
   vector<E_Int> res;
@@ -105,8 +105,7 @@ PyObject* K_CPLOT::displayNew(PyObject* self, PyObject* args)
   E_Boolean skipNoCoord = true;
   E_Boolean skipStructured = false;
   E_Boolean skipUnstructured = false;
-  E_Boolean skipDiffVars = true;
-
+  E_Boolean skipDiffVars = false;
   E_Int isOk = K_ARRAY::getFromArrays(arrays, res, structVarString, unstrVarString,
                                       structF, unstrF, nit, njt, nkt, cnt,
                                       eltType, objs, obju, 
@@ -127,15 +126,32 @@ PyObject* K_CPLOT::displayNew(PyObject* self, PyObject* args)
     return NULL;
   }
 
+  Data* d = Data::getInstance();
+
+  // Construction de la chaine de toutes les variables
+  E_Int referenceNfield;
+  char** referenceVarNames;
+  d->getAllVars(structVarString, unstrVarString,
+                referenceNfield, referenceVarNames);
+
+  d->_CDisplayIsLaunched = 1;
+
   d->initZoneData(structF, structVarString, nit, njt, nkt,
 		  unstrF, unstrVarString, cnt, eltType, 
-		  zoneNames, renderTags);
-  for (unsigned int i = 0; i < zoneNames.size(); i++)
-    delete [] zoneNames[i];
+		  zoneNames, renderTags,
+      referenceNfield, referenceVarNames);
+
+  for (size_t i = 0; i < zoneNames.size(); i++) delete [] zoneNames[i];
+
+  for (E_Int i = 0; i < referenceNfield; i++) delete [] referenceVarNames[i];
+  delete [] referenceVarNames;
 
   // Initialisation des Data restantes
   E_Int mode = getMode(modeObject);
   E_Int scalarField = getScalarField(scalarFieldObject);
+  E_Int vectorField1 = getScalarField(vectorFieldObject1);
+  E_Int vectorField2 = getScalarField(vectorFieldObject2);
+  E_Int vectorField3 = getScalarField(vectorFieldObject3);
   d->enforceGivenData(dim, mode, scalarField, vectorField1, vectorField2,
                       vectorField3, displayBB, displayInfo, displayIsoLegend);
   d->initCam();
@@ -148,7 +164,8 @@ PyObject* K_CPLOT::displayNew(PyObject* self, PyObject* args)
                        xeye, yeye, zeye,
                        dirx, diry, dirz, viewAngle,
                        meshStyle, solidStyle, scalarStyle, 
-                       vectorStyle, colormap, 
+                       vectorStyle, vectorScale, vectorDensity, vectorNormalize, vectorShowSurface,
+                       vectorShape, vectorProjection, colormap, 
                        niso, isoEdges, isoScales, 
                        bgColor, -1, -1, -1, shadow, dof,
                        exportFile, exportResolution);
@@ -188,15 +205,15 @@ PyObject* K_CPLOT::displayNew(PyObject* self, PyObject* args)
     d->_view.w = screenWidth-320;
     d->_view.h = screenHeight;
  
-    //printf("Creating OS context...");
+    //printf("Creating OS context..."); fflush(stdout);
     OSMesaContext ctx; 
     ctx = OSMesaCreateContext(OSMESA_RGBA, NULL);
-    d->ptrState->offscreenBuffer = malloc(d->_view.w * d->_view.h * 4 * 
-					   sizeof(GLubyte));
+    d->ptrState->offscreenBuffer = (char*)malloc(d->_view.w * d->_view.h * 4 * 
+                                                 sizeof(GLubyte));
     OSMesaMakeCurrent(ctx, d->ptrState->offscreenBuffer, GL_UNSIGNED_BYTE, 
                       d->_view.w, d->_view.h);
     d->init();
-    d->farClipping();
+    d->ptrState->farClip = 1;
     d->ptrState->render = 0;
     d->display();  
     d->exportFile();

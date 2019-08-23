@@ -1,6 +1,7 @@
 # - tkLuxRender -
 # Interface avec Lux render
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.Internal as Internal
 import Converter.PyTree as C
@@ -11,8 +12,7 @@ import KCore.Vector as Vector
 import os
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 # Create Lxs file in rep
@@ -101,16 +101,16 @@ def createGeo(rep):
     for z in zones:
         material = 'Solid'; color = 'White'
         ri = Internal.getNodesFromName1(z, '.RenderInfo')
-        if (ri != []):
+        if ri != []:
             # Material
             mt = Internal.getNodesFromName1(ri[0], 'Material')
-            if (mt != []): material = Internal.getValue(mt[0])
+            if mt != []: material = Internal.getValue(mt[0])
             # Shader parameters
             sp = Internal.getNodesFromName1(ri[0], 'ShaderParameters')
-            if (sp != []): intensity = 50.*sp[0][1][0]
+            if sp != []: intensity = 50.*sp[0][1][0]
             else: intensity = 50.
             
-        if (material == 'Light'):
+        if material == 'Light':
             file.write('AttributeBegin # light_'+str(c)+'\n')
             file.write('NamedMaterial "material'+str(c)+'"\n')
             file.write('LightGroup "'+str(c)+'"\n')
@@ -149,7 +149,7 @@ def createGeo(rep):
 #==============================================================================
 def writeMatte0(file, dict, c, colorR, colorG, colorB, scale):
     name = 'matte'
-    if not dict.has_key(name): dict[name] = 0
+    if name not in dict: dict[name] = 0
     
     file.write('MakeNamedMaterial "material'+str(c)+'"\n')
     file.write('      "color Kd" ['+str(colorR)+' '+str(colorG)+' '+str(colorB)+']\n')
@@ -164,7 +164,7 @@ def writeMatte0(file, dict, c, colorR, colorG, colorB, scale):
 #==============================================================================
 def writeGlass0(file, dict, c, colorR, colorG, colorB, scale):
     name = 'glass'
-    if not dict.has_key(name): dict[name] = 0
+    if name not in dict: dict[name] = 0
     
     file.write('MakeNamedMaterial "material'+str(c)+'"\n')
     file.write('      "bool architectural" ["false"]\n')
@@ -186,7 +186,7 @@ def writeGlass0(file, dict, c, colorR, colorG, colorB, scale):
 #==============================================================================
 def writeChrome0(file, dict, c, colorR, colorG, colorB, scale):
     name = 'chrome'
-    if not dict.has_key(name): dict[name] = 0
+    if name not in dict: dict[name] = 0
     
     file.write('MakeNamedMaterial "material'+str(c)+'"\n')   
     file.write('      "float film" [0.000000000000000]\n')
@@ -208,7 +208,7 @@ def writeChrome0(file, dict, c, colorR, colorG, colorB, scale):
 #==============================================================================
 def writeMetal0(file, dict, c, colorR, colorG, colorB, scale):
     name = 'metal'
-    if not dict.has_key(name): dict[name] = 0
+    if name not in dict: dict[name] = 0
     
     file.write('MakeNamedMaterial "material'+str(c)+'"\n')   
     file.write('	"bool multibounce" ["false"]\n')
@@ -229,32 +229,31 @@ def writeMetal0(file, dict, c, colorR, colorG, colorB, scale):
 #==============================================================================
 def writeMarble0(file, dict, c, colorR, colorG, colorB, scale):
     name = 'marble'
-    if not dict.has_key(name):
-        dict[name] = 0
+    if name not in dict: dict[name] = 0
     
-        file.write('Texture "Texture" "float" "blender_marble"\n')
-	file.write('      "float bright" [1.000000000000000]\n')
-	file.write('      "float contrast" [3.435120105743408]\n')
-	file.write('      "string type" ["sharp"]\n')
-	file.write('      "string noisetype" ["hard_noise"]\n')
-	file.write('      "string noisebasis" ["voronoi_f2"]\n')
-	file.write('      "string noisebasis2" ["tri"]\n')
-	file.write('      "float noisesize" [1.572026491165161]\n')
-	file.write('      "float turbulence" [17.708000183105469]\n')
-	file.write('      "integer noisedepth" [1]\n')
-	file.write('      "string coordinates" ["global"]\n')
-	file.write('      "vector translate" [0.0 0.0 0.0]\n')
-	file.write('      "vector rotate" [0.0 0.0 0.0]\n')
-        file.write('      "vector scale" ['+str(scale)+' '+str(scale)+' '+str(scale)+']\n')
-        file.write('\n')
+    file.write('Texture "Texture" "float" "blender_marble"\n')
+    file.write('      "float bright" [1.000000000000000]\n')
+    file.write('      "float contrast" [3.435120105743408]\n')
+    file.write('      "string type" ["sharp"]\n')
+    file.write('      "string noisetype" ["hard_noise"]\n')
+    file.write('      "string noisebasis" ["voronoi_f2"]\n')
+    file.write('      "string noisebasis2" ["tri"]\n')
+    file.write('      "float noisesize" [1.572026491165161]\n')
+    file.write('      "float turbulence" [17.708000183105469]\n')
+    file.write('      "integer noisedepth" [1]\n')
+    file.write('      "string coordinates" ["global"]\n')
+    file.write('      "vector translate" [0.0 0.0 0.0]\n')
+    file.write('      "vector rotate" [0.0 0.0 0.0]\n')
+    file.write('      "vector scale" ['+str(scale)+' '+str(scale)+' '+str(scale)+']\n')
+    file.write('\n')
 
-        file.write('Texture "Texture.002" "color" "mix"\n')
-        file.write('	"texture amount" ["Texture"]\n')
-        file.write('	"color tex1" [0.74838847 0.74838847 0.74838847]\n')
-        #file.write('    "color tex1" ['+str(colorR)+' '+str(colorG)+' '+str(colorB)+']\n')
-        #file.write('	"color tex2" [0.52770847 0.52770847 0.52770847]\n')
-        file.write('    "color tex2" ['+str(colorR)+' '+str(colorG)+' '+str(colorB)+']\n')
-        file.write('\n')
+    file.write('Texture "Texture.002" "color" "mix"\n')
+    file.write('	"texture amount" ["Texture"]\n')
+    file.write('	"color tex1" [0.74838847 0.74838847 0.74838847]\n')
+    #file.write('    "color tex1" ['+str(colorR)+' '+str(colorG)+' '+str(colorB)+']\n')
+    #file.write('	"color tex2" [0.52770847 0.52770847 0.52770847]\n')
+    file.write('    "color tex2" ['+str(colorR)+' '+str(colorG)+' '+str(colorB)+']\n')
+    file.write('\n')
         
     file.write('MakeNamedMaterial "material'+str(c)+'"\n')   
     file.write('      "bool multibounce" ["false"]\n')
@@ -274,77 +273,76 @@ def writeMarble0(file, dict, c, colorR, colorG, colorB, scale):
 #==============================================================================
 def writeWood0(file, dict, c, colorR, colorG, colorB, scale):
     name = 'wood alder'
-    if not dict.has_key(name):
-        dict[name] = 0
-        file.write('Texture "wood alder part 1" "float" "blender_wood"\n')
-	file.write('     "float bright" [1.000000000000000]\n')
-	file.write('     "float contrast" [2.000000000000000]\n')
-	file.write('     "string noisebasis" ["blender_original"]\n')
-	file.write('     "string noisebasis2" ["sin"]\n')
-	file.write('     "float noisesize" [0.250000000000000]\n')
-	file.write('     "string noisetype" ["hard_noise"]\n')
-	file.write('     "float turbulence" [2.000000000000000]\n')
-	file.write('     "string type" ["ringnoise"]\n')
-	file.write('     "string coordinates" ["local"]\n')
-	file.write('     "vector translate" [0.0 0.0 0.0]\n')
-	file.write('     "vector rotate" [0.0 0.0 0.0]\n')
-        file.write('     "vector scale" ['+str(scale)+' '+str(scale)+' '+str(scale)+']\n')
-        file.write('\n')
+    if name not in dict: dict[name] = 0
+    file.write('Texture "wood alder part 1" "float" "blender_wood"\n')
+    file.write('     "float bright" [1.000000000000000]\n')
+    file.write('     "float contrast" [2.000000000000000]\n')
+    file.write('     "string noisebasis" ["blender_original"]\n')
+    file.write('     "string noisebasis2" ["sin"]\n')
+    file.write('     "float noisesize" [0.250000000000000]\n')
+    file.write('     "string noisetype" ["hard_noise"]\n')
+    file.write('     "float turbulence" [2.000000000000000]\n')
+    file.write('     "string type" ["ringnoise"]\n')
+    file.write('     "string coordinates" ["local"]\n')
+    file.write('     "vector translate" [0.0 0.0 0.0]\n')
+    file.write('     "vector rotate" [0.0 0.0 0.0]\n')
+    file.write('     "vector scale" ['+str(scale)+' '+str(scale)+' '+str(scale)+']\n')
+    file.write('\n')
 
-        file.write('Texture "wood alder part 2" "float" "blender_wood"\n')
-	file.write('     "float bright" [1.000000000000000]\n')
-	file.write('     "float contrast" [2.000000000000000]\n')
-	file.write('     "string noisebasis" ["blender_original"]\n')
-	file.write('     "string noisebasis2" ["saw"]\n')
-	file.write('     "float noisesize" [0.250000000000000]\n')
-	file.write('     "string noisetype" ["hard_noise"]\n')
-	file.write('     "float turbulence" [2.000000000000000]\n')
-	file.write('     "string type" ["ringnoise"]\n')
-	file.write('     "string coordinates" ["local"]\n')
-	file.write('     "vector translate" [0.0 0.0 0.0]\n')
-	file.write('     "vector rotate" [0.0 0.0 0.0]\n')
-        file.write('     "vector scale" ['+str(scale)+' '+str(scale)+' '+str(scale)+']\n')	
-        file.write('\n')
+    file.write('Texture "wood alder part 2" "float" "blender_wood"\n')
+    file.write('     "float bright" [1.000000000000000]\n')
+    file.write('     "float contrast" [2.000000000000000]\n')
+    file.write('     "string noisebasis" ["blender_original"]\n')
+    file.write('     "string noisebasis2" ["saw"]\n')
+    file.write('     "float noisesize" [0.250000000000000]\n')
+    file.write('     "string noisetype" ["hard_noise"]\n')
+    file.write('     "float turbulence" [2.000000000000000]\n')
+    file.write('     "string type" ["ringnoise"]\n')
+    file.write('     "string coordinates" ["local"]\n')
+    file.write('     "vector translate" [0.0 0.0 0.0]\n')
+    file.write('     "vector rotate" [0.0 0.0 0.0]\n')
+    file.write('     "vector scale" ['+str(scale)+' '+str(scale)+' '+str(scale)+']\n')	
+    file.write('\n')
 
-        file.write('Texture "wood alder mix" "float" "mix"\n')
-	file.write('     "float amount" [0.500000000000000]\n')
-	file.write('     "texture tex1" ["wood alder part 1"]\n')
-	file.write('     "texture tex2" ["wood alder part 2"]\n')
-        file.write('\n')
+    file.write('Texture "wood alder mix" "float" "mix"\n')
+    file.write('     "float amount" [0.500000000000000]\n')
+    file.write('     "texture tex1" ["wood alder part 1"]\n')
+    file.write('     "texture tex2" ["wood alder part 2"]\n')
+    file.write('\n')
 
-        file.write('Texture "1b67fd720273dfb27261d" "float" "scale"\n')
-	file.write('     "float tex1" [0.002000000094995]\n')
-	file.write('     "texture tex2" ["wood alder mix"]\n')
-        file.write('\n')
+    file.write('Texture "1b67fd720273dfb27261d" "float" "scale"\n')
+    file.write('     "float tex1" [0.002000000094995]\n')
+    file.write('     "texture tex2" ["wood alder mix"]\n')
+    file.write('\n')
         
-        file.write('Texture "wood alder part 3" "float" "blender_clouds"\n')
-	file.write('     "float bright" [0.009999999776483]\n')
-	file.write('     "float contrast" [1.200000047683716]\n')
-	file.write('     "string noisetype" ["hard_noise"]\n')
-	file.write('     "string noisebasis" ["voronoi_f3"]\n')
-	file.write('     "float noisesize" [0.250000000000000]\n')
-	file.write('     "integer noisedepth" [2]\n')
-	file.write('     "string coordinates" ["local"]\n')
-	file.write('     "vector translate" [0.0 0.0 0.0]\n')
-	file.write('     "vector rotate" [0.0 0.0 0.0]\n')
-        file.write('     "vector scale" ['+str(scale)+' '+str(scale)+' '+str(scale)+']\n')
-        file.write('\n')
+    file.write('Texture "wood alder part 3" "float" "blender_clouds"\n')
+    file.write('     "float bright" [0.009999999776483]\n')
+    file.write('     "float contrast" [1.200000047683716]\n')
+    file.write('     "string noisetype" ["hard_noise"]\n')
+    file.write('     "string noisebasis" ["voronoi_f3"]\n')
+    file.write('     "float noisesize" [0.250000000000000]\n')
+    file.write('     "integer noisedepth" [2]\n')
+    file.write('     "string coordinates" ["local"]\n')
+    file.write('     "vector translate" [0.0 0.0 0.0]\n')
+    file.write('     "vector rotate" [0.0 0.0 0.0]\n')
+    file.write('     "vector scale" ['+str(scale)+' '+str(scale)+' '+str(scale)+']\n')
+    file.write('\n')
         
-        file.write('Texture "665d14f3da96af422fdff" "float" "scale"\n')
-	file.write('     "float tex1" [1.000000000000000]\n')
-	file.write('     "texture tex2" ["wood alder part 3"]\n')
+    file.write('Texture "665d14f3da96af422fdff" "float" "scale"\n')
+    file.write('     "float tex1" [1.000000000000000]\n')
+    file.write('     "texture tex2" ["wood alder part 3"]\n')
 
-        file.write('Texture "wood alder diffuse 1" "color" "mix"\n')
-	file.write('     "texture amount" ["wood alder mix"]\n')
-	file.write('     "color tex1" [0.64313728 0.45594707 0.29407442]\n')
-	file.write('     "color tex2" [0.36960801 0.25732201 0.16374999]\n')
-        file.write('\n')
+    file.write('Texture "wood alder diffuse 1" "color" "mix"\n')
+    file.write('     "texture amount" ["wood alder mix"]\n')
+    file.write('     "color tex1" [0.64313728 0.45594707 0.29407442]\n')
+    file.write('     "color tex2" [0.36960801 0.25732201 0.16374999]\n')
+    file.write('\n')
         
-        file.write('Texture "wood alder diffuse 2" "color" "mix"\n')
-	file.write('     "texture amount" ["665d14f3da96af422fdff"]\n')
-	file.write('     "texture tex1" ["wood alder diffuse 1"]\n')
-	file.write('     "color tex2" [0.17332031 0.09053276 0.04070793]\n')
-        file.write('\n')
+    file.write('Texture "wood alder diffuse 2" "color" "mix"\n')
+    file.write('     "texture amount" ["665d14f3da96af422fdff"]\n')
+    file.write('     "texture tex1" ["wood alder diffuse 1"]\n')
+    file.write('     "color tex2" [0.17332031 0.09053276 0.04070793]\n')
+    file.write('\n')
 
     file.write('MakeNamedMaterial "material'+str(c)+'"\n')
     file.write('      "texture bumpmap" ["1b67fd720273dfb27261d"]\n')
@@ -376,7 +374,7 @@ def writeCassiopeeLamps(file):
     n = Vector.mul(0.4*norm, n)
     pos = Vector.sub(eye, n)
 
-    if (type == 'Interior'): pass        
+    if type == 'Interior': pass        
 ##         # distant light
 ##         file.write('AttributeBegin\n')
 ##         file.write('LightGroup "default"\n')
@@ -443,41 +441,41 @@ def createMat(rep):
     for z in zones:
         material = 'Solid'; color = 'White'; mode = 0; blending = 1 # default
         ri = Internal.getNodesFromName1(z, '.RenderInfo')
-        if (ri != []):
+        if ri != []:
             # Material
             mt = Internal.getNodesFromName1(ri[0], 'Material')
-            if (mt != []): material = Internal.getValue(mt[0])
+            if mt != []: material = Internal.getValue(mt[0])
             # Color
             co = Internal.getNodesFromName1(ri[0], 'Color')
-            if (co != []): color = Internal.getValue(co[0])
+            if co != []: color = Internal.getValue(co[0])
             # Blending
             co = Internal.getNodesFromName1(ri[0], 'Blending')
-            if (co != []): blending = Internal.getValue(co[0])
+            if co != []: blending = Internal.getValue(co[0])
 
         s = color.split(':')
-        if (len(s) == 2 and s[0] == 'Iso'):
+        if len(s) == 2 and s[0] == 'Iso':
             vref = C.getVarNames(z)[0]
             for pos in xrange(len(vref)):
                 if (vref[pos] == s[1]): break
             
-            if (pos == len(vref)): color = 'White'; mode = 0
+            if pos == len(vref): color = 'White'; mode = 0
             else: color = 'Iso'; mode = pos+1; material = 'Iso'
         # traduction color
-        if (color[0] == '#'):
+        if color[0] == '#':
             colorR = color[1:3]; colorG = color[3:5]; colorB = color[5:]
             colorR = int(colorR, 16); colorR = colorR / 255.
             colorG = int(colorG, 16); colorG = colorG / 255.
             colorB = int(colorB, 16); colorB = colorB / 255.
-        elif (color == 'White'): colorR = 1; colorG = 1; colorB = 1
-        elif (color == 'Black'): colorR = 0; colorG = 0; colorB = 0
-        elif (color == 'Grey'): colorR = 0.69; colorG = 0.69; colorB = 0.69
-        elif (color == 'Blue'): colorR = 0; colorG = 0; colorB = 1
-        elif (color == 'Red'): colorR = 1; colorG = 0; colorB = 0
-        elif (color == 'Green'): colorR = 0; colorG = 1; colorB = 0
-        elif (color == 'Yellow'): colorR = 1; colorG = 1; colorB = 0
-        elif (color == 'Orange'): colorR = 0.94; colorG = 0.737; colorB = 0.06
-        elif (color == 'Magenta'): colorR = 1; colorG = 0; colorB = 1
-        elif (color == 'Brown'): colorR = 0.588; colorG = 0.294; colorB = 0
+        elif color == 'White': colorR = 1; colorG = 1; colorB = 1
+        elif color == 'Black': colorR = 0; colorG = 0; colorB = 0
+        elif color == 'Grey': colorR = 0.69; colorG = 0.69; colorB = 0.69
+        elif color == 'Blue': colorR = 0; colorG = 0; colorB = 1
+        elif color == 'Red': colorR = 1; colorG = 0; colorB = 0
+        elif color == 'Green': colorR = 0; colorG = 1; colorB = 0
+        elif color == 'Yellow': colorR = 1; colorG = 1; colorB = 0
+        elif color == 'Orange': colorR = 0.94; colorG = 0.737; colorB = 0.06
+        elif color == 'Magenta': colorR = 1; colorG = 0; colorB = 1
+        elif color == 'Brown': colorR = 0.588; colorG = 0.294; colorB = 0
         else: coloR = 1; colorG = 1; colorB = 1
 
         # Scale (utlise pour scaler les textures)
@@ -485,27 +483,27 @@ def createMat(rep):
         rx = bb[3]-bb[0]; ry = bb[4]-bb[1]; rz = bb[5]-bb[2]
         scale = 0.5 * min(rx, ry, rz)
             
-        if (material == 'Solid'):
+        if material == 'Solid':
             writeMatte0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'Glass'):
+        elif material == 'Glass':
             writeGlass0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'Chrome'):
+        elif material == 'Chrome':
             writeChrome0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'Metal'):
+        elif material == 'Metal':
             writeMetal0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'XRay'):
+        elif material == 'XRay':
             writeMatte0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'Wood'):
+        elif material == 'Wood':
             writeWood0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'Marble'):
+        elif material == 'Marble':
             writeMarble0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'Granite'):
+        elif material == 'Granite':
             writeMatte0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'Smoke'):
+        elif material == 'Smoke':
             writeMatte0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'Brick'):
+        elif material == 'Brick':
             writeMatte0(file, dict, c, colorR, colorG, colorB, scale)
-        elif (material == 'Light'):
+        elif material == 'Light':
             writeGlass0(file, dict, c, colorR, colorG, colorB, scale)
         else:
             writeMatte0(file, dict, c, colorR, colorG, colorB, scale)
@@ -540,7 +538,7 @@ def createStl(rep):
             co = Internal.getNodesFromName1(ri[0], 'Color')
             if co != []: color = Internal.getValue(co[0])
         s = color.split(':')
-        if (len(s) == 2 and s[0] == 'Iso'):
+        if len(s) == 2 and s[0] == 'Iso':
             vref = C.getVarNames(z)[0]
             for pos in xrange(len(vref)):
                 if vref[pos] == s[1]: break
@@ -583,7 +581,7 @@ def createApp(win):
                            text='tkLuxRender', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Export to LuxRender.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -600,15 +598,15 @@ def createApp(win):
     # - VARS -
     # -0- Image size
     V = TK.StringVar(win); V.set('800x600'); VARS.append(V)
-    if CTK.PREFS.has_key('tkLuxRenderSize'): 
+    if 'tkLuxRenderSize' in CTK.PREFS: 
         V.set(CTK.PREFS['tkLuxRenderSize'])
     # -1- Rep name
     V = TK.StringVar(win); V.set('LuxRender'); VARS.append(V)
-    if CTK.PREFS.has_key('tkLuxRenderOutput'): 
+    if 'tkLuxRenderOutput' in CTK.PREFS: 
         V.set(CTK.PREFS['tkLuxRenderOutput'])
     # -2- Interior / exterior
     V = TK.StringVar(win); V.set('Exterior'); VARS.append(V)   
-    if CTK.PREFS.has_key('tkLuxRenderType'): 
+    if 'tkLuxRenderType' in CTK.PREFS: 
         V.set(CTK.PREFS['tkLuxRenderType'])
 
     # - Type of scene
@@ -669,7 +667,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

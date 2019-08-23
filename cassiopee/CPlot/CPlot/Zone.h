@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -79,6 +79,13 @@ class Zone
     int meshOverlay; // 1 if mesh must be overlaid (from tag)
     float shaderParam1, shaderParam2; // shaders param (from tag)
                                   // default value is 1. (can vary in 0-2).
+    double* texu; // pointe sur le champ u pour les textures
+    double* texv; // pointe sur le champ v pour les textures
+    double* texw; // pointe sur le champ w pour les textures
+    double* regtexu; // generated regtexu if not in fields
+    double* regtexv; // generated regtexv if not in fields
+    float tesOuter, tesInner; // Tesselation shader param ( from tag ? )
+                              // Default value is 3 ( can vary in 3-50 )
 
     ZoneImpl* ptr_impl;
     void setUseGPURessources()   { ptr_impl->_GPUResUse = 1; }

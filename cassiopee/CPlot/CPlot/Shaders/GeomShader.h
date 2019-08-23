@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -26,10 +26,11 @@ namespace CPlot
   {
   public:
     GeomShader();
-    GeomShader(const GeomShader& shader);
+    GeomShader( const std::string& src );
+    GeomShader(const GeomShader& shader) = delete;
     virtual ~GeomShader();
 
-    const GeomShader& operator = (const GeomShader& obj);
+    const GeomShader& operator = (const GeomShader& obj) = delete;
 
   };
 }

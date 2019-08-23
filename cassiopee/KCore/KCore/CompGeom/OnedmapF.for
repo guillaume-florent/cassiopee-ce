@@ -1,5 +1,5 @@
 C  
-C    Copyright 2013-2017 Onera.
+C    Copyright 2013-2019 Onera.
 C
 C    This file is part of Cassiopee.
 C
@@ -70,11 +70,11 @@ C_IN
         REAL_E z(0:npts-1)      ! ligne entrante
 	INTEGER_E no            ! nombre de points de la ligne sortante
 	REAL_E d(0:no-1)        ! distribution
-        INTEGER_E net           ! nb d elts BAR initiaux
+        INTEGER_E net           ! nb d'elts BAR initiaux
         INTEGER_E cn1(0:net-1)  ! connectivite BAR : 1ers sommets
         INTEGER_E cn2(0:net-1)  ! connectivite BAR : 2nds sommets
 C_OUT
-        INTEGER_E neto          ! nb d elts BAR  de sortie
+        INTEGER_E neto          ! nb d'elts BAR  de sortie
         INTEGER_E cn1o(0:neto-1) ! connectivite BAR : 1ers sommets
         INTEGER_E cn2o(0:neto-1) ! connectivite BAR : 2nds sommets
 	REAL_E xo(0:no-1), yo(0:no-1), zo(0:no-1) ! ligne sortante
@@ -89,8 +89,8 @@ C_LOCAL
 	big = 1.e+15
 
 C       Parametrisation	de la ligne entrante
-        CALL  k6slopebar(small, big, npts, x, y, z, net, cn1, cn2,
-     &                   dx, dy, dz)
+        CALL k6slopebar(small, big, npts, x, y, z, net, cn1, cn2,
+     &                  dx, dy, dz)
 
         CALL k6parambar(stota, small, npts, x, y, z, net, cn1, cn2, 
      &                  dx, dy, dz, s)

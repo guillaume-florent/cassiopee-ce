@@ -1,5 +1,6 @@
 # - boolean operators -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -7,6 +8,9 @@ import CPlot.Tk as CTK
 import CPlot.Panels as Panels
 import Converter.Internal as Internal
 import Intersector.PyTree as XOR
+
+try: range = xrange
+except: pass
 
 # local widgets list
 WIDGETS = {}; VARS = []
@@ -42,13 +46,13 @@ def union():
         zlist.append(z)
     
     try: j = XOR.booleanUnion(zlist[0], zlist[1], tol=tol)
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: union')
         CTK.TXT.insert('START', 'Union failed\n'); return
 
-    for nz in xrange(len(zlist)-2):
+    for nz in range(len(zlist)-2):
         try: j = XOR.booleanUnion(j, zlist[nz+2], tol=tol)
-        except Exception, e:
+        except Exception as e:
             Panels.displayErrors([0,str(e)], header='Error: union')
             CTK.TXT.insert('START', 'Union failed.\n'); return
         
@@ -57,7 +61,7 @@ def union():
     CTK.add(CTK.t, CTK.Nb[0]+1, -1, j)
     
     CTK.TXT.insert('START', 'Union performed.\n')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -99,10 +103,10 @@ def difference():
         CPlot.delete(deletedZoneNames)
         CTK.add(CTK.t, nob1, -1, j)
         CTK.TXT.insert('START', 'Difference performed.\n')
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: difference')
         CTK.TXT.insert('START', 'Difference failed.\n')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -144,11 +148,11 @@ def difference2():
         CPlot.delete(deletedZoneNames)
         CTK.add(CTK.t, nob1, -1, j)
         CTK.TXT.insert('START', 'Difference performed.\n')
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: difference')
         CTK.TXT.insert('START', 'Difference failed.\n')
 
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -182,13 +186,13 @@ def intersection():
         zlist.append(z)
 
     try: j = XOR.booleanIntersection(zlist[0], zlist[1], tol=tol)
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: intersection')
         CTK.TXT.insert('START', 'Intersection failed.\n'); return
 
-    for nz in xrange(len(zlist)-2):
+    for nz in range(len(zlist)-2):
         try: j = XOR.booleanIntersection(j, zlist[nz+2], tol=tol)
-        except Exception, e:
+        except Exception as e:
             Panels.displayErrors([0,str(e)], header='Error: intersection')
             CTK.TXT.insert('START', 'Intersection failed.\n'); return
         
@@ -196,7 +200,7 @@ def intersection():
     CPlot.delete(deletedZoneNames)
     CTK.add(CTK.t, CTK.Nb[0]+1, -1, j)
     CTK.TXT.insert('START', 'Intersection performed.\n')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -210,7 +214,7 @@ def createApp(win):
                            text='tkBoolean', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Boolean operations\on surfaces.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=2)
@@ -273,7 +277,7 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

@@ -36,7 +36,8 @@ if [ $? -eq 0 ]; then
     fi
     scons install prefix="$INSTALLPATH" "$SCONSOPT"
     [ $? != 0 ] && exit;
-    touch Generator/generator.cpp
+    #touch Generator/generator.cpp
+    rm -f build/lib.*/Generator/generator.*
     python setupScons.py install --prefix="$INSTALLPATH"
 else
     python setup.py install --prefix="$INSTALLPATH"

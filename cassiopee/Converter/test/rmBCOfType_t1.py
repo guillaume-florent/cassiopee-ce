@@ -9,7 +9,7 @@ a = C.initVars(a,'F',1.); a = C.initVars(a,'centers:G',2.)
 a = C.addBC2Zone(a, 'wall1', 'BCWall', 'jmin')
 a = C.addBC2Zone(a, 'overlap1', 'BCOverlap', 'jmax')
 a = C.rmBCOfType(a, 'BCWall')
-t = C.newPyTree(['Base']); t[2][1][2].append(a)
+t = C.newPyTree(['Base',a])
 test.testT(t,1)
 
 # sur un arbre
@@ -19,7 +19,7 @@ a = C.addBC2Zone(a, 'wall1', 'BCWall', 'jmin')
 a = C.addBC2Zone(a, 'overlap1', 'BCOverlap', 'jmax')
 b = G.cart((-0.1,0.9,0), (0.01,0.01,1.), (20,20,2))
 b = C.addBC2Zone(b, 'wall1', 'BCWall', 'imin')
-t = C.newPyTree(['Base']); t[2][1][2].append(a); t[2][1][2].append(b)
+t = C.newPyTree(['Base',a,b])
 t = C.rmBCOfType(t, 'BCWall')
 test.testT(t,2)
 

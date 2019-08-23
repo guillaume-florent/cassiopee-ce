@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -87,6 +87,7 @@ PyObject* K_CONNECTOR::chimeraTransfer(PyObject* self, PyObject* args)
   /*-----------------------*/
   FldArrayF* donorCoefsF;
   res = K_NUMPY::getFromNumpyArray(pyArrayCoefs, donorCoefsF, true);
+
   if (res == 0) 
   {
     RELEASESHAREDN(pyIndRcv, rcvPtsI);
@@ -95,6 +96,12 @@ PyObject* K_CONNECTOR::chimeraTransfer(PyObject* self, PyObject* args)
     PyErr_SetString(PyExc_TypeError, 
                     "setInterpTransfers: 4th arg must be a numpy of floats.");
     return NULL;
+  }
+  // getFromNumpyArray echange la "shape" du FldArray quand il n y a 
+  // qu un seul donneur donc on corrige ici.
+  if (donorCoefsF->getNfld() == 1)
+  {
+    donorCoefsF->resize(donorCoefsF->getNfld(),donorCoefsF->getSize());
   }
   /*--------------------------------------------------*/
   /* Extraction des infos sur le domaine a interpoler */
@@ -171,10 +178,6 @@ PyObject* K_CONNECTOR::chimeraTransfer(PyObject* self, PyObject* args)
   E_Int nfldr0 = posvarsR.size();
   E_Float sumCf;
   vector<E_Float> cfLoc(ncoefs);
-  vector<E_Float*> allCoefs(ncoefs);
-  for (E_Int i = 0; i < ncoefs; i++)
-    allCoefs[i] = donorCoefsF->begin(i+1);
-
   E_Int dim3 = 1; // 3d problem
   if (kmd == 1) dim3 = 0;  // 2d problem
   for (E_Int noind = 0; noind < nbRcvPts; noind++)
@@ -183,15 +186,14 @@ PyObject* K_CONNECTOR::chimeraTransfer(PyObject* self, PyObject* args)
     switch (type)
     {
       case 100:
-        // coefficients
         for (E_Int no=0; no < ncoefs; no++)
         {
-          E_Float* cfp = allCoefs[no];
-          cfLoc[no] = cfp[noind];
+          cfLoc[no] = (*donorCoefsF)(noind,no+1);
         }
  
         indR = rcvPts[noind];
         indD = donorPts[noind];
+
         k = indD/imdjmd;
         j = (indD-k*imdjmd)/imd;
         i = (indD-j*imd-k*imdjmd);
@@ -205,11 +207,11 @@ PyObject* K_CONNECTOR::chimeraTransfer(PyObject* self, PyObject* args)
               for (E_Int ii=0; ii<2; ii++)
               {
                 indDLoc = (i+ii)+(j+jj)*imd+dim3*(k+kk)*imdjmd;
-                sumCf += cfLoc[nocf];
+                sumCf += cfLoc[nocf]; 
                 fieldR[indR] += cfLoc[nocf]*fieldD[indDLoc];
                 nocf++;
               }
-        }
+       }
         break;
         
       default:

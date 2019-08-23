@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -133,8 +133,9 @@ PyObject* K_CONVERTER::setPartialFieldsPT(PyObject* self, PyObject* args)
   PyObject* arrayF; // array 1D contenant les champs a inserer
   PyObject* listIndicesO;
   E_Int loc;
-  if (!PYPARSETUPLEI(args, "OOOlsss", "OOOisss", &zone, &arrayF, &listIndicesO, &loc, 
-                     &GridCoordinates,  &FlowSolutionNodes, &FlowSolutionCenters))
+  E_Int startFrom;
+  if (!PYPARSETUPLEI(args, "OOOlsssl", "OOOisssi", &zone, &arrayF, &listIndicesO, &loc, 
+		     &GridCoordinates,  &FlowSolutionNodes, &FlowSolutionCenters, &startFrom))
     { return NULL; }
 
   /* zone a modifier */
@@ -194,22 +195,44 @@ PyObject* K_CONVERTER::setPartialFieldsPT(PyObject* self, PyObject* args)
   E_Int nPts = listIndices->getSize();
   E_Int* indices = listIndices->begin();
   E_Int nfldc = posv.size(); // nb de variables communes
+
+  if (startFrom == 0) 
+  { 
 #pragma omp parallel default(shared)
-  {
-  E_Int ind; E_Int pos1, posv1;
-  for (E_Int eq = 0; eq < nfldc; eq++)
-  {
-     pos1 = posv[eq]; posv1 = posvl[eq];
-     E_Float* foutp = fields[pos1-1];
-     E_Float* fip = fl->begin(posv1);
-     //printf("%d %d\n", pos1, posv1);
+    {
+      E_Int ind; E_Int pos1, posv1;
+      for (E_Int eq = 0; eq < nfldc; eq++)
+      {
+         pos1 = posv[eq]; posv1 = posvl[eq];
+         E_Float* foutp = fields[pos1-1];
+         E_Float* fip = fl->begin(posv1);
 #pragma omp for
-     for (E_Int i = 0; i < nPts; i++)
-     {
-       ind = indices[i];
-       foutp[ind] = fip[i];
-     }
+         for (E_Int i = 0; i < nPts; i++)
+         {
+           ind = indices[i]; 
+           foutp[ind] = fip[i];
+         }
+      }
+    }
   }
+  else
+  {
+#pragma omp parallel default(shared)
+    {
+      E_Int ind; E_Int pos1, posv1;
+      for (E_Int eq = 0; eq < nfldc; eq++)
+      {
+         pos1 = posv[eq]; posv1 = posvl[eq];
+         E_Float* foutp = fields[pos1-1];
+         E_Float* fip = fl->begin(posv1);
+#pragma omp for
+         for (E_Int i = 0; i < nPts; i++)
+         {
+           ind = indices[i]-startFrom; 
+           foutp[ind] = fip[i];
+         }
+      }
+    }
   }
 
   RELEASESHAREDN(listIndicesO, listIndices);
@@ -230,8 +253,9 @@ PyObject* K_CONVERTER::_setPartialFields(PyObject* self, PyObject* args)
   PyObject* listNumFields;// numpy contenant les champs a inserer
   PyObject* listIndicesO;
   E_Int loc;
-  if (!PYPARSETUPLEI(args, "OOOlsss", "OOOisss", &zone, &listNumFields, &listIndicesO, &loc,
-                     &GridCoordinates,  &FlowSolutionNodes, &FlowSolutionCenters)) return NULL;
+  E_Int startFrom;
+  if (!PYPARSETUPLEI(args, "OOOlsssl", "OOOisssi", &zone, &listNumFields, &listIndicesO, &loc,
+                     &GridCoordinates,  &FlowSolutionNodes, &FlowSolutionCenters, &startFrom)) return NULL;
 
   /*--------------------------------------------*/
   /* zone a modifier                            */
@@ -274,23 +298,45 @@ PyObject* K_CONVERTER::_setPartialFields(PyObject* self, PyObject* args)
   E_Int* indices = listIndices->begin();
   
   // no check: perfos
+  if (startFrom == 0) { 
 #pragma omp parallel default(shared)
-  {
-  E_Int ind;
-  for (E_Int v = 0; v < nfld; v++)
-  {
-    if (isEmpty[v] == 0)
     {
-      E_Float* foutp = fields[v];
-      E_Float* fip = listFields[v]->begin();
-#pragma omp for
-      for (E_Int i = 0; i < nPts; i++)
+      E_Int ind;
+      for (E_Int v = 0; v < nfld; v++)
       {
-        ind = indices[i];
-        foutp[ind] = fip[i];
+        if (isEmpty[v] == 0)
+        {
+          E_Float* foutp = fields[v];
+          E_Float* fip = listFields[v]->begin();
+#pragma omp for
+          for (E_Int i = 0; i < nPts; i++)
+          {
+            ind = indices[i];
+            foutp[ind] = fip[i];
+          }
+        }
       }
     }
   }
+  else{
+#pragma omp parallel default(shared)
+    {
+      E_Int ind;
+      for (E_Int v = 0; v < nfld; v++)
+      {
+        if (isEmpty[v] == 0)
+        {
+          E_Float* foutp = fields[v];
+          E_Float* fip = listFields[v]->begin();
+#pragma omp for
+          for (E_Int i = 0; i < nPts; i++)
+          {
+            ind = indices[i]-startFrom;
+            foutp[ind] = fip[i];
+          }
+        }
+      }
+    }
   }
 
   // sortie

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -22,7 +22,6 @@
 
 # include <locale>
 # include <cctype>
-# include "Python.h"
 # include "kcore.h"
 # include "Fld/FldArray.h"
 
@@ -260,8 +259,8 @@ namespace K_TRANSFORM
                   FldArrayF& fd, FldArrayI& cNGD);
   void dualNGON3D(FldArrayF& f, FldArrayI& cn, 
                   FldArrayF& fd, FldArrayI& cNGD);
-//   E_Int createDegeneratedPrimalMesh3D(E_Int nptsp, FldArrayI& cNG, 
-//                                       FldArrayI& cNGD);
+  //E_Int createDegeneratedPrimalMesh3D(E_Int nptsp, FldArrayI& cNG, 
+  //                                    FldArrayI& cNGD);
   E_Int createDegeneratedPrimalMesh3D(FldArrayF& fNG, FldArrayI& cNG, 
                                       FldArrayF& fNGD, FldArrayI& cNGD);
   void  umbrella(FldArrayF& coord, FldArrayF& coordo,
@@ -276,14 +275,23 @@ namespace K_TRANSFORM
   
   E_Int extractVectorComponents(char* varString, PyObject* listOfFieldVectors, 
                                 std::vector<E_Int>& posvx, std::vector<E_Int>& posvy, std::vector<E_Int>& posvz);
+
+  // Flip Edges dans un maillage TRI
+  void flipEdges(FldArrayI& ct, E_Int np, E_Float* x, E_Float* y, E_Float* z, E_Float* indic=NULL, E_Int mode=1);
+
+  // Contract Edges dans un maillage TRI
+  void contractEdges(FldArrayI& ct, E_Int np, E_Float* x, E_Float* y, E_Float* z, E_Int mode=1);
+
+  // Check TRI
+  void checkTriMesh(FldArrayI& ct, E_Int np, E_Float* x, E_Float* y, E_Float* z,
+                    E_Int& ne, E_Int& ni);
+
  /*------------------------------------------------------------------*/
   PyObject* _cart2CylZ(PyObject* self, PyObject* args);
   PyObject* _cart2CylA(PyObject* self, PyObject* args);
   PyObject* _cyl2CartZ(PyObject* self, PyObject* args);
   PyObject* _cyl2CartA(PyObject* self, PyObject* args);
-  PyObject* translateA(PyObject* self, PyObject* args);
-  PyObject* _translate(PyObject* self, PyObject* args);
-  PyObject* _translate2(PyObject* self, PyObject* args);
+  PyObject* translate(PyObject* self, PyObject* args);
   PyObject* rotateA1(PyObject* self, PyObject* args);
   PyObject* rotateA2(PyObject* self, PyObject* args);
   PyObject* rotateA3(PyObject* self, PyObject* args);
@@ -361,8 +369,11 @@ namespace K_TRANSFORM
   PyObject* mergeStructGrids(PyObject* self, PyObject* args);
   PyObject* breakElements(PyObject* self, PyObject* args);
   PyObject* splitNGon(PyObject* self, PyObject* args);
+  PyObject* splitElement(PyObject* self, PyObject* args);
   PyObject* dualNGon(PyObject* self, PyObject* args);
-
+  PyObject* flipEdges(PyObject* self, PyObject* args);
+  PyObject* contractEdges(PyObject* self, PyObject* args);
+  PyObject* checkTriMesh(PyObject* self, PyObject* args);
 }
 # undef FldArrayF
 # undef FldArrayI

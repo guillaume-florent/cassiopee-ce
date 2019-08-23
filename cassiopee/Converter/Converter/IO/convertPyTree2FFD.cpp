@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -319,7 +319,7 @@ PyObject* K_CONVERTER::convertPyTree2FFD(PyObject* self, PyObject* args)
     //E_Int s2;
 
     // cnNfld est > npoint, mais pas toujours !!!
-    PyObject* NF = K_PYTREE::getNodeFromName1(zone, "NFaceElements");
+    //PyObject* NF = K_PYTREE::getNodeFromName1(zone, "NFaceElements");
     //PyObject* EC = K_PYTREE::getNodeFromName1(NF,  "ElementConnectivity");
     //E_Int* q =  K_PYTREE::getValueAI(EC, NElCon, s2, hook);
     //cerr << "NElCon="<<NElCon<<" s2="<<s2<<endl;
@@ -328,7 +328,7 @@ PyObject* K_CONVERTER::convertPyTree2FFD(PyObject* self, PyObject* args)
     cerr << "appel de splitElementConnectivity"<<endl ;
     K_CONVERTER::splitElementConnectivity(zone, &npoint, &nodmtch[0], &kpoinmtch[0]) ;
     vector<E_Int> izoneznzn (nlimt) ; vector<E_Int> ielmtznzn (nlimt);
-    for ( E_Int i = 0 ; i < nlimt ; i++) {  izoneznzn [i] = 0 ;  ielmtznzn [i] = 0 ;}
+    for (E_Int i = 0 ; i < nlimt ; i++) {  izoneznzn [i] = 0 ;  ielmtznzn [i] = 0 ;}
 //
 // appel du sous-programme d'ecriture fortran
 // kod_int =(kodcc, kodsolver,kodnst,kod2d)
@@ -393,7 +393,10 @@ void K_CONVERTER::scanBC(PyObject* zone,  E_Int* nlimt)
     {
       bc   = PyList_GetItem(list_bc, ibc);
       node = PyList_GetItem(bc, 3);
-      str  = PyString_AsString(node); // type_bc
+      if (PyString_Check(node)) str = PyString_AsString(node); // type_bc
+#if PY_VERSION_HEX >= 0x03000000
+      else if (PyUnicode_Check(node)) str = PyBytes_AsString(PyUnicode_AsUTF8String(node));
+#endif
       if (K_STRING::cmp(str, "BC_t") == 0)
       {
         //E_Int s;
@@ -401,7 +404,7 @@ void K_CONVERTER::scanBC(PyObject* zone,  E_Int* nlimt)
         E_Int s1;
         //char* st = K_PYTREE::getValueS(bc, s, hook);
         PyObject* PL = K_PYTREE::getNodeFromName1(bc, "PointList");
-        E_Int* p =  K_PYTREE::getValueAI(PL, s1, PLSize, hook);
+        K_PYTREE::getValueAI(PL, s1, PLSize, hook);
         *nlimt += PLSize;
        }
       }
@@ -411,7 +414,7 @@ void K_CONVERTER::scanBC(PyObject* zone,  E_Int* nlimt)
 //void K_CONVERTER::getVarBC(PyObject* zone, E_Float* Density_l, E_Float* MomentumX_l, E_Float* MomentumY_l, E_Float* MomentumZ_l, E_Float* Energy_l, E_Float* MutsMu_l, E_Int* ielmtmtch2, E_Int* nlimt)
 void K_CONVERTER::getVarBC(PyObject* zone, E_Float* Var_l, E_Int* ielmtmtch2, E_Int* nlimt)
 {
-    PyObject* zonebc; E_Int nb_bc=0 ; E_Int ielmbc = 0 ;
+    PyObject* zonebc; E_Int nb_bc=0; E_Int ielmbc = 0;
     vector<PyArrayObject*> hook;
 // les types de conditions limites ( http://cgns.github.io/CGNS_docs_current/sids/bc.html#BC §9.7 )
 /*  BCType_t := Enumeration(
@@ -443,7 +446,10 @@ void K_CONVERTER::getVarBC(PyObject* zone, E_Float* Var_l, E_Int* ielmtmtch2, E_
     {
       bc   = PyList_GetItem(list_bc, ibc);
       node = PyList_GetItem(bc, 3);
-      str  = PyString_AsString(node); // type_bc
+      if (PyString_Check(node)) str = PyString_AsString(node); // type_bc
+#if PY_VERSION_HEX >= 0x03000000
+      else if (PyUnicode_Check(node)) str = PyBytes_AsString(PyUnicode_AsUTF8String(node));
+#endif
       if (K_STRING::cmp(str, "BC_t") == 0)
       {
         E_Int s;
@@ -682,7 +688,10 @@ void K_CONVERTER::splitElementConnectivity(PyObject* zone, E_Int* npoint,E_Int* 
 //  {
 //    l = PyList_GetItem(childrens, i);
 //    node = PyList_GetItem(l, 3);
-//    str = PyString_AsString(node);
+//    if (PyString_Check(node)) str = PyString_AsString(node); // type_bc
+//#if PY_VERSION_HEX >= 0x03000000
+//       else if (PyUnicode_Check(node)) str = PyBytes_AsString(PyUnicode_AsUTF8String(node));
+//#endif
 //    if (K_STRING::cmp(str, type) == 0) out.push_back(l);
 //  }
 //}

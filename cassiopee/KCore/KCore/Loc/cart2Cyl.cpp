@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -17,7 +17,8 @@
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-# include "loc.h"
+#include "loc.h"
+#include <math.h>
 
 //=============================================================================
 // Conversion repere Cartesien -> repere cylindrique
@@ -38,13 +39,13 @@ E_Int K_LOC::cart2Cyl(E_Int npts, E_Float* xt, E_Float* yt, E_Float* zt,
     // Choix direction suivant axe
     if (ex > eps && ey < eps && ez < eps) // axe X
     {
-        xl = zt; yl = yt; //zl = xt;
-        x0 = Z0; y0 = Y0;
+        xl = yt; yl = zt; //zl = xt;
+        x0 = Y0; y0 = Z0;
     }
     else if (ey > eps && ex < eps && ez < eps) // axe Y
     {
-        xl = xt; yl = zt; //zl = yt;
-        x0 = X0; y0 = Z0;
+        xl = zt; yl = xt; //zl = yt;
+        x0 = Z0; y0 = X0;
     }
     else if (ez > eps && ey < eps && ex < eps) // axe Z
     {
@@ -69,7 +70,6 @@ E_Int K_LOC::cart2Cyl(E_Int npts, E_Float* xt, E_Float* yt, E_Float* zt,
         dy = yl[ind]-y0;
         r = sqrt(dx*dx+dy*dy);
         theta = atan2(dy,dx);
-       
         rt[ind] = r; thetat[ind] = theta; 
       }
     }

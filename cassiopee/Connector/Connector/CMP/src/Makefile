@@ -1,6 +1,6 @@
 include ../Make.inc
 
-OBJS = CMP_C.o  CMP.o  CMP_F.o CMP_For.o  CMP_FUtil.o
+OBJS = send_buffer.o recv_buffer.o
 
 default: libBuffer.a
 

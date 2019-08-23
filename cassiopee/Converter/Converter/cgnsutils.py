@@ -3,8 +3,8 @@
 #  See license.txt file in the root directory of this Python module source  
 #  ---------------------------------------------------------------------------
 #
-import cgnskeywords as CK
-import cgnstypes    as CT
+from . import cgnskeywords as CK
+from . import cgnstypes    as CT
 
 import numpy as NPY
 
@@ -1049,15 +1049,15 @@ def getNodeType(node):
   data=node[1]
   if (node[0] == 'CGNSLibraryVersion_t'):
     return CK.R4 # ONLY ONE R4 IN ALL SIDS !
-  if ((data is None) or (data == [])):
-    return CK.MT
+  if data is None: return CK.MT
   if (type(data)==NPY.ndarray):
     if (data.dtype.kind in ['S','a']):        return CK.C1
     if (data.dtype.char in ['f','F']):        return CK.R4
     if (data.dtype.char in ['D','d']):        return CK.R8
     if (data.dtype.char in ['i','I']):        return CK.I4
     if (data.dtype.char in ['l']):            return CK.I8
-  if ((type(data) == type([])) and (len(data))): # oups !
+    if (data.size == 0):                      return CK.MT
+  if ((type(data) == list) and (len(data))): # oups !
     if (type(data[0]) == type("")):           return CK.C1
     if (type(data[0]) == type(0)):            return CK.I4
     if (type(data[0]) == type(0.0)):          return CK.R8
@@ -1253,7 +1253,7 @@ def getNextChildSortByType(node,parent=None,criteria=None):
     __criteria=criteria
   if (    (type(criteria)==dict)
       and (parent is not None)
-      and (criteria.has_key(parent[3]))):
+      and (parent[3] in criteria)):
     __criteria=criteria[parent[3]]
   r=[]
   for i in range(len(node[2])):
@@ -2290,7 +2290,7 @@ def hasEnumValue(node):
   # :Remarks:
   #   - See also :py:func:`getEnumAsString`
   # """
-  if (node[3] in CK.cgnsenums.keys()): return True
+  if (node[3] in CK.cgnsenums): return True
   return False
     
 # -----------------------------------------------------------------------------
@@ -2435,9 +2435,9 @@ def toStringChildren(l,readable=False,shift=0):
 
 # --------------------------------------------------
 def prettyPrint(tree,path='',depth=0):
-  print depth*' ',
+  print(depth*' ')
   n="%s(%s)"%(tree[0],tree[3]),
-  print "%-32s"%n
+  print("%-32s"%n)
   for c in tree[2]:
     prettyPrint(c,path='/'+tree[0],depth=depth+2)
 

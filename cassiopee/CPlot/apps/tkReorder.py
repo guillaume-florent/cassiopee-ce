@@ -1,5 +1,6 @@
 # - Reorder des blocs d'un pyTree -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -70,7 +71,7 @@ def reorder():
                 #else: a = T.reorder(z, (-1,2,3), topTree=CTK.t)
                 T._reorder(z, (i1,j1,k1), topTree=CTK.t)
             CTK.replace(CTK.t, nob, noz, z)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
             
     if not fail:
@@ -101,7 +102,7 @@ def reorderAll():
         CTK.TKTREE.updateApp()
         CTK.display(CTK.t)
         CTK.TXT.insert('START', 'All blocks reordered.\n')
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: reorderAll')
         CTK.TXT.insert('START', 'Reorder all fails.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -113,7 +114,7 @@ def reorderAll():
 #==============================================================================
 def makeDirect():
     if CTK.t == []: return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
@@ -131,7 +132,7 @@ def makeDirect():
         try:
             a = T.makeDirect(z)
             CTK.replace(CTK.t, nob, noz, a)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
             
     if not fail:
@@ -150,7 +151,7 @@ def createApp(win):
                            text='tkReorder', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Reorder blocks.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -209,11 +210,11 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(FILE)

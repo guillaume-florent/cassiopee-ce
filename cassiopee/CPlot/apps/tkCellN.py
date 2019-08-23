@@ -1,17 +1,16 @@
 # - cellNatureField visualisation and extraction -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import Post.PyTree as P
 import CPlot.PyTree as CPlot
-import Generator.PyTree as G
 import CPlot.Tk as CTK
 import Converter.Internal as Internal
 import Connector.PyTree as X
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 eps = 1.e-12
 
 #==============================================================================
@@ -22,7 +21,7 @@ def chimeraInfo():
     nzs = CPlot.getSelectedZones()
     typename = VARS[1].get()
     CTK.saveTree()    
-    CTK.t = X.chimeraInfo(CTK.t,typename)
+    X._chimeraInfo(CTK.t,typename)
     CTK.TXT.insert('START', 'Field %s added.\n'%typename)
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
@@ -57,62 +56,6 @@ def Filter1(c1, c2, c3, c4, c5, c6, c7, c8):
     if c8 > 1+eps: return 1
     if c8 < -eps: return 1
     return 0
-
-#==============================================================================
-def getOrphanPoints(zones):
-    out = []
-    for z in zones:
-        orphans = Internal.getNodesFromName(z, 'OrphanPointList')
-        vars = C.getVarNames(z, loc='nodes', excludeXYZ=True)[0]
-        np = 0
-        for o in orphans: np += o[1].size
-        if np != 0:
-            zc = C.node2Center(z)
-            ret = G.cart( (0,0,0), (1,1,1), (np,1,1) )
-            ret = C.addVars(ret, vars)
-            vars += ['CoordinateX', 'CoordinateY', 'CoordinateZ']
-            c = 0
-            for o in orphans:
-                ind = o[1]; np = ind.size
-                for i in xrange(np):
-                    index = ind[i]
-                    for v in vars:
-                        val = C.getValue(zc, v, index)
-                        C.setValue(ret, v, c, val)
-                    c += 1
-            ret[0] = 'Orphan'+z[0]
-            ret = C.convertArray2Node(ret)
-            out.append(ret)
-    if out == []: return None
-    else: return out
-    
-#==============================================================================
-def getExtrapolatedPoints(zones):
-    out = []
-    for z in zones:
-        extraps = Internal.getNodesFromName(z, 'ExtrapPointList')
-        vars = C.getVarNames(z, loc='nodes', excludeXYZ=True)[0]
-        np = 0
-        for o in extraps: np += o[1].size
-        if np != 0:
-            zc = C.node2Center(z)
-            ret = G.cart((0,0,0), (1,1,1), (np,1,1))
-            ret = C.addVars(ret, vars)
-            vars += ['CoordinateX', 'CoordinateY', 'CoordinateZ']
-            c = 0
-            for o in extraps:
-                ind = o[1]; np = ind.size
-                for i in xrange(np):
-                    index = ind[i]
-                    for v in vars:
-                        val = C.getValue(zc, v, index)
-                        C.setValue(ret, v, c, val)
-                    c += 1
-            ret[0] = z[0] # la zone a le nom de la zone parent
-            ret = C.convertArray2Node(ret)
-            out.append(ret)
-    if out == []: return None
-    else: return out
     
 #==============================================================================
 # Filter cellN
@@ -151,9 +94,9 @@ def view():
     elif type == '0<cellN<1':
         Z = selectWithFormula(active, '({cellN}>0) & ({cellN}<1)')
     elif type == 'Orphan points':
-        Z = getOrphanPoints(active)
+        Z = X.extractChimeraInfo(active,'orphan')
     elif type == 'Extrapolated points':
-        Z = getExtrapolatedPoints(active)
+        Z = X.extractChimeraInfo(active,'extrapolated')
         
     if Z is not None:
         CTK.TXT.insert('START', 'Filter '+type+' displayed.\n')
@@ -165,7 +108,7 @@ def view():
         CTK.TXT.insert('START', 'Error: ', 'Error')
         
 #==============================================================================
-# La variable var existe t'elle dans la premiere zone de l'arbre?
+# La variable var existe t elle dans la premiere zone de l'arbre?
 # Retourne 0: non
 # Retourne 1: oui, en noeuds
 # Retourne 2: oui, en centres
@@ -189,11 +132,11 @@ def selectTag(zones, Filter, vars):
     if res == 1: # tag en noeuds
         Z = C.initVars(zones, '__tag__', Filter, vars)
         Z = P.selectCells2(Z, '__tag__')
-        Z = C.rmVars(Z, '__tag__')
+        C._rmVars(Z, '__tag__')
     else: # tag en centres
         Z = C.initVars(zones, 'centers:__tag__', Filter, vars)
         Z = P.selectCells2(Z, 'centers:__tag__')
-        Z = C.rmVars(Z, 'centers:__tag__')
+        C._rmVars(Z, 'centers:__tag__')
     for z in Z: z[0] = C.getZoneName(z[0])
     return Z
 
@@ -227,15 +170,10 @@ def extract():
 
     active = []
     zones = Internal.getZones(CTK.t)
-    for z in CTK.__MAINACTIVEZONES__: active.append(zones[z])
+    for z in CTK.__MAINACTIVEZONES__: active.append(CTK.t[2][CTK.Nb[z]+1][2][CTK.Nz[z]])
 
     Z = None
-    if type == 'cf>1':
-        Z = P.selectCells(active, Filter1, ['interpCoefs1', 'interpCoefs2',
-                                            'interpCoefs3', 'interpCoefs4',
-                                            'interpCoefs5', 'interpCoefs6',
-                                            'interpCoefs7', 'interpCoefs8'])
-    elif type == 'cellN=-99999':
+    if type == 'cellN=-99999':
         Z = selectWithFormula(active, '{cellN} == -99999')
     elif type == 'cellN=1':
         Z = selectWithFormula(active, '{cellN} == 1')
@@ -247,19 +185,27 @@ def extract():
         Z = selectWithFormula(active, '{cellN}<0')
     elif type == '0<cellN<1':
         Z = selectWithFormula(active, '({cellN}>0) & ({cellN}<1)')
-    elif type == 'Orphan points':
-        Z = getOrphanPoints(zones)
+    elif type == 'Interpolated points':
+        Z = X.extractChimeraInfo(zones,type='interpolated',loc='centers')
+        if Z == []: Z = None
     elif type == 'Extrapolated points':
-        Z = getExtrapolatedPoints(zones)
-        
+        Z = X.extractChimeraInfo(zones,type='extrapolated',loc='centers')
+        if Z == []: Z = None
+    elif type == 'Orphan points':
+        Z = X.extractChimeraInfo(zones,type='orphan',loc='centers')
+        if Z == []: Z = None
+    elif type == 'cf>1':
+        Z = X.extractChimeraInfo(zones,type='cf>1',loc='centers')        
+        if Z == []: Z = None
+
     if Z is not None:
         CTK.TXT.insert('START', 'Filter '+type+' extracted.\n')
-        CTK.t = C.addBase2PyTree(CTK.t, 'EXTRACT')
+        C._addBase2PyTree(CTK.t, 'EXTRACT')
         b = Internal.getNodesFromName1(CTK.t, 'EXTRACT')
         base = b[0]
         base[2] += Z
         (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
-        CTK.t = C.fillMissingVariables(CTK.t)
+        #C._fillMissingVariables(CTK.t)
         CTK.TKTREE.updateApp()
         CTK.display(CTK.t)
     else:
@@ -275,7 +221,7 @@ def createApp(win):
                            text='tkCellN', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Chimera cellN analysis.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -293,12 +239,12 @@ def createApp(win):
     # -0- cellN filter -
     norow = 0
     V = TK.StringVar(win); V.set('cellN=0'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCellNFilter'): V.set(CTK.PREFS['tkCellNFilter'])
+    if 'tkCellNFilter' in CTK.PREFS: V.set(CTK.PREFS['tkCellNFilter'])
 
     # Filter
     B = TTK.OptionMenu(Frame, VARS[0], 'Mesh', 'cellN=0', 'cellN=-99999',
                        'cellN=2', 'cellN<0', '0<cellN<1', 'cellN=1', 'cf>1', 'Orphan points',
-                       'Extrapolated points')
+                       'Extrapolated points','Interpolated points')
     B.grid(row=norow, column=0, columnspan=2, sticky=TK.EW) 
 
     # - View cellN -
@@ -316,7 +262,7 @@ def createApp(win):
     # -1- chimeraInfo type
     norow+=1
     V = TK.StringVar(win); V.set('interpolated'); VARS.append(V)
-    if CTK.PREFS.has_key('tkChimeraInfoType'): V.set(CTK.PREFS['tkChimeraInfoType'])
+    if 'tkChimeraInfoType' in CTK.PREFS: V.set(CTK.PREFS['tkChimeraInfoType'])
 
     # Filter
     B = TTK.Button(Frame, text="Chimera info", command=chimeraInfo)
@@ -356,7 +302,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

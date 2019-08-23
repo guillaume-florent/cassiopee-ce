@@ -2,8 +2,8 @@
 import Converter.PyTree as C
 import Connector.PyTree as X
 import Generator.PyTree as G
-import Intersector.PyTree as XOR
 import Geom.PyTree as D
+import Intersector.PyTree as XOR
 import KCore.test as test
 
 # Test 1
@@ -16,7 +16,7 @@ t = C.newPyTree(['Cart', bgm])
 t = C.convertArray2NGon(t)
 
 # celln init
-t = C.initVars(t, 'centers:cellN', 1.)
+C._initVars(t, 'centers:cellN', 1.)
 # Blanking with floating cellN computation
 t = XOR.XcellN(t, [[masking]], [])
 #C.convertPyTree2File(t, 'out1.cgns')
@@ -34,7 +34,7 @@ bgm = G.cart((-5.,-5.,-5.), (0.8,0.8,0.8), (40,40,40))
 t = C.newPyTree(['Cart', bgm])
 t = C.convertArray2NGon(t)
 # celln init
-t = C.initVars(t, 'centers:cellN', 1.)
+C._initVars(t, 'centers:cellN', 1.)
 # Blanking
 t = XOR.XcellN(t, [[masking]], [])
 #C.convertPyTree2File(t, 'out2.cgns')

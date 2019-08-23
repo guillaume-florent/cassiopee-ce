@@ -1,5 +1,6 @@
 # - surface filter and offset -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -83,16 +84,16 @@ def withOctree(a, offset, density):
 
     # iteration d'adaptation
     nit = 0
-    while (nit < 10):
-        print 'iterating: ', nit
+    while nit < 10:
+        print('iterating: %d...'%nit)
 
         o = C.node2Center(o, 'TurbulentDistance')
         o = G.getVolumeMap(o)
 
         # adapt
-        o = C.initVars(o, 'centers:vol={centers:vol}**0.33333')
+        C._initVars(o, '{centers:vol}={centers:vol}**0.33333')
         # was 2.1 factor
-        o = C.initVars(o, 'centers:indicator=logical_and({centers:vol} > %20.16g , abs({centers:TurbulentDistance}-%20.16g) < 1.*{centers:vol})'%(tol,offset))
+        C._initVars(o, '{centers:indicator}=logical_and({centers:vol} > %20.16g , abs({centers:TurbulentDistance}-%20.16g) < 1.*{centers:vol})'%(tol,offset))
         o1 = G.adaptOctree(o, 'centers:indicator')
 
         #C.convertPyTree2File([o1]+a, 'out%d.cgns'%nit)
@@ -156,7 +157,7 @@ def remap():
         nob = CTK.Nb[nzs[0]]+1
         for i in iso: CTK.add(CTK.t, nob, -1, i)
     
-        CTK.t = C.fillMissingVariables(CTK.t)
+        #C._fillMissingVariables(CTK.t)
         CTK.TXT.insert('START', 'Surface filtered and offset (offset=%g).\n'%offset)
         (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
         CTK.TKTREE.updateApp()
@@ -174,7 +175,7 @@ def createApp(win):
                            text='tkFilterSurfs', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Filter or offset a surface.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=2)
@@ -193,15 +194,15 @@ def createApp(win):
     # - VARS -
     # -0- Point density -
     V = TK.StringVar(win); V.set('1.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkFilterSurfsDensity'): 
+    if 'tkFilterSurfsDensity' in CTK.PREFS: 
         V.set(CTK.PREFS['tkFilterSurfsDensity'])
     # -1- Offset -
     V = TK.StringVar(win); V.set('0.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkFilterSurfsOffset'): 
+    if 'tkFilterSurfsOffset' in CTK.PREFS: 
         V.set(CTK.PREFS['tkFilterSurfsOffset'])
     # -2- Algorithm cart/octree
     V = TK.StringVar(win); V.set('0'); VARS.append(V)
-    if CTK.PREFS.has_key('tkFilterSurfsType'): 
+    if 'tkFilterSurfsType' in CTK.PREFS: 
         V.set(CTK.PREFS['tkFilterSurfsType'])
 
     # - Point density -
@@ -263,7 +264,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

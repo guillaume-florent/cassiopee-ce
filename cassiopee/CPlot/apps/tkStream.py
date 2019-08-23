@@ -1,5 +1,6 @@
 # - stream management -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -10,8 +11,7 @@ import Post.PyTree as P
 import time
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def updateVarNameList__(no):
@@ -44,7 +44,7 @@ def updateVarNameList2__(no):
     allvars = []
     if (len(vars) > 0):
         for v in vars[0]: allvars.append(v)
-    if WIDGETS.has_key('variable'+str(no)):
+    if 'variable'+str(no) in WIDGETS:
         WIDGETS['variable'+str(no)]['values'] = allvars
 
 #==============================================================================
@@ -87,7 +87,7 @@ def streamSurface():
         try:
             stream = P.streamSurf(CTK.t, z, [v1, v2, v3], N=npts)
             streams.append(stream)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
             
     CTK.saveTree()
@@ -107,18 +107,18 @@ def streamSurface():
 
 #==============================================================================
 def streamLine():
-    if (CTK.t == []): return
+    if CTK.t == []: return
     npts = CTK.varsFromWidget(VARS[0].get(), type=2)
-    if (len(npts) != 1):
+    if len(npts) != 1:
         CTK.TXT.insert('START', 'Number of points in stream incorrect.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error') ; return
     npts = npts[0]
     v1 = VARS[1].get(); v2 = VARS[2].get(); v3 = VARS[3].get()
     CTK.TXT.insert('START', 'Click to select starting point...\n')
     l = []
-    while (l == []):
+    while l == []:
         l = CPlot.getActivePoint(); time.sleep(0.1)
-    print 'Stream: starting point ', l
+    print('Stream: starting point %d.'%l)
     CTK.saveTree()
     CTK.t = C.addBase2PyTree(CTK.t, 'STREAMS', 2)
     b = Internal.getNodesFromName1(CTK.t, 'STREAMS')
@@ -127,7 +127,7 @@ def streamLine():
         stream = P.streamLine(CTK.t, (l[0], l[1], l[2]), [v1, v2, v3], N=npts)
         CTK.add(CTK.t, nob, -1, stream)
         CTK.TXT.insert('START', 'Stream line created.\n')
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: streamLine')
         CTK.TXT.insert('START', 'Stream line fails.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -137,9 +137,9 @@ def streamLine():
 
 #==============================================================================
 def streamRibbon():
-    if (CTK.t == []): return
+    if CTK.t == []: return
     npts = CTK.varsFromWidget(VARS[0].get(), type=2)
-    if (len(npts) != 1):
+    if len(npts) != 1:
         CTK.TXT.insert('START', 'Number of points in stream incorrect.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error') ; return
     npts = npts[0]
@@ -148,7 +148,7 @@ def streamRibbon():
     l = []
     while (l == []):
         l = CPlot.getActivePoint(); time.sleep(0.1)
-    print 'Ribbon: starting point ', l
+    print('Ribbon: starting point %d'%l)
     CTK.saveTree()
     CTK.t = C.addBase2PyTree(CTK.t, 'STREAMS', 2)
     b = Internal.getNodesFromName1(CTK.t, 'STREAMS')
@@ -158,7 +158,7 @@ def streamRibbon():
                                 [v1, v2, v3], N=npts)
         CTK.add(CTK.t, nob, -1, stream)
         CTK.TXT.insert('START', 'Stream ribbon created.\n')
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: streamRibbon')
         CTK.TXT.insert('START', 'Stream ribbon fails.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -177,7 +177,7 @@ def createApp(win):
                            text='tkStream', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Compute stream lines/surfaces.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -195,7 +195,7 @@ def createApp(win):
     # - VARS -
     # -0- nptsmax -
     V = TK.StringVar(win); V.set('2000'); VARS.append(V)
-    if CTK.PREFS.has_key('tkStreamNpts'): 
+    if 'tkStreamNpts' in CTK.PREFS: 
         V.set(CTK.PREFS['tkStreamNpts'])
     # -1- Var0 for vector -
     V = TK.StringVar(win); V.set('CoordinateX'); VARS.append(V)
@@ -313,11 +313,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

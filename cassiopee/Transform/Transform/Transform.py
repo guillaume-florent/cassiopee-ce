@@ -1,13 +1,25 @@
 """Transformation of arrays.
 """
-__version__ = '2.5'
+__version__ = '2.9'
 __author__ = "Stephanie Peron, Christophe Benoit, Gaelle Jeanfaivre, Pascal Raud"
 # 
 # Python Interface to make basic transformations on arrays
 #
-import transform
+from . import transform
 try: import Converter 
 except: raise ImportError("Transform: requires Converter module.")
+
+try: range = xrange
+except: pass
+
+__all__ = ['_translate', 'translate', 'addkplane', 'breakElements', 'cart2Cyl', '_cart2Cyl', 'collapse', 
+    'computeDeformationVector', '_contract', 'contract', 'cyl2Cart', '_cyl2Cart','deform', 'deformNormals', 'deformPoint', 
+    'dual', '_homothety', 'homothety', 'join', 'makeCartesianXYZ', 'makeDirect', 'merge', 'mergeCart', 
+    'mergeCartByRefinementLevel', 'oneovern', 'patch', 'perturbate', 'projectAllDirs', 'projectDir', 
+    'projectOrtho', 'projectOrthoSmooth', 'projectRay', 'reorder', 'reorderAll', 'rotate', '_scale', 'scale', 
+    'smooth', 'splitBAR', 'splitConnexity', 'splitCurvatureAngle', 'splitCurvatureRadius', 'splitManifold', 
+    'splitMultiplePts', 'splitNParts', 'splitSharpEdges', 'splitSize', 'splitTBranches', 
+    'splitTRI', 'subzone', '_symetrize', 'symetrize', 'deformMesh']
 
 #========================================================================================
 # Merge a set of cart grids in A for each refinement level
@@ -27,16 +39,16 @@ def mergeCartByRefinementLevel(A, sizeMax):
     count = 0
     while ok == 0:
         found = 0
-        for noc in xrange(nzones):
+        for noc in range(nzones):
             dh = allDh[noc]
             if dh < 1.2*dhmin and dh > 0.8*dhmin: 
-                if level in levels.keys():
+                if level in levels:
                     levels[level].append(noc)
                 else:
                     levels[level] = [noc]
                 count += 1
                 found += 1
-        print 'Level %d: merging %d zones over %d (Total: %d).'%(level,found,nzones,count)
+        print('Level %d: merging %d zones over %d (Total: %d).'%(level,found,nzones,count))
         if found > 0:
             res = []
             for i in levels[level]: res.append(A[i])            
@@ -56,7 +68,7 @@ def mergeCart(A, sizeMax=1000000000, tol=1.e-10):
 def merge(A, Ac=[], sizeMax=1000000000, dir=0, tol=1.e-10, alphaRef=180.):
     """Merge a list of matching structured grids.
     Usage: merge(A, Ac, sizeMax, dir, tol, alphaRef)"""
-    if (len(Ac) != 0 and len(A) != len(Ac)):
+    if len(Ac) != 0 and len(A) != len(Ac):
         raise ValueError("merge: node and center arrays must have the same length.")
     # Tri suivant les types
     STRUCTs = []; BARs = []; TRIs = []; QUADs = []; TETRAs = []
@@ -75,7 +87,7 @@ def merge(A, Ac=[], sizeMax=1000000000, dir=0, tol=1.e-10, alphaRef=180.):
             elif elt == 'HEXA': HEXAs.append(i)
             elif elt == 'NGON': NGONs.append(i)
     STRUCTc = []; BARc = []; TRIc = []; QUADc = []; TETRAc = []
-    PYRAc = []; PENTAc = []; HEXAc = []; NGONc = []    
+    PYRAc = []; PENTAc = []; HEXAc = []; NGONc = []
     for i in Ac:
         l = len(i)
         if l == 5: STRUCTc.append(i)
@@ -184,15 +196,12 @@ def translate(a, transvect):
     return b
 
 def _translate(a, transvect):
-    """Translate an array.
-    Usage: translate(a, (v1,v2,v3))"""
     if isinstance(a[0], list):
-        b = []
         for i in a:
-            b.append(transform._translate2(i, transvect))
-        return b
+            transform.translate(i, transvect)
     else:
-        return transform._translate2(a, transvect)
+        transform.translate(a, transvect)
+    return None
 
 def rotate(a, center, arg1, arg2=None, 
            vectors=[['VelocityX','VelocityY','VelocityZ'],['MomentumX','MomentumY','MomentumZ']]):
@@ -243,58 +252,77 @@ def homothety(a, center, alpha):
     """Make for a mesh defined by an array an homothety of center Xc and
     of factor alpha.
     Usage: homothety(a, (xc,yc,zc), alpha)"""
+    b = Converter.copy(a)
+    _homothety(b, center, alpha)
+    return b
+
+def _homothety(a, center, alpha):
     if isinstance(a[0], list): 
-        b = []
         for i in a:
-            b.append(transform.homothety(i, center, alpha))
-        return b
+            transform.homothety(i, center, alpha)
     else:
-        return transform.homothety(a, center, alpha)
-    
+        transform.homothety(a, center, alpha)
+    return None
+
 def contract(a, center, dir1, dir2, alpha):
     """Contract a mesh around a plane defined by (center, dir1, dir2) and of factor alpha.
     Usage: contract(a, (xc,yc,zc), dir1, dir2, alpha)"""
+    b = Converter.copy(a)
+    _contract(b, center, dir1, dir2, alpha)
+    return b
+
+def _contract(a, center, dir1, dir2, alpha):
     if isinstance(a[0], list): 
-        b = []
         for i in a:
-            b.append(transform.contract(i, center, dir1, dir2, alpha))
-        return b
+            transform.contract(i, center, dir1, dir2, alpha)
     else:
-        return transform.contract(a, center, dir1, dir2, alpha)
+        transform.contract(a, center, dir1, dir2, alpha)
+    return None
 
 def scale(a, factor=1.):
     """Scale a mesh following factor (constant) or (f1,f2,f3) following dir.
     Usage: scale(a, 1)"""
+    b = Converter.copy(a)
+    _scale(b, factor)
+    return b
+
+def _scale(a, factor=1.):
     X = (0,0,0)
     try: import Generator; X = Generator.barycenter(a)
     except: pass
     if isinstance(factor, list) or isinstance(factor, tuple):
         if len(factor) == 1:
-            a = homothety(a, X, factor)
+            _homothety(a, X, factor)
         elif len(factor) == 3:
             axe1 = (1,0,0); axe2 = (0,1,0); axe3 = (0,0,1)
-            a = contract(a, X, axe2, axe3, factor[0])
-            a = contract(a, X, axe1, axe3, factor[1])
-            a = contract(a, X, axe1, axe2, factor[2])
+            _contract(a, X, axe2, axe3, factor[0])
+            _contract(a, X, axe1, axe3, factor[1])
+            _contract(a, X, axe1, axe2, factor[2])
     else:
-        a = homothety(a, X, factor)
-    return a
+        _homothety(a, X, factor)
+    return None
 
 def symetrize(a, point, vector1, vector2):
     """Make a symetry of mesh from plane passing by point and of director vector: vector1 and vector2.
     Usage: symetrize(a, (xc,yc,zc), (v1x,v1y,v1z), (v2x,v2y,v2z))"""
+    b = Converter.copy(a)
+    _symetrize(b, point, vector1, vector2)
+    return b
+
+def _symetrize(a, point, vector1, vector2):
+    """Make a symetry of mesh from plane passing by point and of director vector: vector1 and vector2.
+    Usage: symetrize(a, (xc,yc,zc), (v1x,v1y,v1z), (v2x,v2y,v2z))"""
     if isinstance(a[0], list):
-        b = []
         for i in a:
-            b.append(transform.symetrize(i, point, vector1, vector2))
-        return b
+            transform.symetrize(i, point, vector1, vector2)
     else:
         return transform.symetrize(a, point, vector1, vector2)
+    return None
 
 def perturbate(a, radius, dim=3):
     """Perturbate a mesh randomly of radius
     Usage: perturbate(a, radius, dim)"""
-    if isinstance(a[0], list): 
+    if isinstance(a[0], list):
         b = []
         for i in a:
             b.append(transform.perturbate(i, radius, dim))
@@ -307,8 +335,7 @@ def smooth(a, eps=0.5, niter=4, type=0, fixedConstraints=[],
     """Smooth a mesh with a Laplacian.
     Usage: smooth(a, eps, niter, type, fixedConstraints, projConstraints, delta, (xR,yR,zR), radius)"""
     import KCore; import numpy
-    try:
-        import Generator as G
+    try: import Generator as G
     except:
         raise ImportError("smooth: requires Converter and Generator modules.")
     if len(fixedConstraints) != 0:
@@ -348,7 +375,7 @@ def smooth(a, eps=0.5, niter=4, type=0, fixedConstraints=[],
                                  fixedConstraint, projConstraint, delta,
                                  point, radius)
             listOfCoords = []
-            for noz in xrange(len(a)):
+            for noz in range(len(a)):
                 coords = Converter.copy(a[noz])
                 ninjnk = coords[2]*coords[3]*coords[4]
                 indicesU = listOfIndices[noz]
@@ -427,7 +454,7 @@ def projectOrthoSmooth(surfaces, arrays, niter=1):
     # Projection orthogonale directe
     a = projectOrtho(surfs, arrays)
     # Calcul du vecteur normal
-    for i in xrange(len(surfs)):
+    for i in range(len(surfs)):
         a[i][1][:] = surfs[i][1][:]-a[i][1][:]
         a[i][0] = a[i][0].replace('x','nx')
         a[i][0] = a[i][0].replace('y','ny')
@@ -438,7 +465,7 @@ def projectOrthoSmooth(surfaces, arrays, niter=1):
    
     # Lissage du vecteur
     n = a; vect = ['nx','ny','nz']
-    for i in xrange(niter):
+    for i in range(niter):
         #n = Cpnverter.normalize(n, vect)
         #for k in n:
         #    if len(k) == 5: transform.extrapInside(k) # dark hack
@@ -446,7 +473,7 @@ def projectOrthoSmooth(surfaces, arrays, niter=1):
         #n = Converter.normalize(n, vect)
         n = Converter.extCenter2Node(n)
 
-    for i in xrange(len(surfs)):
+    for i in range(len(surfs)):
         surfs[i] = Converter.addVars([surfs[i], n[i]])
     
     # Projection
@@ -459,7 +486,8 @@ def projectRay(surfaces, arrays, P):
     """Project surfaces onto surface arrays using rays starting from P. 
     Usage: projectRay(surfaces, arrays, P)"""
     try:
-        b = Converter.convertArray2Tetra(arrays); b = join(b)
+        b = Converter.convertArray2Tetra(arrays)
+        if isinstance(b[0], list): b = join(b)
     except: b = arrays[0]
     if isinstance(surfaces[0], list):
         return transform.projectRay(surfaces, b, P)
@@ -469,9 +497,9 @@ def projectRay(surfaces, arrays, P):
 def deform(a, vector=['dx','dy','dz']):
     """Deform surface by moving surface of the vector dx, dy, dz. 
     Usage: deform(a, vector)"""    
-    if (len(vector) != 3 or not isinstance(vector[1],str)):
+    if len(vector) != 3 or not isinstance(vector[1],str):
         a = Converter.addVars([a,vector])
-        if (isinstance(vector[0], list)):
+        if isinstance(vector[0], list):
             vector = vector[0][0].split(',')
         else: vector = vector[0].split(',')
     else :
@@ -479,7 +507,7 @@ def deform(a, vector=['dx','dy','dz']):
             raise ValueError("deform: 3 variables are required.")
 
     if isinstance(a[0], list):
-        out=[]
+        out = []
         for i in a: out+=[transform.deform(i, vector)]
         return out
     else: return transform.deform(a, vector)
@@ -489,7 +517,7 @@ def deformNormals(array, alpha, niter=1):
     Usage: deformNormals(array, alpha, niter)"""
     try: import Generator as G
     except: raise ImportError("deformNormals: requires Generator module.")   
-    if (isinstance(array[0], list) and isinstance(alpha[0], list)): 
+    if isinstance(array[0], list) and isinstance(alpha[0], list): 
         if len(array) != len(alpha): raise ValueError("deformNormals: number of arrays in a and alpha must be equal.")
         b = []; noi = 0
         for i in array:
@@ -497,9 +525,8 @@ def deformNormals(array, alpha, niter=1):
             alpi = alpha[noi][1][0]/niter
             if npts != len(alpi): raise ValueError("deformNormals: array and alpha must be of same length.")
             aloc = i
-            for ite in xrange(niter):
+            for ite in range(niter):
                 n = G.getSmoothNormalMap(aloc, niter=0)
-                #for ind in xrange(npts): n[1][:,ind] = n[1][:,ind]*alpi[ind]
                 n[1][:,:] = n[1][:,:]*alpi[:]
                 aloc = Converter.addVars([aloc,n])
                 aloc = deform(aloc,['sx','sy','sz'])
@@ -513,9 +540,8 @@ def deformNormals(array, alpha, niter=1):
         npts = array[1].shape[1]
         alp = alpha[1][0]/niter
         aloc = array
-        for ite in xrange(niter):
+        for ite in range(niter):
             n = G.getSmoothNormalMap(aloc, niter=0)
-            #for ind in xrange(npts): n[1][:,ind] = n[1][:,ind]*alp[ind]
             n[1][:,:] = n[1][:,:]*alp[:]
             aloc = Converter.addVars([aloc,n])
             aloc = deform(aloc,['sx','sy','sz'])
@@ -536,7 +562,7 @@ def deformPoint(a, xyz, dxdydz, depth, width):
     else:
         return transform.deformPoint(a, xyz, dxdydz, depth, width)
 
-def deformMesh(a, surfDelta, beta=4.,type='nearest'):
+def deformMesh(a, surfDelta, beta=4., type='nearest'):
     """Deform a mesh wrt surfDelta defining surface grids and deformation vector on it.
     Usage: deformMesh(a, surfDelta, beta, type)"""
     if not isinstance(a[0], list):
@@ -681,7 +707,7 @@ def joingb__(arrays, arraysc, tol):
     pool.pop(0); poolc.pop(0)
     while len(pool) > 0:
         success = 0; c = 0
-        for noi in xrange(len(pool)):
+        for noi in range(len(pool)):
             try:
                 a,ac = joinsb__(a, pool[noi], ac, poolc[noi], tol)
                 pool.pop(c); poolc.pop(c)
@@ -723,7 +749,7 @@ def joinsb__(array1, array2, arrayc1, arrayc2, tol):
             cn = a[2]; ac = [ac[0], ac[1], cn, ac[3]+'*']# la conversion d un array structure en centres en non structure ne donne pas un array de type elt*
             return transform.joinBoth(array1, a, arrayc1, ac, tol)
       
-        elif (array1[3] != "NGON" and array2[3] == "NGON"):
+        elif array1[3] != "NGON" and array2[3] == "NGON":
             a = Converter.convertArray2NGon(array1)
             ac = Converter.convertArray2NGon(arrayc1)
             cn = a[2]; ac = [ac[0], ac[1], cn, ac[3]+'*']# la conversion d'un array structure en centres en non structure ne donne pas un array de type elt*
@@ -735,12 +761,12 @@ def joins__(array1, array2, tol):
         return transform.join(array1, array2, tol)
 
     elif len(array1) == 4 and len(array2) == 5:
-        if (array1[3] == "NGON"): a = Converter.convertArray2NGon(array2)
+        if array1[3] == "NGON": a = Converter.convertArray2NGon(array2)
         else: a = Converter.convertArray2Hexa(array2)
         return transform.join(array1, a, tol)
 
     elif len(array1) == 5 and len(array2) == 4:
-        if (array2[3] == "NGON"): a = Converter.convertArray2NGon(array1)
+        if array2[3] == "NGON": a = Converter.convertArray2NGon(array1)
         else: a = Converter.convertArray2Hexa(array1)
         return transform.join(a, array2, tol)
 
@@ -930,18 +956,18 @@ def makeDirect__(a):
     ni = a[2]; nj = a[3]; nk = a[4]; p = a[1]
     i = ni/2; j = nj/2; k = nk/2
     ip1 = max(i+1,ni-1); jp1 = max(j+1,nj-1); kp1 = max(k+1,nk-1)
-    ind = i + j*ni + k*ni*nj
+    ind = int(i + j*ni + k*ni*nj)
     P0 = [ p[px,ind], p[py,ind], p[pz,ind] ]
-    ind = ip1 + j*ni + k*ni*nj
+    ind = int(ip1 + j*ni + k*ni*nj)
     P1 = [ p[px,ind], p[py,ind], p[pz,ind] ]
-    ind = i + jp1*ni + k*ni*nj
+    ind = int(i + jp1*ni + k*ni*nj)
     P2 = [ p[px,ind], p[py,ind], p[pz,ind] ]
-    ind = i + j*ni + kp1*ni*nj
+    ind = int(i + j*ni + kp1*ni*nj)
     P3 = [ p[px,ind], p[py,ind], p[pz,ind] ]
     l1 = Vector.sub(P1,P0); ln1 = Vector.norm2(l1)
     l2 = Vector.sub(P2,P0); ln2 = Vector.norm2(l2)
     l3 = Vector.sub(P3,P0); ln3 = Vector.norm2(l3)
-    if (ln1 > 0 and ln2 > 0 and ln3 > 0):
+    if ln1 > 0 and ln2 > 0 and ln3 > 0:
         c = Vector.cross(l1,l2)
         c = Vector.dot(c,l3)
         if c < 0: b = reorder(a, (1,2,-3)); return b
@@ -963,13 +989,13 @@ def addkplane(a, N=1):
 def addkplane__(a, N):
     if len(a) == 5: # structure
         res = a
-        for j in xrange(N): res = transform.addkplane(res)
+        for j in range(N): res = transform.addkplane(res)
         return res
     else: # non structure
         try: import Generator as G
         except: return transform.addkplane(a)
         res = []
-        for j in xrange(N):
+        for j in range(N):
             b = translate(a, (0,0,j*1.))
             b = transform.addkplane(b)
             if res == []: res = b
@@ -979,7 +1005,7 @@ def addkplane__(a, N):
 def addkplaneCenters(arrayC, arrayK, N=1):
     if isinstance(arrayC[0], list): 
         b = []
-        for noi in xrange(len(arrayC)):
+        for noi in range(len(arrayC)):
             c = transform.addkplaneCenters(arrayC[noi], arrayK[noi],N)
             b.append(c)
         return b
@@ -988,66 +1014,66 @@ def addkplaneCenters(arrayC, arrayK, N=1):
 
 # Essaie de couper en 2 en respectant level niveaux de multigrille
 def findMGSplit__(n, level):
-    ns = (n+1)/2
+    ns = (n+1)//2
     if level == 0: return ns
-    pow = 2**level
-    if ((ns-1)%pow == 0 and (n-ns)%pow == 0): return ns
-    if ((ns-2)%pow == 0 and (n-ns+1)%pow == 0): return ns-1
-    if ((ns-3)%pow == 0 and (n-ns+2)%pow == 0): return ns-2
-    if ((ns-4)%pow == 0 and (n-ns+3)%pow == 0): return ns-3
+    power = 2**level
+    if ((ns-1)%power == 0 and (n-ns)%power == 0): return ns
+    if ((ns-2)%power == 0 and (n-ns+1)%power == 0): return ns-1
+    if ((ns-3)%power == 0 and (n-ns+2)%power == 0): return ns-2
+    if ((ns-4)%power == 0 and (n-ns+3)%power == 0): return ns-3
     return -1
 
 # Fait un split nv et le reste en respectant le multigrille
 def findMGSplitUp__(n, nv, level):
     ns = nv
-    if (ns < 4): ns = 4
-    if (level == 0): return ns
-    pow = 2**level
-    if ((ns-1)%pow == 0 and (n-ns)%pow == 0): return ns
-    if ((ns-2)%pow == 0 and (n-ns+1)%pow == 0): return ns-1
-    if ((ns-3)%pow == 0 and (n-ns+2)%pow == 0): return ns-2
-    if ((ns-4)%pow == 0 and (n-ns+3)%pow == 0): return ns-3
+    if ns < 4: ns = 4
+    if level == 0: return ns
+    power = 2**level
+    if ((ns-1)%power == 0 and (n-ns)%power == 0): return ns
+    if ((ns-2)%power == 0 and (n-ns+1)%power == 0): return ns-1
+    if ((ns-3)%power == 0 and (n-ns+2)%power == 0): return ns-2
+    if ((ns-4)%power == 0 and (n-ns+3)%power == 0): return ns-3
     return -1
 
 # Get split dir
 def getSplitDir__(ni, nj, nk, dirs):
     dirl = 1
-    if (ni >= nj and ni >= nk):
+    if ni >= nj and ni >= nk:
         dirl = 1
-        if (1 in dirs): dirl = 1
+        if 1 in dirs: dirl = 1
         else:
-            if (nj >= nk):
-                if (2 in dirs): dirl = 2
-                elif (3 in dirs): dirl = 3
+            if nj >= nk:
+                if 2 in dirs: dirl = 2
+                elif 3 in dirs: dirl = 3
             else:
-                if (3 in dirs): dirl = 3
-                elif (2 in dirs): dirl = 2
-    elif (nj >= ni and nj >= nk):
+                if 3 in dirs: dirl = 3
+                elif 2 in dirs: dirl = 2
+    elif nj >= ni and nj >= nk:
         dirl = 2
-        if (2 in dirs): dirl = 2
+        if 2 in dirs: dirl = 2
         else:
-            if (ni >= nk):
-                if (1 in dirs): dirl = 1
-                elif (3 in dirs): dirl = 3
+            if ni >= nk:
+                if 1 in dirs: dirl = 1
+                elif 3 in dirs: dirl = 3
             else:
-                if (3 in dirs): dirl = 3
-                elif (1 in dirs): dirl = 1
-    elif (nk >= ni and nk >= nj):
+                if 3 in dirs: dirl = 3
+                elif 1 in dirs: dirl = 1
+    elif nk >= ni and nk >= nj:
         dirl = 3
-        if (3 in dirs): dirl = 3
+        if 3 in dirs: dirl = 3
         else:
-            if (ni >= nj):
-                if (1 in dirs): dirl = 1
-                elif (2 in dirs): dirl = 2
+            if ni >= nj:
+                if 1 in dirs: dirl = 1
+                elif 2 in dirs: dirl = 2
             else:
-                if (2 in dirs): dirl = 2
-                elif (1 in dirs): dirl = 1
+                if 2 in dirs: dirl = 2
+                elif 1 in dirs: dirl = 1
     return dirl
 
 # Split size au milieu
 def splitSize__(a, N, multigrid, dirs):
     if len(a) == 4: # unstructured
-        print 'Warning: splitSize: unstructured array not treated.'
+        print('Warning: splitSize: unstructured array not treated.')
         return [a]
     if len(a) == 5: # structured
         ni = a[2]; nj = a[3]; nk = a[4]
@@ -1086,7 +1112,7 @@ def splitSize__(a, N, multigrid, dirs):
 # Split size decentre
 def splitSizeUp__(a, N, multigrid, dirs):
     if len(a) == 4: # unstructured
-        print 'Warning: splitSize: unstructured zone not treated.'
+        print('Warning: splitSize: unstructured zone not treated.')
         return [a]
     if len(a) == 5: # structured
         ni = a[2]; nj = a[3]; nk = a[4]
@@ -1094,28 +1120,28 @@ def splitSizeUp__(a, N, multigrid, dirs):
         if ni*nj*nk > N:
             dirl = getSplitDir__(ni, nj, nk, dirs)
             if dirl == 1:
-                nc = int(N/njk)
+                nc = N//njk
                 ns = findMGSplitUp__(ni, nc, level=multigrid)
                 if ns > 0: 
                     a1 = subzone(a, (1,1,1), (ns,nj,nk))
                     a2 = subzone(a, (ns,1,1), (ni,nj,nk))
                 else: return [a]
             elif dirl == 2:
-                nc = int(N/nik)
+                nc = N//nik
                 ns = findMGSplitUp__(nj, nc, level=multigrid)
                 if ns > 0:
                     a1 = subzone(a, (1,1,1), (ni,ns,nk))
                     a2 = subzone(a, (1,ns,1), (ni,nj,nk))
                 else: return [a]
             elif dirl == 3:
-                nc = int(N/nik)
+                nc = N//nik
                 ns = findMGSplitUp__(nk, nc, level=multigrid)
                 if ns > 0:
                     a1 = subzone(a, (1,1,1), (ni,nj,ns))
                     a2 = subzone(a, (1,1,ns), (ni,nj,nk))
                 else: return [a]
             else:
-                nc = int(N/njk)
+                nc = N//njk
                 ns = findMGSplitUp__(ni, nc, level=multigrid)
                 if ns > 0:
                     a1 = subzone(a, (1,1,1), (ns,nj,nk))
@@ -1179,48 +1205,48 @@ def splitSizeUpR__(A, N, R, multigrid, dirs, minPtsPerDir):
             delta3 = abs(ni1*nj1*(ns-1) - Nr)/nij
             deltak = delta3-delta1-delta2
             dirl = 1
-            if (deltai <= deltaj  and deltai <= deltak):
-                if (1 in dirs): dirl = 1
-                elif (deltaj <= deltak and 2 in dirs): dirl = 2
-                elif (3 in dirs): dirl = 3
-            elif (deltaj <= deltai and deltaj <= deltak):
-                if (2 in dirs): dirl = 2
-                elif (deltai <= deltak and 1 in dirs): dirl = 1
-                elif (3 in dirs): dirl = 3
-            elif (deltak <= deltai and deltak <= deltaj):
-                if (3 in dirs): dirl = 3
-                elif (deltai <= deltaj and 1 in dirs): dirl = 1
-                elif (2 in dirs): dirl = 2
+            if deltai <= deltaj  and deltai <= deltak:
+                if 1 in dirs: dirl = 1
+                elif deltaj <= deltak and 2 in dirs: dirl = 2
+                elif 3 in dirs: dirl = 3
+            elif deltaj <= deltai and deltaj <= deltak:
+                if 2 in dirs: dirl = 2
+                elif deltai <= deltak and 1 in dirs: dirl = 1
+                elif 3 in dirs: dirl = 3
+            elif deltak <= deltai and deltak <= deltaj:
+                if 3 in dirs: dirl = 3
+                elif deltai <= deltaj and 1 in dirs: dirl = 1
+                elif 2 in dirs: dirl = 2
 
             trynext = 1
-            if (dirl == 1):
+            if dirl == 1:
                 nc = int(round(Nr*1./njk,0))+1
                 ns = findMGSplitUp__(ni, nc, level=multigrid)
-                if (ns-1 >= mins and ni-ns >= mins):
+                if ns-1 >= mins and ni-ns >= mins:
                     a1 = subzone(a, (1,1,1), (ns,nj,nk))
                     a2 = subzone(a, (ns,1,1), (ni,nj,nk))
                     SP[0] = (Converter.getNCells(a2), a2)
                     out += [a1]; Rs[0] += Converter.getNCells(a1)
                     trynext = 0
-            elif (dirl == 2):
+            elif dirl == 2:
                 nc = int(round(Nr*1./nik,0))+1
                 ns = findMGSplitUp__(nj, nc, level=multigrid)
-                if (ns-1 >= mins and nj-ns >= mins):
+                if ns-1 >= mins and nj-ns >= mins:
                     a1 = subzone(a, (1,1,1), (ni,ns,nk))
                     a2 = subzone(a, (1,ns,1), (ni,nj,nk))
                     SP[0] = ( Converter.getNCells(a2), a2 )
                     out += [a1]; Rs[0] += Converter.getNCells(a1)
                     trynext = 0
-            elif (dirl == 3):
+            elif dirl == 3:
                 nc = int(round(Nr*1./nij,0))+1
                 ns = findMGSplitUp__(nk, nc, level=multigrid)
-                if (ns-1 >= mins and nk-ns >= mins):
+                if ns-1 >= mins and nk-ns >= mins:
                     a1 = subzone(a, (1,1,1), (ni,nj,ns))
                     a2 = subzone(a, (1,1,ns), (ni,nj,nk))
                     SP[0] = ( Converter.getNCells(a2), a2 )
                     out += [a1]; Rs[0] += Converter.getNCells(a1)
                     trynext = 0
-            if (trynext == 1):
+            if trynext == 1:
                 out += [a]; Rs[0] += Converter.getNCells(a); del SP[0]
         else:
             out += [a]; Rs[0] += Converter.getNCells(a); del SP[0]
@@ -1265,30 +1291,30 @@ def findSplits__(ni, nj, nk, N, dirs, multigrid):
     ldir = len(dirs)
     # Passage en multigrille
     plev = 2**multigrid
-    nig = (ni-1)/plev+1; njg = (nj-1)/plev+1; nkg = (nk-1)/plev+1
+    nig = (ni-1)//plev+1; njg = (nj-1)//plev+1; nkg = (nk-1)//plev+1
     out = []
-    if (ldir == 1): # pas le choix
-        if (dirs[0] == 1):
+    if ldir == 1: # pas le choix
+        if dirs[0] == 1:
             #ns = nig/N
             ns = round(nig*1./N, 0); ns = int(ns)
             r = (ni-N*ns*plev)/plev
             #print ns, ni-(N-1)*ns*plev
             b1 = 1
-            for j in xrange(N):
-                if (r > 0): b2 = b1+plev*(ns+1); r -= 1
-                elif (r < 0): b2 = b1+plev*(ns-1); r += 1
+            for j in range(N):
+                if r > 0: b2 = b1+plev*(ns+1); r -= 1
+                elif r < 0: b2 = b1+plev*(ns-1); r += 1
                 else: b2 = b1+plev*ns
                 if j == N-1: b2 = ni
                 out.append((b1,b2,1,nj,1,nk))
                 b1 = b2
   
-        elif (dirs[0] == 2): 
+        elif dirs[0] == 2: 
             ns = round(njg/N, 0); ns = int(ns)
             r = (nj-N*ns*plev)/plev
             b1 = 1
-            for j in xrange(N):
-                if (r > 0): b2 = b1+plev*(ns+1); r -= 1
-                elif (r < 0): b2 = b1+plev*(ns-1); r += 1
+            for j in range(N):
+                if r > 0: b2 = b1+plev*(ns+1); r -= 1
+                elif r < 0: b2 = b1+plev*(ns-1); r += 1
                 else: b2 = b1+plev*ns
                 if j == N-1: b2 = nj
                 out.append((1,ni,b1,b2,1,nk))
@@ -1297,29 +1323,29 @@ def findSplits__(ni, nj, nk, N, dirs, multigrid):
             ns = round(nkg/N, 0); ns = int(ns)
             r = (nk-N*ns*plev)/plev
             b1 = 1
-            for j in xrange(N):
-                if (r > 0): b2 = b1+plev*(ns+1); r -= 1
-                elif (r < 0): b2 = b1+plev*(ns-1); r += 1
+            for j in range(N):
+                if r > 0: b2 = b1+plev*(ns+1); r -= 1
+                elif r < 0: b2 = b1+plev*(ns-1); r += 1
                 else: b2 = b1+plev*ns
                 if j == N-1: b2 = nk
                 out.append((1,ni,1,nj,b1,b2))
                 b1 = b2
                 
-    elif (ldir == 2):
-        if (dirs[0] == 1): ns1 = ni; bs1 = ni; ng1 = (ni-1)/plev+1 
-        elif (dirs[0] == 2): ns1 = nj; bs1 = nj; ng1 = (nj-1)/plev+1 
-        else: ns1 = nk; bs1 = nk; ng1 = (nk-1)/plev+1 
-        if (dirs[1] == 1): ns2 = ni; bs2 = ni; ng2 = (ni-1)/plev+1 
-        elif (dirs[1] == 2): ns2 = nj; bs2 = nj; ng2 = (nj-1)/plev+1 
-        else: ns2 = nk; bs2 = nk; ng2 = (nk-1)/plev+1 
+    elif ldir == 2:
+        if dirs[0] == 1: ns1 = ni; bs1 = ni; ng1 = (ni-1)//plev+1 
+        elif dirs[0] == 2: ns1 = nj; bs1 = nj; ng1 = (nj-1)//plev+1 
+        else: ns1 = nk; bs1 = nk; ng1 = (nk-1)//plev+1 
+        if dirs[1] == 1: ns2 = ni; bs2 = ni; ng2 = (ni-1)//plev+1 
+        elif dirs[1] == 2: ns2 = nj; bs2 = nj; ng2 = (nj-1)//plev+1 
+        else: ns2 = nk; bs2 = nk; ng2 = (nk-1)//plev+1 
         best = [1,1,1]
         size = -1
-        for N1 in xrange(1,N+1):
-            for N2 in xrange(1,N+1):
-                if (N1*N2 == N):
-                    ns1 = ng1/N1; ns2 = ng2/N2
+        for N1 in range(1,N+1):
+            for N2 in range(1,N+1):
+                if N1*N2 == N:
+                    ns1 = ng1//N1; ns2 = ng2//N2
                     s = min(ns1, ns2)
-                    if (s > size): best = [N1,N2]; size = s
+                    if s > size: best = [N1,N2]; size = s
         N1 = best[0]; N2 = best[1]
         #ns1 = ng1/N1; ns2 = ng2/N2
         ns1 = round(ng1*1./N1, 0); ns1 = int(ns1)
@@ -1330,14 +1356,14 @@ def findSplits__(ni, nj, nk, N, dirs, multigrid):
         j1 = 1; j2 = nj
         k1 = 1; k2 = nk
         b1 = 1
-        for i in xrange(N1): # tous les splits en 1
-            if (r1 > 0): b2 = b1+plev*(ns1+1); r1 -= 1
-            elif (r1 < 0): b2 = b1+plev*(ns1-1); r1 += 1
+        for i in range(N1): # tous les splits en 1
+            if r1 > 0: b2 = b1+plev*(ns1+1); r1 -= 1
+            elif r1 < 0: b2 = b1+plev*(ns1-1); r1 += 1
             else: b2 = b1+plev*ns1
-            if (dirs[0] == 1): 
+            if dirs[0] == 1: 
                 i1 = b1; i2 = b2; 
                 if i == N1-1: i2 = ni
-            elif (dirs[0] == 2): 
+            elif dirs[0] == 2: 
                 j1 = b1; j2 = b2
                 if i == N1-1: j2 = nj
             else: 
@@ -1346,7 +1372,7 @@ def findSplits__(ni, nj, nk, N, dirs, multigrid):
 
             r2 = (ni-N2*ns2*plev)/plev
             c1 = 1
-            for j in xrange(N2): # tous les splits en 2
+            for j in range(N2): # tous les splits en 2
                 if (r2 > 0): c2 = c1+plev*(ns2+1); r2 -= 1
                 elif (r2 < 0): c2 = c1+plev*(ns2-1); r2 += 1
                 else: c2 = c1+plev*ns2
@@ -1369,19 +1395,19 @@ def findSplits__(ni, nj, nk, N, dirs, multigrid):
         ns3 = nk; bs3 = nk; ng3 = (nk-1)/plev+1
         best = [1,1,1]
         size = -1
-        for N1 in xrange(1,N+1):
-            for N2 in xrange(1,N+1):
-                for N3 in xrange(1,N+1):
-                    if (N1*N2*N3 == N):          
+        for N1 in range(1,N+1):
+            for N2 in range(1,N+1):
+                for N3 in range(1,N+1):
+                    if N1*N2*N3 == N:          
                         ns1 = ng1/N1; ns2 = ng2/N2; ns3 = ng3/N3
                         s = min(ns1, ns2, ns3)
-                        if (s > size):
+                        if s > size:
                             best = [N1,N2,N3]; size = s
-                        elif (s == size):
-                            if (N1 == best[0]): # discrimine suivant 2/3
+                        elif s == size:
+                            if N1 == best[0]: # discrimine suivant 2/3
                                 sl = min(ns2, ns3)
                                 sb = min(ng2/best[1], ng3/best[2])
-                                if (sl > sb): best = [N1,N2,N3]
+                                if sl > sb: best = [N1,N2,N3]
                             elif (N2 == best[1]): # discrimine suivant 1/3
                                 sl = min(ns1, ns3)
                                 sb = min(ng1/best[0], ng3/best[2])
@@ -1400,25 +1426,25 @@ def findSplits__(ni, nj, nk, N, dirs, multigrid):
         r2 = (nj-N2*ns2*plev)/plev
         r3 = (nk-N3*ns3*plev)/plev
         b1 = 1
-        for i in xrange(N1): # tous les splits en i
-            if (r1 > 0): b2 = b1+plev*(ns1+1); r1 -= 1
-            elif (r1 < 0): b2 = b1+plev*(ns1-1); r1 += 1
+        for i in range(N1): # tous les splits en i
+            if r1 > 0: b2 = b1+plev*(ns1+1); r1 -= 1
+            elif r1 < 0: b2 = b1+plev*(ns1-1); r1 += 1
             else: b2 = b1+plev*ns1
             i1 = b1; i2 = b2
             if i == N1-1: i2 = ni
             r2 = (nj-N2*ns2*plev)/plev
             c1 = 1
-            for j in xrange(N2): # tous les splits en j
-                if (r2 > 0): c2 = c1+plev*(ns2+1); r2 -= 1
-                elif (r2 < 0): c2 = c1+plev*(ns2-1); r2 += 1
+            for j in range(N2): # tous les splits en j
+                if r2 > 0: c2 = c1+plev*(ns2+1); r2 -= 1
+                elif r2 < 0: c2 = c1+plev*(ns2-1); r2 += 1
                 else: c2 = c1+plev*ns2
                 j1 = c1; j2 = c2
                 if j == N2-1: j2 = nj
                 r3 = (nk-N3*ns3*plev)/plev
                 d1 = 1
-                for k in xrange(N3): # tous les splits en k                    
-                    if (r3 > 0): d2 = d1+plev*(ns3+1); r3 -= 1
-                    elif (r3 < 0): d2 = d1+plev*(ns3-1); r3 += 1
+                for k in range(N3): # tous les splits en k                    
+                    if r3 > 0: d2 = d1+plev*(ns3+1); r3 -= 1
+                    elif r3 < 0: d2 = d1+plev*(ns3-1); r3 += 1
                     else: d2 = d1+plev*ns3
                     k1 = d1; k2 = d2
                     if k == N3-1: k2 = nk
@@ -1436,16 +1462,16 @@ def findSplits__(ni, nj, nk, N, dirs, multigrid):
 #==============================================================================
 def findNsi__(l, N, Np):
     Sum = 0.
-    for i in xrange(l): Sum += Np[i]
+    for i in range(l): Sum += Np[i]
     Nm = Sum *1. / N
     Nm = max(Nm, 1.)
     Ns = [0]*l # nbre de splits a effectuer
     Er = [0]*l # Erreur de split
-    for i in xrange(l): Ns[i] = Np[i]*1. / Nm
+    for i in range(l): Ns[i] = Np[i]*1. / Nm
     # Passage en entier
-    for i in xrange(l):
+    for i in range(l):
         val = round(Ns[i], 0)
-        if (val == 0): Ns[i] = 1
+        if val == 0: Ns[i] = 1
         else: Ns[i] = int(val)
         Er[i] = (Ns[i]*Nm - Np[i],i)
 
@@ -1453,34 +1479,33 @@ def findNsi__(l, N, Np):
     from operator import itemgetter
     Er = sorted(Er, key=itemgetter(0))
 
-    #for i in xrange(l): print 'Erreur ',Er[i][1],Er[i][0]
-
     # Check for N
     ND = 0
-    for i in xrange(l): ND += Ns[i]
-    while (ND != N):
+    for i in range(l): ND += Ns[i]
+    while ND != N:
         #print 'Round ', ND, N
-        if (ND < N): # pas assez de blocs
+        if ND < N: # pas assez de blocs
             # On cherche a augmenter les splits des plus grands Er
-            for i in xrange(N-ND):
+            for i in range(N-ND):
                 e = Er[i]
                 no = e[1]
-                Ns[no] += 1; #print Ns[no]*Nm-Np[no]
+                Ns[no] += 1 #print Ns[no]*Nm-Np[no]
             pass
-        elif (ND > N): # trop de blocs
+        elif ND > N: # trop de blocs
             # On cherche a diminuer les splits des plus petits Er 
-            for i in xrange(ND-N):
+            for i in range(ND-N):
                 e = Er[l-i-1]
                 no = e[1]
-                Ns[no] -= 1; #print Ns[no]*Nm-Np[no]
+                Ns[no] -= 1 #print Ns[no]*Nm-Np[no]
 
         ND = 0
-        for i in xrange(l): ND += Ns[i]
+        for i in range(l): ND += Ns[i]
         #print 'Final Round ', ND, N
     return Ns
 
 # split une liste d'arrays structures en N parties a peu pres egales
 def splitNParts(arrays, N, multigrid=0, dirs=[1,2,3]):
+    """Split blocks in N blocks."""
     if not isinstance(arrays[0], list): arrays = [arrays]
     # Fait des paquets de zones structurees et NGON
     arraysS = []; arraysN = []
@@ -1496,7 +1521,10 @@ def splitNParts(arrays, N, multigrid=0, dirs=[1,2,3]):
             arraysN.append(a)
             NpN.append(a[1].size)
             c = a[2]; NeN.append(c[0,c[0,1]+2])
-        else: outO.append(a) 
+        else:
+            arraysN.append(a)
+            NpN.append(a[1].size)
+            c = a[2]; NeN.append(c.shape[1])
 
     SumS = 0.; SumN = 0.
     for i in NeS: SumS += i
@@ -1505,16 +1533,19 @@ def splitNParts(arrays, N, multigrid=0, dirs=[1,2,3]):
     alpha = N*1./(SumS+SumN)
     NbN = len(NeN) # nbre de grilles non structurees
     NPart = [0]*(NbN+1); Nt = 0
-    for i in xrange(NbN): NPart[i] = max(int(alpha*NeN[i]),1); Nt += NPart[i]
+    for i in range(NbN): NPart[i] = max(int(alpha*NeN[i]),1); Nt += NPart[i]
     if SumS != 0: NPart[NbN] = max(N-Nt,1)
     else: NPart[NbN-1] = max(N-Nt+NPart[NbN-1],1)
 
     # Blocs non structures
     outN = []
-    for i in xrange(len(arraysN)):
+    for i in range(len(arraysN)):
         a = arraysN[i]
         if NPart[i] > 1:
-            elts = transform.splitNGon(a, NPart[i])
+            if a[3] == 'NGON': 
+                elts = transform.splitNGon(a, NPart[i])
+            else:
+                elts = transform.splitElement(a, NPart[i])
             for e in elts: outN.append(subzone(a, e, type='elements'))
         else: outN.append(a)
 
@@ -1525,7 +1556,7 @@ def splitNParts(arrays, N, multigrid=0, dirs=[1,2,3]):
     Ns = findNsi__(l, NPa, NpS)
 
     outS = []
-    for i in xrange(l):
+    for i in range(l):
         a = arraysS[i]
         ni = a[2]; nj = a[3]; nk = a[4]
         splits = findSplits__(ni, nj, nk, Ns[i], dirs, multigrid)
@@ -1609,14 +1640,14 @@ def splitSharpEdges(array, alphaRef=30.):
     if isinstance(array[0], list):
         out = []
         for i in array:
-            if (len(i) == 5): # structured
+            if len(i) == 5: # structured
                 out.append(Converter.convertArray2Hexa(i))
             else: out.append(i)
         out = join(out)
     else:
         if len(array) == 5: out = Converter.convertArray2Hexa(array)
         else: out = array
-    if (out[3] == "TRI" or out[3] == "QUAD"):
+    if out[3] == "TRI" or out[3] == "QUAD":
         out = G.close(out)
         out = reorder(out, (1,))
     return transform.splitSharpEdges(out, alphaRef)
@@ -1654,14 +1685,14 @@ def splitCurvatureAngle(array, sensibility):
 def splitMultiplePts2D__(A):
     restart = 0
     nzones = len(A)
-    for noz in xrange(nzones):
+    for noz in range(nzones):
         z = A[noz]
         taga = Converter.extractVars(z,['definedBC'])
         ni = taga[2]; nj = taga[3]; nk = taga[4]; ninj = ni*nj
         isplit = -1; jsplit = -1
         # detecte si un pt interieur est de tag > 1
         # fenetre i = 1
-        for j in xrange(1,nj-1): 
+        for j in range(1,nj-1): 
             if taga[1][0,j*ni] > 1.:
                 isplit = 1; jsplit = j+1
                 z1 = subzone(z,(1,1,1),(ni,jsplit,nk))
@@ -1671,7 +1702,7 @@ def splitMultiplePts2D__(A):
                 return A, restart
              
         # fenetre i = ni
-        for j in xrange(1,nj-1): 
+        for j in range(1,nj-1): 
             if taga[1][0,ni-1+j*ni] > 1.:
                 isplit = ni; jsplit = j+1
                 z1 = subzone(z,(1,1,1),(ni,jsplit,nk))
@@ -1681,7 +1712,7 @@ def splitMultiplePts2D__(A):
                 return A, restart
                 
         # fenetre j = 1
-        for i in xrange(1,ni-1): 
+        for i in range(1,ni-1): 
             if taga[1][0,i] > 1.:
                 isplit = i+1; jsplit = 1
                 z1 = subzone(z,(1,1,1),(isplit,nj,nk))
@@ -1691,7 +1722,7 @@ def splitMultiplePts2D__(A):
                 return A, restart
             
         # fenetre j = nj
-        for i in xrange(1,ni-1): 
+        for i in range(1,ni-1): 
             if taga[1][0,i+(nj-1)*ni] > 1.:
                 isplit = i+1; jsplit = nj
                 z1 = subzone(z,(1,1,1),(isplit,nj,nk))
@@ -1704,7 +1735,7 @@ def splitMultiplePts2D__(A):
 def splitMultiplePts3D__(A):
     restart = 0
     nzones = len(A)
-    for noz in xrange(nzones):
+    for noz in range(nzones):
         z = A[noz]
         taga = Converter.extractVars(z,['definedBC'])
         ni = taga[2]; nj = taga[3]; nk = taga[4]; ninj = ni*nj
@@ -1713,8 +1744,8 @@ def splitMultiplePts3D__(A):
         ni1 = max(2,ni-1); nj1 = max(2,nj-1); nk1 = max(2,nk-1)
         # fenetre i = 1
         for i in [1,ni]:
-            for k in xrange(1,nk1):
-                for j in xrange(1,nj1):
+            for k in range(1,nk1):
+                for j in range(1,nj1):
                     ind = i-1+j*ni+k*ninj
                     if taga[1][0,ind] > 1.:
                         jsplit = j+1; ksplit = k+1
@@ -1738,8 +1769,8 @@ def splitMultiplePts3D__(A):
      
         # fenetre j = 1
         for j in [1,nj]:
-            for k in xrange(1,nk1):
-                for i in xrange(1,ni1):
+            for k in range(1,nk1):
+                for i in range(1,ni1):
                     ind = i+(j-1)*ni+k*ninj
                     if taga[1][0,ind] > 1.:
                         isplit = i+1; ksplit = k+1
@@ -1763,8 +1794,8 @@ def splitMultiplePts3D__(A):
         # fenetre k = 1
         if nk > 2:
             for k in [1,nk]:
-                for j in xrange(1,nj1):
-                    for i in xrange(1,ni1):
+                for j in range(1,nj1):
+                    for i in range(1,ni1):
                         ind = i+j*ni+(k-1)*ninj
                         if taga[1][0,ind] > 1.:
                             isplit = i+1; jsplit = j+1
@@ -1792,7 +1823,7 @@ def splitMultiplePts__(A,dim=3):
     tags = Converter.addVars(A, 'definedBC')
     tags = Converter.extractVars(tags, ['definedBC'])
 
-    for noz1 in xrange(nzones):
+    for noz1 in range(nzones):
         z = A[noz1]; ni=z[2]; nj=z[3]; nk=z[4] 
         winp=subzone(z,(1,1,1),(1,nj,nk));allWins.append(winp)     
         winp=subzone(z,(ni,1,1),(ni,nj,nk));allWins.append(winp)             
@@ -1804,16 +1835,16 @@ def splitMultiplePts__(A,dim=3):
     globWin = Converter.convertArray2Hexa(allWins); globWin = join(globWin); globWin = G.close(globWin)
     hook = Converter.createHook(globWin,function='nodes')
     tagG = [-1]*globWin[1].shape[1]
-    for noz1 in xrange(nzones):
+    for noz1 in range(nzones):
         res = Converter.identifyNodes(hook,A[noz1])
-        for ind in xrange(A[noz1][1].shape[1]):
+        for ind in range(A[noz1][1].shape[1]):
             if res[ind] != -1: 
                 indg = res[ind]-1; tagG[indg]+=1
                     
-    for noz1 in xrange(nzones):
+    for noz1 in range(nzones):
         tag1 = tags[noz1]
         res = Converter.identifyNodes(hook,A[noz1])
-        for ind in xrange(A[noz1][1].shape[1]):
+        for ind in range(A[noz1][1].shape[1]):
             if res[ind] != -1: 
                 indg = res[ind]-1
                 tag1[1][0,ind] = tagG[indg]

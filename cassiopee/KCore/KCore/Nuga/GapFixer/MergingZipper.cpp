@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -56,7 +56,7 @@ MergingZipper::setMates
   if (!_reorient) // Merging mates are only useful if we need to reorient.
     return;
 
-  nmates.resize(posT3.cols(), UNKNOWN);
+  nmates.resize(posT3.cols(), UNKNO);
 
   E_Int nbE2 = connectE2.cols();
   if (nbE2 == 0)

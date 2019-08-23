@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -20,8 +20,12 @@
 #ifndef __DELAUNAY_MACROS_H__
 #define __DELAUNAY_MACROS_H__
 
+#ifndef ALL
 #define ALL(c)  (c).begin(), (c).end()
+#endif
 
+#ifndef IS_IN
 #define IS_IN(c,v) (c).find(v) != (c).end()
+#endif
 
 #endif

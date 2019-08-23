@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -70,6 +70,9 @@ Zone::~Zone()
   }
   if (minf != NULL) delete [] minf;
   if (maxf != NULL) delete [] maxf;
+  
+  if (regtexu != NULL) delete [] regtexu;
+  if (regtexv != NULL) delete [] regtexv;
   
   delete [] _voxelArray;
   ptr_impl->freeGPURes(ptrState);

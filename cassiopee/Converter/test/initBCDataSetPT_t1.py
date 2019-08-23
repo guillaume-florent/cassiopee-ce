@@ -13,8 +13,8 @@ d = Internal.newBCData('BCNeumann', parent=d)
 d = Internal.newDataArray('Density', value=NFACES*[1.], parent=d)
 
 # Init all BCs
-C._initBCDataSet(a, 'MomentumX=2.*numpy.min({Density},0)')
+C._initBCDataSet(a, '{MomentumX}=2.*minimum({Density},0)')
 # Init only BC node
 bc = Internal.getNodeFromName(a, 'wall')
-C._initBCDataSet(bc, 'MomentumY=3.')
+C._initBCDataSet(bc, 'MomentumY', 3.)
 test.testT(a)

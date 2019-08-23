@@ -12,6 +12,10 @@ if Cmpi.rank == 0:
     C.convertPyTree2File(t, 'test.cgns')
 Cmpi.barrier()
 
+# Relit les zones par paths
+t = Cmpi.convertFile2SkeletonTree('test.cgns')
+Cmpi._readZones(t, 'test.cgns', zoneNames=['Base/cart'])
+
 # Relit des zones par procs
 t = Cmpi.convertFile2SkeletonTree('test.cgns')
 (t, dic) = Distributor2.distribute(t, NProc=Cmpi.size, algorithm='fast')

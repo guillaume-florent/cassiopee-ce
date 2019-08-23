@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -40,6 +40,8 @@ PyObject* K_DISTRIBUTOR2::distribute(PyObject* self, PyObject* args)
   else if (strcmp(algorithm, "gradient1") == 0) {algo=0; param=1;}
   else if (strcmp(algorithm, "genetic") == 0) {algo=1; param=0;}
   else if (strcmp(algorithm, "fast") == 0) {algo=1; param=1;}
+  else if (NProc > 1 && strcmp(algorithm, "graph") == 0) {algo=2; param=0;}
+  else if (NProc == 1 && strcmp(algorithm, "graph") == 0) {algo=1; param=1;}
   else
   {
     PyErr_SetString(PyExc_TypeError,
@@ -167,13 +169,21 @@ PyObject* K_DISTRIBUTOR2::distribute(PyObject* self, PyObject* args)
   E_Float meanPtsPerProc;
   E_Float varMin, varMax, varRMS, comRatio, bestAdapt;
   E_Int nptsCom; 
-  if (algo == 1)
+  if (algo == 1) // genetic
     K_DISTRIBUTOR2::genetic(lnbPts, lsetBlocks, NProc, volCom, 
                             solver, latence, comSpeed, param, out,
                             meanPtsPerProc, varMin,
                             varMax, varRMS, nptsCom, comRatio,
                             bestAdapt);
-  else
+  else if (algo == 2) // graph
+  {
+    K_DISTRIBUTOR2::graph(lnbPts, lsetBlocks, NProc, volCom, 
+                          solver, latence, comSpeed, param, out,
+                          meanPtsPerProc, varMin,
+                          varMax, varRMS, nptsCom, comRatio,
+                          bestAdapt);
+  }
+  else // algo = 0
     K_DISTRIBUTOR2::gradient(lnbPts, lsetBlocks, NProc, volCom, 
                              solver, latence, comSpeed, param, out,
                              meanPtsPerProc, varMin,

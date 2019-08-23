@@ -11,7 +11,7 @@ N = 512
 N = 128
 h = 2./N
 a = G.cart((-1.,-1.,-1.),(h,h,h),(N,N,N))
-cellN = C.initVars(a, 'cellN=1')
+cellN = C.initVars(a, 'cellN', 1)
 cellN = C.extractVars(cellN, ['cellN'])
 
 # Init wall
@@ -21,8 +21,8 @@ sphere = G.close(sphere)
 cellN = X.blankCellsTri([a], [cellN], [sphere], blankingType=0)
 
 a = C.addVars([a, cellN[0]])
-a = C.initVars(a,'speed=%f'%(1./h))
-a = C.initVars(a, 'Phi=1.e12*({cellN}>0.)')
+a = C.initVars(a,'speed', 1./h)
+a = C.initVars(a, '{Phi}=1.e12*({cellN}>0.)')
 
 # Eikonal
 b = Dist2Walls.eikonal(a)

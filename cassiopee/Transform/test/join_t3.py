@@ -16,5 +16,5 @@ test.testA([a],1)
 # avec champs en centres
 a1 = C.initVars(a1,'{F}={x}+{y}**2+{z}**3'); a2 = C.initVars(a2,'{F}={x}+{y}**2+{z}**3')
 ac1 = C.node2Center(a1); ac2 = C.node2Center(a2)
-res = T.join (a1, a2, ac1, ac2)
+res = T.join(a1, a2, ac1, ac2)
 test.testA(res,2)

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -49,10 +49,11 @@ void Data::init(void)
 #endif
   
   // Cree les textures
+  int width, height;
   createNodeTexture();
   createNoise3DTexture();
   createFrameBufferTexture();
-  createPngTexture("windtunnel.png", _texEnviron1);
+  createPngTexture("windtunnel.png", _texEnviron1, width, height);
   createVoxelTexture();
 
   // Set bg color
@@ -80,19 +81,22 @@ void Data::openGfx()
   // Window size base sur la taille de l'ecran
   int screenWidth = glutGet(GLUT_SCREEN_WIDTH); 
   int screenHeight = glutGet(GLUT_SCREEN_HEIGHT);
-  _view.w = screenWidth-320;
-  _view.h = screenHeight;
-
+  if (_view.w == 0 || _view.h == 0)
+  {
+    _view.w = screenWidth-320;
+    _view.h = screenHeight;
+  }
+  
   /* Window */
-  if (ptrState->offscreen == 2) glutInitWindowSize(1, 1);
+  if (ptrState->offscreen >= 2) glutInitWindowSize(1, 1);
   else glutInitWindowSize(_view.w, _view.h);
   glutInitWindowPosition(320, 0);
   _winId = glutCreateWindow(ptrState->winTitle);
-  if (ptrState->offscreen == 2) glutHideWindow();
+  if (ptrState->offscreen >= 2) glutHideWindow();
   init();
 
   glutReshapeFunc(reshape);
-  glutKeyboardFunc(gkeyboard); 
+  glutKeyboardFunc(gkeyboard);
   //glutKeyboardUpFunc(gkeyboardup); // other keys than arrows
   if (ptrState->kkeysActivated == 0) glutSpecialUpFunc(gkeyboardup); // arrows
   glutDisplayFunc(fdisplay);

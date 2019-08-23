@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -118,10 +118,19 @@ void Data::displaySIsoSolidZone(StructZone* zonep, int zone,
   if (curr != 0) _shaders[curr]->setUniform("blend", (float)blend);
   glColor4f(0.,0.,0., blend); // pour imposer blend
 #endif
-
+  
 #undef PLOT
+  double* f1 = zonep->f[nofield1];
+  double* f2 = zonep->f[nofield2];
+  double* f3 = zonep->f[nofield3];
+  double fmin1, fmax1, fmin2, fmax2, fmin3, fmax3;
+  fmax1 = maxf[nofield1]; fmin1 = minf[nofield1];
+  fmax2 = maxf[nofield2]; fmin2 = minf[nofield2];
+  fmax3 = maxf[nofield3]; fmin3 = minf[nofield3];
+#define GL_QUADS_ARE GL_TRIANGLES
+#define PLOT PLOTT
 #include "displaySVectSolidZone.h"
-      
+  
   // Pour les lignes
   if (nij == 1 || ni*nk == 1 || nj*nk == 1)
   {

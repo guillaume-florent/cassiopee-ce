@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -38,7 +38,10 @@ public:
   static void reverse_indirection
   (const Vector_t<E_Int> & assoc, Vector_t<E_Int>& reverse_assoc);
   /// non-bijective : convert a n-to-one vector (tipically an oids) to a ngon_unit
-  static void reverse_indirection(E_Int nb_pgs, const Vector_t<E_Int>& oids, ngon_unit& split_graph);
+  static void reverse_indirection(E_Int nb_pgs, const E_Int*oids, E_Int sz, ngon_unit& split_graph);
+  /// 
+  template < E_Int S >
+  static void right_shift(E_Int* list, E_Int sz);
   ///
   static void reverse_sorting(Vector_t<E_Int> & vec);
   ///
@@ -97,6 +100,23 @@ public:
 
 };
 
+/// 
+template <E_Int S>
+void IdTool::right_shift(E_Int* list, E_Int sz)
+{
+    if (sz == 0) return; 
+
+      E_Int tmp[S];
+
+      for (int i =0; i < S; ++i){
+          tmp[i] = list[(i+sz)%S];
+      }
+
+      for (int i =0; i < S; ++i){
+          list[i] = tmp[i];
+      }    
+}
+
 ///
 template <typename T>
 bool IdTool::equal_vec(Vector_t<T>& a, Vector_t<T>& b)
@@ -136,15 +156,39 @@ struct valid : public std::unary_function <E_Int, bool>
 };
 
 ///
+struct invalid : public std::unary_function <E_Int, bool>
+{
+  invalid(const std::vector<E_Int>& indir):_indir(indir){}
+  inline bool operator() (E_Int i ) const
+  {
+    return (_indir[i] == E_IDX_NONE);
+  }
+
+  const std::vector<E_Int>& _indir;
+};
+
+///
+template< typename T = bool>
 struct keep : public std::unary_function <E_Int, bool>
 {
-  keep(const std::vector<bool>& indir):_indir(indir){}
+  keep(const std::vector<T>& indir):_indir(indir){}
   inline bool operator() (E_Int i ) const
   {
     return (_indir[i]);
   }
 
-  const std::vector<bool>& _indir;
+  const std::vector<T>& _indir;
+};
+
+struct strictly_positive : public std::unary_function <E_Int, bool>
+{
+  strictly_positive(const std::vector<E_Int>& indir):_indir(indir){}
+  inline bool operator() (E_Int i ) const
+  {
+    return (_indir[i] > 0);
+  }
+
+  const std::vector<E_Int>& _indir;
 };
 
 ///
@@ -164,6 +208,7 @@ E_Int IdTool::compress(std::vector<T>& vec, const Predicate_t& P)
   return ret;
 }
 
+///
 template < typename T, typename Predicate_t>
 E_Int IdTool::compress(std::vector<T>& vec, const Predicate_t& P, std::vector<E_Int>& nids)
 {

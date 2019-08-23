@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -93,7 +93,7 @@ searchInterpolationCellO3CF(E_Float x, E_Float y, E_Float z,
                             E_Int& ic, E_Int& jc, E_Int& kc,
                             FldArrayF& cf)
 {
-  printf("BlkInterpWithKMesh : searchInterpolationCellO3CF not relevant.\n");
+  printf("BlkInterpWithKMesh: searchInterpolationCellO3CF not relevant.\n");
   return -1;
 }
 //=============================================================================
@@ -121,7 +121,7 @@ searchInterpolationCellO3ABC(E_Float x, E_Float y, E_Float z,
   E_Int nk = _mesh.getKm();
   if ( ni < 3 || nj < 3 || nk < 3)
   { 
-    printf("Error : 3rd order interpolation requires at least 3 points per direction.\n");
+    printf("Error: 3rd order interpolation requires at least 3 points per direction.\n");
     return -1;
   }
 
@@ -150,7 +150,7 @@ searchInterpolationCellO5ABC(E_Float x, E_Float y, E_Float z,
   E_Int nk = _mesh.getKm();
   if ( ni < 5 || nj < 5 || nk < 5)
   { 
-    printf("Error : 5th order interpolation requires at least 5 points per direction.\n");
+    printf("Error: 5th order interpolation requires at least 5 points per direction.\n");
     return -1;
   }
   short ret = searchInterpolationCell(x, y, z, ic, jc, kc, cf);
@@ -195,7 +195,7 @@ searchInterpolationCellO3CFv(FldArrayF& coord,
                              FldArrayI& ic, FldArrayI& jc, FldArrayI& kc,
                              FldArrayF& cf, FldArrayIS& found)
 {
-  printf("BlkInterpWithKMesh : searchInterpolationCellO3CFv not relevant.\n");
+  printf("BlkInterpWithKMesh: searchInterpolationCellO3CFv not relevant.\n");
   exit(0);
 }
 //=============================================================================
@@ -232,7 +232,7 @@ searchInterpolationCellO3ABCv(FldArrayF& coord,
 
   if ( ni < 3 || nj < 3 || nk < 3)
   { 
-    printf("Error : 3rd order interpolation requires at least 3 points per direction.\n");
+    printf("Error: 3rd order interpolation requires at least 3 points per direction.\n");
     exit(0);
   }
 
@@ -260,7 +260,7 @@ searchInterpolationCellO5ABCv(FldArrayF& coord,
   E_Int nk = _mesh.getKm();
   if ( ni < 5 || nj < 5 || nk < 5)
   { 
-    printf("Error : 5th order interpolation requires at least 5 points per direction.\n");
+    printf("Error: 5th order interpolation requires at least 5 points per direction.\n");
     exit(0);
   }
   E_Int ic0, jc0, kc0;
@@ -669,8 +669,8 @@ searchInterpolationCellByJumpv(FldArrayF& coord,E_Int istart, E_Int iend,
   }
   //cerr << "Nb Jump valides : " << nbJump << endl;
 
-  printf("Nbre de points sans cellule previous : %d \n", nocell);
-  printf("Nbre de points pour recherche classique : %d\n",storeEnd);
+  printf("Nbre de points sans cellule previous: %d \n", nocell);
+  printf("Nbre de points pour recherche classique: %d\n",storeEnd);
   
   if ( storeEnd != 0 )
   {
@@ -713,8 +713,10 @@ getExtrapolationCell(E_Float x, E_Float y, E_Float z,
                      FldArrayF& cf,
                      const FldArrayI& cellNatureField,
                      E_Int testNature,
+                     E_Float& test,
                      K_KINTERP::BlkInterpData::InterpolationType interpType,
-                     K_KINTERP::BlkInterpData::InterpMeshType interpMeshType)
+                     K_KINTERP::BlkInterpData::InterpMeshType interpMeshType,
+                     E_Float cfMax)
 {
   K_KINTERP::KMesh& mesh = _mesh;//const_cast<KMesh&>(_mesh);
   // Find most probable surface
@@ -722,7 +724,7 @@ getExtrapolationCell(E_Float x, E_Float y, E_Float z,
   E_Int njc = mesh.getJm();
   E_Int nkc = mesh.getKm();
 
-  E_Float x1, y1, z1, test;
+  E_Float x1, y1, z1;
   E_Int ind1, c;
   E_Int isav = 0;
   E_Int jsav = 0;
@@ -735,8 +737,6 @@ getExtrapolationCell(E_Float x, E_Float y, E_Float z,
   short found;
   E_Int i1, i2, j1, j2, k1, k2;
   E_Int dir1, bnd1;
-
-  const E_Float cfMax = 30.;
 
   // Init cf
   cf.setAllValuesAtNull();
@@ -998,10 +998,11 @@ getExtrapolationCell(E_Float x, E_Float y, E_Float z,
       found = getExtrapolationCoeffForCell(x, y, z,
                                            isav, jsav, ksav, cf,
                                            cellNatureField,
-                                           testNature, 0, is, js, ks, interpType, interpMeshType);
+                                           testNature, 0, is, js, ks, cfMax,
+                                           interpType, interpMeshType);
     else
       found = getExtrapolationCoeffForCell(x, y, z,
-                                           isav, jsav, ksav, cf, interpType, interpMeshType);
+                                           isav, jsav, ksav, cf, cfMax, interpType, interpMeshType);
     
     if (interpType == K_KINTERP::BlkInterpData::O2CF)
     {
@@ -1010,7 +1011,7 @@ getExtrapolationCell(E_Float x, E_Float y, E_Float z,
     }
     else if (interpType == K_KINTERP::BlkInterpData::O3CF)
     {
-      printf("Warning : extrapolation coeff not implemented for O3CF\n"); return 0;   
+      printf("Warning: extrapolation coeff not implemented for O3CF\n"); return 0;   
     }
     else
     {
@@ -1027,12 +1028,8 @@ getExtrapolationCell(E_Float x, E_Float y, E_Float z,
     }
 
     // if cell is OK (cfi<cfMax) return OK and cellNatureField is OK
-    ic = isav;
-    jc = jsav;
-    kc = ksav;
-    
-    if (found == 1 && test < cfMax)
-      return 1;
+    ic = isav; jc = jsav; kc = ksav;
+    if (found == 1 && test < cfMax) return 1;
 
     // try neighbouring cell (is,js,ks)?
     
@@ -1055,13 +1052,12 @@ short K_KINTERP::BlkInterpWithKMesh::
 getExtrapolationCellStruct(E_Float x, E_Float y, E_Float z,
                            FldArrayI& indi,
                            FldArrayF& cf,
-                           E_Int order,
+                           E_Int order, E_Float cfMax,
                            const FldArrayF& cellNatureField,
                            K_KINTERP::BlkInterpData::InterpolationType interpType)
 {
   E_Int ic, jc, kc;
-
-  short found = searchExtrapolationCell(x, y, z, ic, jc, kc, cf, order, cellNatureField);
+  short found = searchExtrapolationCell(x, y, z, ic, jc, kc, cf, order, cfMax, cellNatureField);
 
   // Indices par direction des points de la molecule d'interpolation
   compStandardIndices(ic, jc, kc, indi, interpType); 
@@ -1100,7 +1096,7 @@ getExtrapolationCellUnstr(E_Float x, E_Float y, E_Float z,
    It is based on the coefficients in the best tetrahedra. 
    In this version (default), the mesh in centers is supposed to be known.
 IN: (x,y,z) : coordonnees du point interpole
-IN: (ic,jc,kc) : indices de la cellule d interpolation
+IN: (ic,jc,kc) : indices de la cellule d'interpolation
 OUT: cf : coefficient d extrapolation
 IN: cellNatureField : champ de la nature Chimere des cellules sur la grille d interpolation
 IN: testNature : si testNature = 0, interpolation aux centres des cellules
@@ -1115,7 +1111,7 @@ getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
                              FldArrayF& cf,
                              const FldArrayI& cellNatureField,
                              E_Int testNature, E_Int order,
-                             E_Int& is, E_Int& js, E_Int& ks,
+                             E_Int& is, E_Int& js, E_Int& ks, E_Float cfMax,
                              K_KINTERP::BlkInterpData::InterpolationType interpType,
                              K_KINTERP::BlkInterpData::InterpMeshType interpMeshType)
 {
@@ -1173,7 +1169,7 @@ getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
   nkc = _mesh.getKm();
 
   // Passage centres etendus -> centres
-  if ( interpMeshType == K_KINTERP::BlkInterpData::EXT_CENTERS)
+  if (interpMeshType == K_KINTERP::BlkInterpData::EXT_CENTERS)
   {
     im = nic-2;
     jm = njc-2;
@@ -1231,6 +1227,7 @@ getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
   }
 
   // Coord of interpolation cell
+  //printf("%d %d %d: %d %d %d\n",ic,jc,kc,nic,njc,nkc);
   ind = mesh.getPos(ic, jc, kc);
   E_Int icdummy,jcdummy,kcdummy;
   coordHexa(ind,nic,njc,xl,yl,zl,icdummy,jcdummy,kcdummy,xt,yt,zt);
@@ -1400,10 +1397,8 @@ getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
       cf[indr] = cf[indr]+yi;
       cf[inds] = cf[inds]+zi;
 
-      if (cfSumMin > 10.)
-        printf("Warning : extrapolation coeff may be big : %d %d %d\n", ic,jc,kc);
-    
-      return 1;
+      if (cfSumMin > cfMax) return 0;
+      else return 1;
     }
     else
     {
@@ -1454,11 +1449,14 @@ getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
         cf[6]=(cf[6]+report)*locCellN[6];
         cf[7]=(cf[7]+report)*locCellN[7];
 
-        return 1;
+        if (E_abs(cf[0])+E_abs(cf[1])+E_abs(cf[2])+E_abs(cf[3])+
+            E_abs(cf[4])+E_abs(cf[5])+E_abs(cf[6])+E_abs(cf[7]) > cfMax)
+          return 0;
+        else return 1;
       }
     }
   }
-  else if ( interpType ==  K_KINTERP::BlkInterpData::O3CF)
+  else if (interpType ==  K_KINTERP::BlkInterpData::O3CF)
   {
     printf("Warning : extrapolation coeff not implemented for O3CF\n"); return 0;   
   }
@@ -1572,7 +1570,7 @@ getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
 //=============================================================================
 /* Calcul les coefficients d extrapolation pour le pt (x,y,z) à partir des 
    indices (ic,jc,kc) du premier point de la molecule d'interpolation.
-   C'est basé sur les coefficients du meilleur tetraedre.
+   C'est base sur les coefficients du meilleur tetraedre.
    (ic,jc,kc) correspond au KMesh _mesh 
    IN: (x,y,z) : coordonnees du point interpole
    IN: (ic,jc,kc) : indices du premier point de la cellule d interpolation
@@ -1583,7 +1581,7 @@ getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
 short K_KINTERP::BlkInterpWithKMesh::
 getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
                              E_Int ic, E_Int jc, E_Int kc,
-                             FldArrayF& cf,
+                             FldArrayF& cf, E_Float cfMax,
                              K_KINTERP::BlkInterpData::InterpolationType interpType,
                              K_KINTERP::BlkInterpData::InterpMeshType interpMeshType)
 {
@@ -1722,19 +1720,22 @@ getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
           }
         
           // keep the best valid tetra
-          if (cfSum < cfSumMin)
-            cfSumMin = cfSum;
+          if (cfSum < cfSumMin) cfSumMin = cfSum;
         }
       }
     }
 
     cf = cf_sav;
 
-    return 1;
+    // CB - check
+    cfSum = E_abs(cf[0])+E_abs(cf[1])+E_abs(cf[2])+E_abs(cf[3])+
+            E_abs(cf[4])+E_abs(cf[5])+E_abs(cf[6])+E_abs(cf[7]);
+    if (cfSum < cfMax) return 1;
+    else return 0;
   }
-  else if ( interpType ==  K_KINTERP::BlkInterpData::O3CF)
+  else if (interpType ==  K_KINTERP::BlkInterpData::O3CF)
   {
-    printf("Warning : extrapolation coeff not implemented for O3CF\n"); return 0;   
+    printf("Warning: extrapolation coeff not implemented for O3CF.\n"); return 0;   
   }
   else // OiABC non degrade
   {
@@ -2394,7 +2395,7 @@ compLagrangeCoefs(E_Float x, E_Float y, E_Float z,
       npts_interp_3D = 125;
       break;
     default :
-      printf("Error : compLagrangeCoefs : not a valid interpolation type.\n"); 
+      printf("Error: compLagrangeCoefs: not a valid interpolation type.\n"); 
       return 1;
   }
 
@@ -2487,7 +2488,7 @@ compLagrangeCoefs(E_Float x, E_Float y, E_Float z,
       break;
       
     default:
-      printf("Error : compLagrangeCoefs : not a valid interpolation type.\n"); 
+      printf("Error: compLagrangeCoefs: not a valid interpolation type.\n"); 
       return 1;
   }
   return 0;
@@ -2547,7 +2548,7 @@ compStandardIndices(E_Int ic, E_Int jc, E_Int kc,
       indi[15] = kc+3;
       break;
     default:
-      printf("compStandardIndices : unknown interpolation type.\n");
+      printf("compStandardIndices: unknown interpolation type.\n");
       exit(0);
   }
 }
@@ -2617,7 +2618,7 @@ compStandardIndicesv(E_Int istart, E_Int iend,
       }
       break;
     default:
-      printf("compStandardIndices : unknown interpolation type.\n");
+      printf("compStandardIndices: unknown interpolation type.\n");
       exit(0);
   }
 }

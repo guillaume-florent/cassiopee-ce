@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -152,8 +152,8 @@ PyObject* K_CONVERTER::convertUnstruct2NGon(PyObject* self, PyObject* args)
     {
       E_Int v1 = cn1[et]; E_Int v2 = cn2[et]; E_Int v3 = cn3[et]; 
       // connectivite face/noeuds
-      cFN[c1]   = 2; cFN[c1+1] = v1; cFN[c1+2] = v2;// face 1
-      cFN[c1+3] = 2; cFN[c1+4] = v2; cFN[c1+5] = v3;// face 2
+      cFN[c1]   = 2; cFN[c1+1] = v1; cFN[c1+2] = v2; // face 1
+      cFN[c1+3] = 2; cFN[c1+4] = v2; cFN[c1+5] = v3; // face 2
       cFN[c1+6] = 2; cFN[c1+7] = v3; cFN[c1+8] = v1; // face 3
       c1 += 9;
       // connectivite elt/faces

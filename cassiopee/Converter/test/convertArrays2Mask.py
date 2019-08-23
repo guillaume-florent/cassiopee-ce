@@ -2,7 +2,6 @@
 from elsA_user import *
 import Converter.Cassiopee as CC
 import Converter as C
-import Transform as T
 
 # Create a cartesian mesh
 msh = mesh(name='msh')

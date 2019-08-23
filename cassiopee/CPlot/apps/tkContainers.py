@@ -1,9 +1,10 @@
 # - gestion des containers -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
-import Converter.PyTree as C
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
+import Converter.PyTree as C
 import Converter.Internal as Internal
 
 # local widgets list
@@ -19,7 +20,7 @@ def updateGridCoordinates(event=None):
     seen = set()
     seen_add = seen.add
     vars = [x for x in vars if x not in seen and not seen_add(x)]
-    if WIDGETS.has_key('GridCoordinates'):
+    if 'GridCoordinates' in WIDGETS:
         WIDGETS['GridCoordinates']['values'] = vars
 
 #==============================================================================
@@ -37,7 +38,7 @@ def updateFlowSolution(event=None):
     seen = set()
     seen_add = seen.add
     vars = [x for x in vars if x not in seen and not seen_add(x)]
-    if WIDGETS.has_key('FlowSolution'):
+    if 'FlowSolution' in WIDGETS:
         WIDGETS['FlowSolution']['values'] = vars
 
 #==============================================================================
@@ -54,7 +55,7 @@ def updateFlowSolutionCenters(event=None):
     seen = set()
     seen_add = seen.add
     vars = [x for x in vars if x not in seen and not seen_add(x)]
-    if WIDGETS.has_key('FlowSolutionCenters'):
+    if 'FlowSolutionCenters' in WIDGETS:
         WIDGETS['FlowSolutionCenters']['values'] = vars
 
 #==============================================================================
@@ -77,7 +78,7 @@ def createApp(win):
                            text='tkContainers', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Manage container names.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -94,16 +95,16 @@ def createApp(win):
     # - VARS -
     # -0- GridCoordinates container -
     V = TK.StringVar(win); V.set('GridCoordinates'); VARS.append(V)
-    if CTK.PREFS.has_key('GridCoordinatesContainer'):
+    if 'GridCoordinatesContainer' in CTK.PREFS:
         V.set(CTK.PREFS['GridCoordinatesContainer'])
 
     # -1- FlowSolutionNodes container -
     V = TK.StringVar(win); V.set('FlowSolution'); VARS.append(V)
-    if CTK.PREFS.has_key('FlowSolutionNodesContainer'):
+    if 'FlowSolutionNodesContainer' in CTK.PREFS:
         V.set(CTK.PREFS['FlowSolutionNodesContainer'])
     # -2- FlowSolutionCenters container -
     V = TK.StringVar(win); V.set('FlowSolution#Centers'); VARS.append(V)
-    if CTK.PREFS.has_key('FlowSolutionCentersContainer'):
+    if 'FlowSolutionCentersContainer' in CTK.PREFS:
         V.set(CTK.PREFS['FlowSolutionCentersContainer'])
 
     # - GridCoordinates -
@@ -215,7 +216,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

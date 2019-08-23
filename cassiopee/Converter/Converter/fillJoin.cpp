@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -86,8 +86,8 @@ PyObject* K_CONVERTER::fillJoin(PyObject* self, PyObject* args)
   E_Int indadj;               // cell index of reciever block cell adjacent to the join border
   E_Int indadjdonor;          // cell index of donor block cell
   E_Int inddonor, indghost;
-  E_Int shift_dir       = direction/E_abs(direction)*incrrecv;
-  E_Int shift_dirdonor  = dirdonor/E_abs(dirdonor)*incrdonor;
+  E_Int shift_dir      = direction/E_abs(direction)*incrrecv;
+  E_Int shift_dirdonor = dirdonor/E_abs(dirdonor)*incrdonor;
   E_Int ind, ghost;
   E_Int localisation = 0;
   if (!strcmp(loc, "Vertex")) localisation = 1;

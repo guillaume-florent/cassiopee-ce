@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -53,20 +53,20 @@
 //=============================================================================
 void Data::displayUMeshZone(UnstructZone* zonep, int zone, int zonet)
 {
+  if ( zonep->_is_high_order == true )
+  {
+    displayUMeshZone_ho(zonep, zone, zonet);
+    return;
+  }
   int i, n1, n2, ret1, ret2, ret;
+
+  // Style colors
+  float color1[3]; float color2[3];
 
   // Colormap
   float r, g, b;
   void (*getrgb)(Data* data, double, float*, float*, float*);
   getrgb = _plugins.colorMap->next->f;
-
-  // Style
-  float color1[3]; float color2[3];
-
-  E_Float nz = 1./_numberOfUnstructZones;
-#include "meshStyles.h"
-
-#include "selection.h"
 
   // For node rendering (1D zones)
   double dref = 0.003;
@@ -87,6 +87,32 @@ void Data::displayUMeshZone(UnstructZone* zonep, int zone, int zonet)
   double dx, dy, dz, dist, d;
   double pru0, pru1, pru2, mru0, mru1, mru2;
   double pt1[3]; double pt2[3]; double pt3[3]; double pt4[3];
+  
+  E_Float nz = 1./_numberOfUnstructZones;
+#include "meshStyles.h"
+
+#include "selection.h"
+
+  if (zonep->eltType == 1 || zonep->eltType == 0 || (zonep->eltType == 10 && zonep->nelts1D > 0)) glLineWidth(3.);
+    /*if ( zonep->_is_high_order == true )
+    {
+      int ishader = 0;
+      if ( zonep->eltType == UnstructZone::TRI )
+        ishader = 1;  // OK, element de type Tri_6
+      if ( zonep->eltType == UnstructZone::QUAD )
+        ishader = 2;  // OK, element de type Quad_8
+      if ( not this->_shaders.has_tesselation() ) {
+        this->_shaders.set_tesselation( ishader );
+      }
+
+      this->_shaders.activate( (short unsigned int)this->_shaders.shader_id(0) );
+      std::cerr << "Shader id ::: " << this->_shaders.currentShader() << std::flush << std::endl;
+      int t_inner = this->ptrState->inner_tesselation;
+      int t_outer = this->ptrState->outer_tesselation;
+      this->_shaders[ this->_shaders.currentShader() ]->setUniform( "uInner", (float)t_inner );
+      this->_shaders[ this->_shaders.currentShader() ]->setUniform( "uOuter", (float)t_outer );
+      glPatchParameteri( GL_PATCH_VERTICES, zonep->eltSize );
+    }*/
 
 #include "displayUMeshZone.h"
 

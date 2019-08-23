@@ -1,5 +1,5 @@
-  E_Float thetar = theta*K_CONST::E_PI/180.;// theta en radians pour sin/cos
-  E_Float ctheta = cos(thetar); E_Float stheta = sin(thetar);
+  // E_Float thetar = theta*K_CONST::E_PI/180.;// theta en radians pour sin/cos
+  E_Float ctheta = cos(theta); E_Float stheta = sin(theta);
   if ( posvx > -1 && posvy > -1 && posvz > -1)
   {
     E_Float* ptrVx = vectOfRcvFields[posvx];

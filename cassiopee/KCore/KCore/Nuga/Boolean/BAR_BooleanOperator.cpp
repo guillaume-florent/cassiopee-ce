@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -237,7 +237,7 @@ BAR_BooleanOperator::compute_zones()
     vB12.clear();
     std::set_difference(hB.begin(), hB.end(), hBu.begin(), hBu.end(), std::back_inserter(vB12));
     
-    if (vB12.size() < hB.size())
+    if (vB12.size() > 0 && vB12.size() < hB.size())
     {
       edge_type ne(vB12[0].node(1), vB12[0].node(0));
       if (h[0].find(ne) != h[0].end()) // opposite belongs to 1 => out 2
@@ -249,7 +249,7 @@ BAR_BooleanOperator::compute_zones()
     }
     else // cB is a totally enclosed contour.
     {
-      assert (vB12.size() == hB.size());
+      //assert (vB12.size() == hB.size());
       _connectInter.pushBack(cB);
     }
   }

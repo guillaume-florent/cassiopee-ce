@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -37,7 +37,8 @@ PyObject* K_CPLOT::setState(PyObject* self, PyObject* args)
   int displayBB, displayInfo, displayIsoLegend;
   int meshStyle, solidStyle, scalarStyle, vectorStyle, colormap, niso;
   E_Float xcam, ycam, zcam, xeye, yeye, zeye, viewAngle, dirx, diry, dirz;
-  E_Float isoEdges;
+  E_Float isoEdges, vectorScale, vectorDensity;
+  int vectorNormalize, vectorShowSurface, vectorShape, vectorProjection;
   int bgColor, shadow, dof;
   int ghostifyDeactivatedZones;
   int edgifyActivatedZones;
@@ -46,32 +47,37 @@ PyObject* K_CPLOT::setState(PyObject* self, PyObject* args)
   int cursor;
   char* exportFile; char* exportResolution;
   char* envmap; char* message;
-  PyObject* isoScales; PyObject* billBoards;
+  PyObject* isoScales; PyObject* billBoards; 
+  PyObject* materials; PyObject* bumpMaps;
   int gridSizeI, gridSizeJ;
-  E_Float lightOffsetX, lightOffsetY; E_Float dofPower;
+  E_Float lightOffsetX, lightOffsetY; 
+  E_Float dofPower; E_Float gamma; E_Float sobelThreshold;
   int timer; int selectionStyle;
   int continuousExport; int activateShortCuts;
+  E_Float billBoardSize;
   if (!PyArg_ParseTuple(
         args, 
-	"iOOiiiiiiiiiiiidO(ii)(ddd)(ddd)(ddd)d(dd)iiidiiississidi(ii)iiiO",
+	"iOOiiiiiiiiiiddiiiiiidO(ii)(ddd)(ddd)(ddd)d(dd)iiidddiiississidi(ii)iiiOdOO",
         &dim, &modeObject, &scalarFieldObject,
         &vectorField1, &vectorField2, &vectorField3,
         &displayBB, &displayInfo, &displayIsoLegend,
         &meshStyle, &solidStyle, &scalarStyle, 
-        &vectorStyle, &colormap,
+        &vectorStyle, &vectorScale, &vectorDensity, &vectorNormalize, 
+        &vectorShowSurface, &vectorShape, &vectorProjection, &colormap,
         &niso, &isoEdges, &isoScales,
         &winx, &winy, &xcam, &ycam, &zcam,
         &xeye, &yeye, &zeye, 
         &dirx, &diry, &dirz, &viewAngle,
         &lightOffsetX, &lightOffsetY,
-        &bgColor, &shadow, &dof, &dofPower,
+        &bgColor, &shadow, &dof, &dofPower, &gamma, &sobelThreshold,
         &ghostifyDeactivatedZones, &edgifyActivatedZones,
         &edgifyDeactivatedZones,
         &exportFile, &exportResolution, &continuousExport,
         &envmap, &message,
         &stereo, &stereoDist, &cursor,
         &gridSizeI, &gridSizeJ, &timer, &selectionStyle,
-        &activateShortCuts, &billBoards))
+        &activateShortCuts, &billBoards, &billBoardSize, 
+        &materials, &bumpMaps))
   {
     return NULL;
   }
@@ -84,7 +90,8 @@ PyObject* K_CPLOT::setState(PyObject* self, PyObject* args)
                        xeye, yeye, zeye,
                        dirx, diry, dirz, viewAngle,
                        meshStyle, solidStyle, scalarStyle, 
-                       vectorStyle, colormap, 
+                       vectorStyle, vectorScale, vectorDensity, vectorNormalize,
+                       vectorShowSurface, vectorShape, vectorProjection, colormap, 
                        niso, isoEdges, isoScales, bgColor,
                        ghostifyDeactivatedZones, edgifyActivatedZones,
                        edgifyDeactivatedZones,
@@ -122,9 +129,10 @@ PyObject* K_CPLOT::setState(PyObject* self, PyObject* args)
   if (gridSizeI != -1) d->ptrState->gridSizeI = gridSizeI;
   if (gridSizeJ != -1) d->ptrState->gridSizeJ = gridSizeJ;
   if (dofPower != -1.) d->ptrState->dofPower = dofPower;
+  if (gamma != -1.) d->ptrState->gamma = gamma;
   if (lightOffsetX != -999.) d->ptrState->lightOffsetX = lightOffsetX;
   if (lightOffsetY != -999.) d->ptrState->lightOffsetY = lightOffsetY;
-  //if (viewAngle != -1) d->farClipping();
+  //if (viewAngle != -1) d->ptrState->farClip = 1;
 
   if (timer != -1) d->ptrState->ktimer = timer;
   if (selectionStyle != -1) d->ptrState->selectionStyle = selectionStyle;
@@ -138,21 +146,28 @@ PyObject* K_CPLOT::setState(PyObject* self, PyObject* args)
     for (int i = 0; i < d->_nBillBoards; i++)
     {
       delete [] d->_billBoardFiles[i];
-      if (d->_billBoardTexs[i] != 0) glDeleteTextures(1, &d->_billBoardTexs[i]);
+      //if (d->_billBoardTexs[i] != 0) glDeleteTextures(1, &d->_billBoardTexs[i]);
     }
     delete [] d->_billBoardTexs;
     delete [] d->_billBoardNis; delete [] d->_billBoardNjs;
+    delete [] d->_billBoardWidths; delete [] d->_billBoardHeights;
     delete [] d->_billBoardFiles;
     int nb = PyList_Size(billBoards)/3;
     d->_nBillBoards = nb;
     d->_billBoardFiles = new char* [nb];
     d->_billBoardNis = new int [nb];
     d->_billBoardNjs = new int [nb];
+    d->_billBoardWidths = new int [nb];
+    d->_billBoardHeights = new int [nb];
     d->_billBoardTexs = new GLuint [nb];
     for (int i = 0; i < nb; i++)
     {
       PyObject* o = PyList_GetItem(billBoards, 3*i);
-      char* file = PyString_AsString(o);
+      char* file = NULL;
+      if (PyString_Check(o)) file = PyString_AsString(o);
+#if PY_VERSION_HEX >= 0x03000000
+      else if (PyUnicode_Check(o)) file = PyBytes_AsString(PyUnicode_AsUTF8String(o)); 
+#endif
       o = PyList_GetItem(billBoards, 3*i+1);
       int ni = PyLong_AsLong(o);
       o = PyList_GetItem(billBoards, 3*i+2);
@@ -163,8 +178,85 @@ PyObject* K_CPLOT::setState(PyObject* self, PyObject* args)
       d->_billBoardTexs[i] = 0;
       d->_billBoardNis[i] = ni; d->_billBoardNjs[i] = nj;
     }
-  }   
+  }
+  if (billBoardSize != -1)
+  {
+    d->ptrState->billBoardSize = billBoardSize;
+  }
 
+  if (materials != Py_None)
+  {
+    for (int i = 0; i < d->_nMaterials; i++)
+    {
+      delete [] d->_materialFiles[i];
+      // DeleteTex must be done by gfx thread
+      //if (d->_materialTexs[i] != 0) glDeleteTextures(1, &d->_materialTexs[i]);
+    }
+    
+    delete [] d->_materialTexs;
+    delete [] d->_materialFiles;
+    delete [] d->_materialWidths;
+    delete [] d->_materialHeights;
+    int nb = PyList_Size(materials);
+    
+    d->_nMaterials = nb;
+    d->_materialFiles = new char* [nb];
+    d->_materialWidths = new int [nb];
+    d->_materialHeights = new int [nb];
+    d->_materialTexs = new GLuint [nb];
+    for (int i = 0; i < nb; i++)
+    {
+      PyObject* o = PyList_GetItem(materials, i);
+      char* file = NULL;
+      if (PyString_Check(o)) file = PyString_AsString(o);
+#if PY_VERSION_HEX >= 0x03000000
+      else if (PyUnicode_Check(o)) file = PyBytes_AsString(PyUnicode_AsUTF8String(o)); 
+#endif
+      d->_materialFiles[i] = new char [128];  
+      strcpy(d->_materialFiles[i], file);
+      d->_materialTexs[i] = 0;
+    }
+  }
+
+  if (bumpMaps != Py_None)
+  {
+    for (int i = 0; i < d->_nBumpMaps; i++)
+    {
+      delete [] d->_bumpMapFiles[i];
+      //if (d->_bumpMapTexs[i] != 0) glDeleteTextures(1, &d->_bumpMapTexs[i]);
+    }
+    delete [] d->_bumpMapTexs;
+    delete [] d->_bumpMapFiles;
+    delete [] d->_bumpMapWidths;
+    delete [] d->_bumpMapHeights;
+    int nb = PyList_Size(bumpMaps);
+    d->_nBumpMaps = nb;
+    d->_bumpMapFiles = new char* [nb];
+    d->_bumpMapWidths = new int [nb];
+    d->_bumpMapHeights = new int [nb];
+    d->_bumpMapTexs = new GLuint [nb];
+    for (int i = 0; i < nb; i++)
+    {
+      PyObject* o = PyList_GetItem(bumpMaps, i);
+      if (o == Py_None)
+      {
+        d->_bumpMapFiles[i] = NULL;
+      }
+      else
+      {
+        char* file = NULL;
+        if (PyString_Check(o)) file = PyString_AsString(o);
+#if PY_VERSION_HEX >= 0x03000000
+        else if (PyUnicode_Check(o)) file = PyBytes_AsString(PyUnicode_AsUTF8String(o)); 
+#endif
+        d->_bumpMapFiles[i] = new char [128];  
+        strcpy(d->_bumpMapFiles[i], file);
+      }
+      d->_bumpMapTexs[i] = 0;
+    }
+  }
+
+  // force render
   d->ptrState->render = 1;
   return Py_BuildValue("i", KSUCCESS);
 }
@@ -230,7 +322,7 @@ PyObject* K_CPLOT::changeVariable(PyObject* self, PyObject* args)
    Change CPlot style 
  */
 //=============================================================================
-PyObject* K_CPLOT::changeStyle( PyObject* self, PyObject* args )
+PyObject* K_CPLOT::changeStyle(PyObject* self, PyObject* args)
 {
   Data* d = Data::getInstance();
   d->changeAppearance();
@@ -243,7 +335,7 @@ PyObject* K_CPLOT::changeStyle( PyObject* self, PyObject* args )
    Change Info display 
  */
 //=============================================================================
-PyObject* K_CPLOT::changeInfoDisplay( PyObject* self, PyObject* args )
+PyObject* K_CPLOT::changeInfoDisplay(PyObject* self, PyObject* args)
 {
   Data* d = Data::getInstance();
   if (d->ptrState->info == 1) d->ptrState->info = 0;
@@ -262,7 +354,7 @@ PyObject* K_CPLOT::changeInfoDisplay( PyObject* self, PyObject* args )
    Retourne 0 (KFAILED), 1 (KSUCCESS)
  */
 //=============================================================================
-PyObject* K_CPLOT::changeBlanking( PyObject* self, PyObject* args )
+PyObject* K_CPLOT::changeBlanking(PyObject* self, PyObject* args)
 {
   Data* d = Data::getInstance();
   if (d->_numberOfZones == 0) return Py_BuildValue("i", KFAILED);
@@ -289,7 +381,7 @@ PyObject* K_CPLOT::changeBlanking( PyObject* self, PyObject* args )
    Set dim (1D/2D/3D)
  */
 //=============================================================================
-PyObject* K_CPLOT::setDim( PyObject* self, PyObject* args )
+PyObject* K_CPLOT::setDim(PyObject* self, PyObject* args)
 {
   int dim;
   if (!PyArg_ParseTuple(args, "i", &dim)) return NULL;
@@ -678,7 +770,14 @@ PyObject* K_CPLOT::setZoneNames(PyObject* self, PyObject* args)
       return NULL;
     }
     int noz = PyLong_AsLong(PyTuple_GetItem(tpl, 0));
-    char* name = PyString_AsString(PyTuple_GetItem(tpl, 1));
+    
+    char* name = NULL;
+    PyObject* l = PyTuple_GetItem(tpl, 1);
+    if (PyString_Check(l)) name = PyString_AsString(l);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(l)) name = PyBytes_AsString(PyUnicode_AsUTF8String(l)); 
+#endif
+    
     if (noz < 0 || noz > d->_numberOfZones-1)
     {
       printf("Warning: setZoneNames: number of zone is invalid.\n");
@@ -791,15 +890,17 @@ PyObject* K_CPLOT::setShaderPath(PyObject* self, PyObject* args)
 }
 
 //=============================================================================
-// Set window title
+// Set window title (file name + file path)
 //=============================================================================
 PyObject* K_CPLOT::setWindowTitle(PyObject* self, PyObject* args)
 {
-  char* file;
-  if (!PyArg_ParseTuple(args, "s", &file)) return NULL;
+  char* file; char* path;
+  if (!PyArg_ParseTuple(args, "ss", &file, &path)) return NULL;
   Data* d = Data::getInstance();
   strcpy(d->ptrState->winTitle, "CPlot - ");
   strcat(d->ptrState->winTitle, file);
+  strcpy(d->ptrState->file, file);
+  strcpy(d->ptrState->filePath, path);
   if (d->_winId != 0)
   {
     glutSetWindowTitle(d->ptrState->winTitle);

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -22,6 +22,9 @@
 #define __GENERATOR_DELAUNAY_KERNEL_CXX__
 
 #include "Kernel.h"
+#ifdef E_DEBUG2
+#include "IO/io.h"
+#endif
 
 namespace DELAUNAY
 {
@@ -29,7 +32,7 @@ namespace DELAUNAY
 /// Constructor
 template <typename T>
 Kernel<T>::Kernel(MeshData& data, const K_CONNECT::MeshTool& tool)
-    : _data(data), _tool(tool), _Ball_pred(*data.pos, _data.connectM), _constrained_pred(0)
+    : _data(data), _tool(tool), _Ball_pred(*data.pos, _data.connectM), _constrained_pred(0), _Nmatch(E_IDX_NONE)
 {
   data.mask.resize(_data.connectM.cols(), true);
 
@@ -61,7 +64,7 @@ Kernel<T>::insertNode(size_type N, const T& m, const ConstraintType& dummy){
   //
   E_Int ret = __getCavity<ConstraintType> (N, m, *_data.pos, _data.neighbors, _data.ancestors, _cavity, _cboundary);
 
-  if (ret == -1)
+  if (ret == -1 || ret == 2)
     return ret;
 
 #ifdef E_TIME
@@ -123,17 +126,20 @@ Kernel<T>::__getCavity
 #endif
 
 #ifdef E_DEBUG2
-  
-  K_FLD::IntArray cc;
-  for (int_set_type::const_iterator it = cavity.begin(); it != cavity.end(); ++it)
+  if (ret == 2)
   {
-  K_FLD::IntArray::const_iterator pK = _data.connectM.col(*it);
-  cc.pushBack(pK, pK+3);
+    K_FLD::IntArray cc;
+    for (int_set_type::const_iterator it = cavity.begin(); it != cavity.end(); ++it)
+    {
+      K_FLD::IntArray::const_iterator pK = _data.connectM.col(*it);
+      cc.pushBack(pK, pK+3);
+    }
+    MIO::write ("init_cav.mesh", *_data.pos, cc, "TRI");
   }
-
-  DynArrayIO::write ("init_cav.mesh", _data.pos, cc);
- 
 #endif
+  
+  if (ret == 2)
+    return ret;
 
   if (ret == -1) // Error
     return ret;;
@@ -146,14 +152,17 @@ Kernel<T>::__getCavity
     return ret;
 
 #ifdef E_DEBUG2 
-  cc.clear();
+  if (ret == 2)
+  {
+  K_FLD::IntArray cc;
   for (int_set_type::const_iterator it = cavity.begin(); it != cavity.end(); ++it)
   {
   K_FLD::IntArray::const_iterator pK = _data.connectM.col(*it);
   cc.pushBack(pK, pK+3);
   }
 
-  DynArrayIO::write ("fixed_cav.mesh", _data.pos, cc);  
+  MIO::write ("fixed_cav.mesh", *_data.pos, cc, "TRI");  
+  }
 #endif
 
 #ifdef E_TIME
@@ -184,6 +193,7 @@ Kernel<T>::__getInitialCavity
  int_set_type& cavity, int_pair_set_type& cboundary)
 {
   int_vector_type ba;
+  size_type Nmatch;
 
   cavity.clear();
   cboundary.clear();
@@ -195,7 +205,7 @@ Kernel<T>::__getInitialCavity
 #endif
 
   E_Int ret = _tool.getContainingElements (pos.col(N), pos, connect, neighbors, ancestors, _data.mask,
-                                           _tool.getTree(), std::back_inserter(ba));
+                                           _tool.getTree(), std::back_inserter(ba), Nmatch);
 
   size_type sz = (size_type)ba.size();
   for (size_type i = 0; i < sz; ++i)//fixme
@@ -212,19 +222,24 @@ Kernel<T>::__getInitialCavity
   }
   else if (ret == 2) // On an existing node.
   {
+    this->_Nmatch = Nmatch;
     return ret;
   }
   else if (ret == -1) // Error
     return ret;
 
 #ifdef E_DEBUG2 
+  
+  if (ret == 2)
+  {  
   K_FLD::IntArray cc;
   for (int_set_type::iterator i = base.begin(); i != base.end(); ++i)
   {
   const E_Int* p = connect.col(*i);
   cc.pushBack(p,p+3);
   }
-  DynArrayIO::write("base.mesh", pos, cc);
+  MIO::write("base.mesh", pos, cc);
+  }
 #endif
 
   __appendCavity<ConstraintType> (neighbors, base, cavity, cboundary);
@@ -234,13 +249,16 @@ Kernel<T>::__getInitialCavity
 #endif
 
 #ifdef E_DEBUG2
-  cc.clear();
+  if (ret == 2)
+  {
+  K_FLD::IntArray cc;
   for (int_set_type::iterator i = cavity.begin(); i != cavity.end(); ++i)
   {
   const E_Int* p = connect.col(*i);
   cc.pushBack(p,p+3);
   }
-  DynArrayIO::write("cavity.mesh", pos, cc);
+  MIO::write("cavity.mesh", pos, cc);
+  }
 #endif
 
   return ret;

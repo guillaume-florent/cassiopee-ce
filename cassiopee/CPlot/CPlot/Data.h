@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -42,6 +42,7 @@
 #ifdef __SHADERS__
 #include "GL/glew.h"
 #include "Shaders/ShaderManager.h"
+#include "Shaders/TesselationShaderManager.hpp"
 #endif
 
 #ifndef __SHADERS__
@@ -52,6 +53,10 @@
 #ifdef __MESA__
 #define GLAPI extern
 #include <GL/osmesa.h>
+#endif
+
+#ifdef _WIN32
+#define GLAPI extern
 #endif
 
 #include "GL/glut.h"
@@ -86,6 +91,7 @@ class Data
   Plugins _plugins;
   ViewInfo _view;
   CPlotState* ptrState;
+  volatile int _CDisplayIsLaunched;
     
   int _numberOfZones; // all zones
   Zone** _zones;
@@ -137,7 +143,23 @@ class Data
   char** _billBoardFiles;
   int* _billBoardNis;
   int* _billBoardNjs;
+  int* _billBoardWidths;
+  int* _billBoardHeights;
   GLuint* _billBoardTexs;
+
+  // Material image files and texture storage
+  int _nMaterials; 
+  char** _materialFiles;
+  int* _materialWidths;
+  int* _materialHeights;
+  GLuint* _materialTexs;
+
+  // BumpMaps image files and texture storage
+  int _nBumpMaps; // must be equal to nMaterials, but accepts NULL
+  char** _bumpMapFiles;
+  int* _bumpMapWidths;
+  int* _bumpMapHeights;
+  GLuint* _bumpMapTexs;
 
 #ifdef __SHADERS__
   CPlot::ShaderManager _shaders; // Shaders
@@ -163,16 +185,21 @@ public:
 			    std::vector<K_FLD::FldArrayI*>& cnt,
 			    std::vector<char*>& eltType,
 			    std::vector<char*>& zoneNames,
-			    std::vector<char*>& zoneTags);
+			    std::vector<char*>& zoneTags,
+          E_Int referenceNfield=-1,
+          char** referenceVarNames=NULL);
   StructZone* createStructZone(K_FLD::FldArrayF* structF, char* varString,
 			       E_Int posx, E_Int posy, E_Int posz,
 			       E_Int ni, E_Int nj, E_Int nk,
 			       char* zoneName, char* zoneTags,
-			       Zone* referenceZone=NULL);
+             E_Int referenceNfield=-1, char** referenceVarNames=NULL,
+             E_Int mustComplete=0);
   UnstructZone* createUnstrZone(K_FLD::FldArrayF* unstrF, char* varString,
 				E_Int posx, E_Int posy, E_Int posz,
 				K_FLD::FldArrayI* cn, char* eltType,
-				char* zoneName, char* zoneTags, Zone* referenceZone=NULL);
+				char* zoneName, char* zoneTags, 
+        E_Int referenceNfield=-1, char** referenceVarNames=NULL,
+        E_Int mustComplete=0);
   void reallocNFieldArrays(int nfield);
   // Init _state
   virtual void initState();
@@ -192,8 +219,9 @@ public:
 			 float dirx, float diry, float dirz,
 			 float viewAngle,
 			 int meshStyle, int solidStyle, 
-			 int scalarStyle, int vectorStyle, int colormap,
-			 int niso, float isoEdges, PyObject* isoScales,
+			 int scalarStyle, int vectorStyle, float vectorScale, float vectorDensity, int vectorNormalize,
+       int vectorShowSurface, int vectorShape, int vector_projection,
+       int colormap, int niso, float isoEdges, PyObject* isoScales,
 			 int bgColor, int ghostifyDeactivatedZones,
 			 int edgifyActivatedZones, 
 			 int edgifyDeactivatedZones,
@@ -203,6 +231,10 @@ public:
 			 double& colorR, double& colorG, double& colorB,
 			 int& material, double& blending, int& meshOverlay,
 			 float& shaderParam1, float& shaderParam2);
+  void getAllVars(std::vector<char*>& structVarString,
+                  std::vector<char*>& unstrVarString,
+                  E_Int& referenceNfield,
+                  char**& referenceVarNames);
   void replaceVolumetricZones();
   
     // openGfx
@@ -219,7 +251,9 @@ public:
     int createColormapTexture();
     void fillColormapTexture(int type);
     int createFrameBufferTexture();
-    int createPngTexture(const char* filename, GLuint &tex, bool mipmap=true);
+    int createPngTexture(const char* filename, GLuint &tex,
+                         int& width, int& height, 
+                         bool mipmap=true);
     int createVoxelTexture();
     void voxelize(UnstructZone& zn, UnstructZone& z);
     void voxelize(StructZone& zn, StructZone& z);
@@ -299,7 +333,7 @@ public:
     void display();
     void displayBB();
     void displayBB2();
-    void displayFrameTex(int mode);
+    void displayFrameTex(int mode, double sobelThreshold=-0.5);
     void displayAnaglyph();
     void displayActivePoint();
     void displaySEdges();
@@ -308,10 +342,12 @@ public:
     void displaySMeshZone(StructZone* zonep, int zone);
     virtual void displayUMesh() = 0;
     void displayUMeshZone(UnstructZone* zonep, int zone, int zonet);
+    void displayUMeshZone_ho(UnstructZone* zonep, int zone, int zonet);
     virtual void displaySSolid() = 0;
     void displaySSolidZone(StructZone* zonep, int zone);
     virtual void displayUSolid() = 0;
     void displayUSolidZone(UnstructZone* zonep, int zone, int zonet);
+    void displayUSolidHOZone(UnstructZone* zonep, int zone, int zonet);
     virtual void displaySIsoSolid() = 0;
     void displaySIsoSolidZone(StructZone* zonep, int zone, int nofield);
     void displaySIsoSolidZone(StructZone* zonep, int zone, int nofield1,
@@ -330,8 +366,10 @@ public:
     virtual void renderGPUUMeshZone(UnstructZone* zonep, int zone, int zonet) = 0;
     void createGPUSSolidZone(StructZone* zonep, int zone);
     virtual void renderGPUSSolidZone(StructZone* zonep, int zone) = 0;
-    void createGPUUSolidZone(UnstructZone* zonep, int zone, int zonet);
-    void renderGPUUSolidZone(UnstructZone* zonep, int zone, int zonet);
+    virtual void createGPUUSolidZone(UnstructZone* zonep, int zone, int zonet) = 0;
+    virtual void renderGPUUSolidZone(UnstructZone* zonep, int zone, int zonet) = 0;
+    virtual void createGPUUSolidHOZone(UnstructZone* zonep, int zone, int zonet) = 0;
+    virtual void renderGPUUSolidHOZone(UnstructZone* zonep, int zone, int zonet) = 0;
     void createGPUSIsoSolidZone(StructZone* zonep, int zone, int nofield);
     void createGPUSIsoSolidZone(StructZone* zonep, int zone, int nofield1,
                                int nofield2, int nofield3);
@@ -428,7 +466,7 @@ public:
     int checkVariable(int zone, const char* varName);
     void findBlankedZones();
     void dumpWindow();
-    char* export2Image(int exportWidth, int exportHeight, int depth=0);
+    char* export2Image(int exportWidth, int exportHeight);
     void superSample(int w, int h, char* im1, char* im2, int factor);
     void gaussianBlur(int w, int h, char* im1, char* im2, int r, double eps);
     void mixImages(int w, int h, char* im1, char* im2, 

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -42,6 +42,7 @@ K_MESH::Triangle::getOppLocalNodeId
  const K_FLD::IntArray& connect, const K_FLD::IntArray& neighbors)
 {
   assert (n < NB_NODES);
+  assert (K < neighbors.cols());
 
   size_type Kadj = neighbors(n, K);
 
@@ -110,4 +111,58 @@ E_Int K_MESH::Triangle::getOrientation(const Triangle&  T,
   }
 
   return -1;
+}
+
+K_MESH::Triangle::eDegenType K_MESH::Triangle::degen_type(const K_FLD::FloatArray& crd, E_Int N0, E_Int N1, E_Int N2, E_Float tol2, E_Float lambdac, E_Int& ns)
+{
+  ns = E_IDX_NONE;// ns for "special node" : the pick for a spike, the hat node for a hat
+  //
+  E_Float normal[3];
+  K_MESH::Triangle::normal(crd.col(N0), crd.col(N1), crd.col(N2), normal);
+  E_Float l2 = ::sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
+  //
+  if (::fabs(l2 - 1.) < E_EPSILON)
+    return OK;
+
+  // we have a degen !
+
+  std::pair<E_Float, E_Int> palma[3];
+  E_Int N[] = { N0, N1, N2 };
+
+  palma[0] = std::make_pair(K_FUNC::sqrDistance(crd.col(N0), crd.col(N1), 3), 2);
+  palma[1] = std::make_pair(K_FUNC::sqrDistance(crd.col(N0), crd.col(N2), 3), 1);
+  palma[2] = std::make_pair(K_FUNC::sqrDistance(crd.col(N1), crd.col(N2), 3), 0);
+  
+  std::sort(&palma[0], &palma[0] + 3);
+
+  // the last is the biggest edge and therefore is the base of the triangle
+  // Ntop is the node to project on the base
+  E_Int n = palma[2].second;
+  E_Int& Ntop = N[n];
+  E_Float& Lbase = palma[2].first;
+
+  //if the biggest is too small, all of them are and this element need to be collapsed
+  // the factor 4 is for implicit small : if the projected point cut in 2 pieces smaller than tol <=> Lbase < 2* tol
+  if (Lbase*Lbase < 4.*tol2) return SMALL; 
+
+  E_Float lambda;
+  //E_Float d = 
+  K_MESH::Edge::edgePointMinDistance<3>(crd.col(N[(n + 1) % 3]), crd.col(N[(n + 2) % 3]), crd.col(Ntop), lambda);
+
+  //assert(lambda >= -1.e-15 && lambda <= 1. + 1.e-15);
+
+  if ( (lambda < lambdac) || (lambda*lambda*Lbase*Lbase < tol2) )
+  {
+    ns = (n + 2) % 3;
+    return SPIKE;
+  }
+
+  if ((lambda > 1. - lambdac) || ((1. - lambda) * (1. - lambda) * Lbase * Lbase < tol2))
+  {
+    ns = (n + 1) % 3;
+    return SPIKE;
+  }
+    
+  ns = n;
+  return HAT;
 }

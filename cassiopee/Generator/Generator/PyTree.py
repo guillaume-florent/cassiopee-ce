@@ -3,8 +3,8 @@
 # 
 # Python Interface to create PyTrees defining meshes
 #
-import Generator
-import generator
+from . import Generator
+from . import generator
 __version__ = Generator.__version__
 
 try:
@@ -54,14 +54,16 @@ def cartNGon(Xo, H, N):
 # Generation d'un quadtree en 2D ou octree en 3D a partir d'une liste
 # de contours ou surfaces
 #------------------------------------------------------------------------------
-def octree(surfaces, snearList, dfar=5., balancing=0, levelMax=1000, ratio=2):
+def octree(surfaces, snearList=[], dfarList=[], dfar=-1., balancing=0, levelMax=1000, ratio=2, octant=None):
     """Generate an octree (or a quadtree) mesh starting from a list of TRI
     (or BAR) arrays defining bodies, a list of corresponding snears,
     and the extension dfar of the mesh.
-    Usage: octree(surfaces, snearList, dfar, balancing, levelMax, ratio)"""
-    stlArrays = C.getFields(Internal.__GridCoordinates__, surfaces)
-    stlArrays = Converter.convertArray2Tetra(stlArrays)
-    a = Generator.octree(stlArrays, snearList, dfar, balancing, levelMax,ratio)
+    Usage: octree(surfaces, snearList, dfarList, dfar, balancing, levelMax, ratio)"""
+    surfaces = C.convertArray2Tetra(surfaces)
+    stlArrays = C.getFields(Internal.__GridCoordinates__, surfaces,api=2)
+    #stlArrays = C.getFields(Internal.__GridCoordinates__, surfaces,api=1)
+    #stlArrays = Converter.convertArray2Tetra(stlArrays)
+    a = Generator.octree(stlArrays, snearList, dfarList, dfar, balancing, levelMax, ratio, octant)
     return C.convertArrays2ZoneNode('octree', [a])
 
 #==============================================================================
@@ -100,28 +102,38 @@ def octree2Struct(o, vmin=15, ext=0, optimized=1, merged=1, AMR=0,
     Usage: octree2Struct(a, vmin, ext, optimized, merged, AMR)"""
     if ext == 1: ext = 2
     dim = Internal.getZoneDim(o)
-    if (dim[0] != 'Unstructured'): raise ValueError("octree2Struct: zone must be unstructured.")
-    if (dim[3] == 'QUAD'): dimPb = 2
-    elif (dim[3] == 'HEXA'): dimPb = 3
+    if dim[0] != 'Unstructured': raise ValueError("octree2Struct: zone must be unstructured.")
+    if dim[3] == 'QUAD': dimPb = 2
+    elif dim[3] == 'HEXA': dimPb = 3
     else: raise ValueError("octree2Struct: zone must be QUAD or HEXA.")
+    if optimized != 1 and optimized != 0:
+        print('Warning: octree2Struct: optimized must be 0 or 1. Set to 1.')
+        optimized = 1
 
     eps = 1.e-6
     a = C.getFields(Internal.__GridCoordinates__, o)[0]
 
-    # Conversion en structure
+    # Conversion en structure (extension faites plus tard)
     cartzones = Generator.octree2Struct(a, vmin, ext, optimized, merged,
                                         AMR, sizeMax)
-    
     # Creation des zones du pyTree
     c = 1; zones = []
     for mc in cartzones:
         zone = C.convertArrays2ZoneNode('cart'+str(c), [mc])        
         zones.append(zone); c += 1
-    if (AMR == 1): return zones
-    if (ext == 0):
+
+    cartzones = None
+    # Extension des grilles
+    #if ext > 0:
+    #    coords = C.getFields(Internal.__GridCoordinates__, zones, api=2)
+    #    coords = Generator.extendOctreeGrids__(coords, ext=ext, optimized=optimized)
+    #    C.setFields(coords, zones, 'nodes')
+
+    if AMR == 1: return zones
+    if ext == 0:
         try: import Connector.PyTree as X
         except: 
-            print 'Warning: octree2Struct requires Connector module. No grid connectivity built.'
+            print('Warning: octree2Struct requires Connector module. No grid connectivity built.')
             return zones
         
         if dimPb == 3: ratios = [[2,2,2],[4,4,4],[8,8,8],[16,16,16]]
@@ -130,24 +142,45 @@ def octree2Struct(o, vmin=15, ext=0, optimized=1, merged=1, AMR=0,
         for ratio0 in ratios:
             zones = X.connectNearMatch(zones,ratio=ratio0,dim=dimPb)
         return zones 
-    else:
+    else:        
         #-----------------------
         # Creation des BCOverlap
         #-----------------------
         # determination de la bounding box de la grille
-        bbox0 = bbox(zones)
-        xmin = bbox0[0]; ymin = bbox0[1]; zmin = bbox0[2]
-        xmax = bbox0[3]; ymax = bbox0[4]; zmax = bbox0[5]
-        noz = 0
+        xmin = 1.e12; ymin = xmin; zmin = xmin
+        xmax =-xmin;  ymax =-ymin; zmax =-zmin
         for z in zones:
-            [x1,y1,z1,x2,y2,z2] = bbox(z)
-            if (x1 > xmin+eps): z=C.addBC2Zone(z,'overlap1','BCOverlap','imin')
-            if (x2 < xmax-eps): z=C.addBC2Zone(z,'overlap2','BCOverlap','imax')
-            if (y1 > ymin+eps): z=C.addBC2Zone(z,'overlap3','BCOverlap','jmin')
-            if (y2 < ymax-eps): z=C.addBC2Zone(z,'overlap4','BCOverlap','jmax')
-            if (z1 > zmin+eps): z=C.addBC2Zone(z,'overlap5','BCOverlap','kmin')
-            if (z2 < zmax-eps): z=C.addBC2Zone(z,'overlap6','BCOverlap','kmax')
-            zones[noz] = z; noz += 1
+            x1 = C.getValue(z,'CoordinateX',0)
+            y1 = C.getValue(z,'CoordinateY',0)
+            z1 = C.getValue(z,'CoordinateZ',0)
+            dimZ = Internal.getZoneDim(z)
+            ni = dimZ[1]; nj = dimZ[2]; nk = dimZ[3]
+            ind = ni-1 + (nj-1)*ni+(nk-1)*ni*nj
+            x2 = C.getValue(z,'CoordinateX',ind)
+            y2 = C.getValue(z,'CoordinateY',ind)
+            z2 = C.getValue(z,'CoordinateZ',ind) 
+            xmin = min(xmin,x1); xmax = max(xmax,x2)
+            ymin = min(ymin,y1); ymax = max(ymax,y2)
+            zmin = min(zmin,z1); zmax = max(zmax,z2)
+
+        for z in zones:
+            x1 = C.getValue(z,'CoordinateX',0)
+            y1 = C.getValue(z,'CoordinateY',0)
+            z1 = C.getValue(z,'CoordinateZ',0)
+            dimZ = Internal.getZoneDim(z)
+            ni = dimZ[1]; nj = dimZ[2]; nk = dimZ[3]
+            ind = ni-1 + (nj-1)*ni+(nk-1)*ni*nj
+            x2 = C.getValue(z,'CoordinateX',ind)
+            y2 = C.getValue(z,'CoordinateY',ind)
+            z2 = C.getValue(z,'CoordinateZ',ind)
+
+            #[x1,y1,z1,x2,y2,z2] = bbox(z)
+            if x1 > xmin+eps: C._addBC2Zone(z,'overlap1','BCOverlap','imin')
+            if x2 < xmax-eps: C._addBC2Zone(z,'overlap2','BCOverlap','imax')
+            if y1 > ymin+eps: C._addBC2Zone(z,'overlap3','BCOverlap','jmin')
+            if y2 < ymax-eps: C._addBC2Zone(z,'overlap4','BCOverlap','jmax')
+            if z1 > zmin+eps: C._addBC2Zone(z,'overlap5','BCOverlap','kmin')
+            if z2 < zmax-eps: C._addBC2Zone(z,'overlap6','BCOverlap','kmax')
     return zones
 
 def _adaptOctree(a,indicator="indicator",balancing=1,ratio=2):
@@ -159,16 +192,16 @@ def _adaptOctree(a,indicator="indicator",balancing=1,ratio=2):
     indic = C.getFields(Internal.__FlowSolutionCenters__,zones)
     indic = Converter.extractVars(indic, [indicator])
     C._deleteFlowSolutions__(a)
-    for noz in xrange(len(zones)):        
+    for noz, z in enumerate(zones):        
         res = Generator.adaptOctree(hexa[noz], indic[noz], balancing, ratio)
-        C.setFields([res],zones[noz],'nodes',writeDim=True)
+        C.setFields([res], zones[noz], 'nodes', writeDim=True)
     return None
 
 def adaptOctree(a, indicator='indicator', balancing=1, ratio=2):
     """Adapt the octree with respect to the field 'indicator' located at centers.
     Usage: adaptOctree(a, indicator, balancing, ratio)"""
     tp = Internal.copyRef(a)
-    _adaptOctree(tp,indicator=indicator,balancing=balancing,ratio=ratio)
+    _adaptOctree(tp, indicator=indicator, balancing=balancing, ratio=ratio)
     return tp
 
 def expandLayer(o, level=0, corners=0, balancing=0):
@@ -181,9 +214,9 @@ def expandLayer(o, level=0, corners=0, balancing=0):
 def _expandLayer(o, level=0, corners=0, balancing=0):
     zones = Internal.getZones(o)
     hexa = C.getFields(Internal.__GridCoordinates__,zones)
-    for noz in xrange(len(zones)):
+    for noz, z in enumerate(zones):
         res = Generator.expandLayer(hexa[noz], level, corners, balancing)
-        C.setFields([res],zones[noz],'nodes',writeDim=True)
+        C.setFields([res], z, 'nodes', writeDim=True)
     return None
 
 def cylinder(Xo, R1, R2, tetas, tetae, H, N):
@@ -241,18 +274,21 @@ def plaster(contours, surfaces, side=0):
     return C.convertArrays2ZoneNode('plaster', [pa])
 
 def fittingPlaster(contour, bumpFactor=0.):
-    """Create a sticky plaster around a contour and pump it.
+    """Create a sticky plaster around a contour and bump it.
     Usage: plaster(contour, bumpFactor)"""
     c = C.getAllFields(contour, 'nodes')[0]
     pa = Generator.fittingPlaster(c, bumpFactor)
     return C.convertArrays2ZoneNode('plaster', [pa])
 
-def T3mesher2D(a, triangulateOnly=0):
+#---------------------------------------------------------------------------------------------------
+# Creates a Delaunay mesh or (only a triangulation) given a set of edges defined by a and a grading.
+#---------------------------------------------------------------------------------------------------
+def T3mesher2D(a, grading=1.2, triangulateOnly=0, metricInterpType=0):
     """Create a delaunay mesh given a set of points defined by a.
-    Usage: T3mesher2D(a, triangulateOnly) """
+    Usage: T3mesher2D(a, grading, triangulateOnly, metricInterpType) """
     c = C.getAllFields(a, 'nodes')[0]
-    c = Generator.T3mesher2D(c, triangulateOnly)
-    return C.convertArrays2ZoneNode('tri', [c]) 
+    c = Generator.T3mesher2D(c, grading, triangulateOnly, metricInterpType)
+    return C.convertArrays2ZoneNode('tri', [c])
 
 def tetraMesher(a, maxh=-1., grading=0.4, triangulateOnly=0, 
                 remeshBoundaries=0, algo=1):
@@ -268,8 +304,9 @@ def gapfixer(contour, cloud, hardPoints=None, refine=1):
     Some hard points can be sepcified to force the constructed surface to pass by.
     If the optional refine argument is set to 0, the resulting surface will be a contrained triangulation of the contour [and the additional hard nodes].
     Usage: gapFixer(contour, cloud, hardPoints, refine)"""
+    contour1 = C.deleteFlowSolutions__(contour)
+    c = C.getAllFields(contour1, 'nodes')[0]
     clouda = C.getFields(Internal.__GridCoordinates__, cloud)[0]
-    c = C.getAllFields(contour, 'nodes')[0]
     hp = None
     if hardPoints is not None:
         hp = C.getFields(Internal.__GridCoordinates__, hardPoints)[0]
@@ -379,9 +416,9 @@ def _BB(t, method='AABB', weighting=0):
 def barycenter(t, weight='None'):
     """Get the barycenter of a pyTree.
     Usage: barycenter(t)"""
-    A = C.getFields(Internal.__GridCoordinates__, t)
-    if (weight != 'None'):
-        W = C.getField(weight, t)
+    A = C.getFields(Internal.__GridCoordinates__, t, api=2)
+    if weight != 'None':
+        W = C.getField(weight, t, api=2)
         return Generator.barycenter(A, W)
     else: return Generator.barycenter(A)
 
@@ -389,8 +426,8 @@ def CEBBIntersection(a1, a2, tol=1.e-10):
     """Get the Cartesian Elements bounding box intersection of 2 meshes."""
     a1 = Internal.getZones(a1)
     a2 = Internal.getZones(a2)
-    if (len(a1) != 1 or len(a2) != 1):
-        print 'Warning: CEBBIntersection applied on one zone.'
+    if len(a1) != 1 or len(a2) != 1:
+        print('Warning: CEBBIntersection applied on one zone.')
         return 0
     
     m1 = C.getFields(Internal.__GridCoordinates__, a1)[0]
@@ -419,7 +456,7 @@ def bboxIntersection(z1, z2, tol=1.e-6, isBB=False, method='AABB'):
                                             Internal.__FlowSolutionNodes__, 
                                             Internal.__FlowSolutionCenters__)
     else:
-        print 'Warning: bboxIntersection: method',method,'not implemented, switching to AABB.'
+        print('Warning: bboxIntersection: method',method,'not implemented, switching to AABB.')
         return generator._bboxIntersectionZ(z1, z2, tol,
                                             Internal.__GridCoordinates__, 
                                             Internal.__FlowSolutionNodes__, 
@@ -446,7 +483,7 @@ def _bboxIntersection(z1, z2, tol=1.e-6, isBB=False, method='AABB'):
                                             Internal.__FlowSolutionNodes__, 
                                             Internal.__FlowSolutionCenters__)
     else:
-        print 'Warning: bboxIntersection: method',method,'not implemented, switching to AABB.'
+        print('Warning: bboxIntersection: method %s not implemented, switching to AABB.'%method)
         return generator._bboxIntersectionZ(z1, z2, tol, 
                                             Internal.__GridCoordinates__, 
                                             Internal.__FlowSolutionNodes__, 
@@ -704,18 +741,18 @@ def _close(t, tol=1.e-12):
     C.setFields(fields, t, 'nodes')
     return None
 
-def pointedHat(a, (x,y,z)):
+def pointedHat(a, coord):
     """Create a structured surface defined by a contour and a point (x,y,z).
     Usage: pointedHat(array, (x,y,z))"""
     a = C.deleteFlowSolutions__(a, 'both')
-    return C.TZA(a, 'nodes', 'nodes', Generator.pointedHat, None, (x,y,z))
+    return C.TZA(a, 'nodes', 'nodes', Generator.pointedHat, None, coord)
 
-def stitchedHat(a, (offx,offy,offz), tol=1.e-6, tol2=1.e-5):
+def stitchedHat(a, offset, tol=1.e-6, tol2=1.e-5):
     """Create a structured surface defined by a contour and an offset (dx,dy,dz).
     Usage: stitchedHat(a, (dx,dy,dz))"""
     a = C.deleteFlowSolutions__(a, 'both')
     return C.TZGC(a, 'nodes', Generator.stitchedHat, \
-                  (offx,offy,offz), tol, tol2)
+                  offset, tol, tol2)
 
 def selectInsideElts(a, curvesList):
     """Select elements whose center is in the surface delimited by curves.
@@ -729,27 +766,32 @@ def grow(t, vector):
     """Grow a surface array of one layer by moving points of vector.
     Usage: grow( t, vector )"""
     tp = Internal.copyRef(t)
-    if (len(vector) != 3): raise ValueError("grow: 3 variables are required.")
+    if len(vector) != 3: raise ValueError("grow: 3 variables are required.")
     nodes = Internal.getZones(tp)
     for z in nodes:
         fa = C.getFields(Internal.__FlowSolutionNodes__, z)[0]
         if (fa != []):
             a = Converter.extractVars(fa, vector)
         else:
-            print "Warning: grow: variables not found in zone."
+            print("Warning: grow: variables not found in zone.")
             a = []
-        if (a != []):
+        if a != []:
             nodes = C.getAllFields(z, 'nodes')[0]
             nodes = Generator.grow(nodes, a)
             C.setFields([nodes], z, 'nodes')
     tp = Internal.addOneLayer2BC(tp, 3)
     return tp
 
-def stack(t1, t2):
+def stack(t1, t2=None):
     """Stack two meshes (with same nixnj) into a single mesh.
     Usage: stack(a1, a2)"""
-    a2 = C.getAllFields(t2, 'nodes')[0]
-    return C.TZA(t1, 'nodes', 'nodes', Generator.stack, None, a2)
+    if t2 is not None:
+        a2 = C.getAllFields(t2, 'nodes')[0]
+        return C.TZA(t1, 'nodes', 'nodes', Generator.stack, None, a2)
+    else:
+        a1 = C.getAllFields(t1, 'nodes')
+        b = Generator.stack(a1)
+        return C.convertArrays2ZoneNode('stack', [b])
 
 #================================================================
 # traitement des BC seulement definies comme fenetres completes
@@ -959,7 +1001,7 @@ def _refine(t, power, dir):
     for z in zones:
         dims = Internal.getZoneDim(z)
         if dims[0] != 'Structured':
-            print "Warning: refine: zone must be structured."
+            print("Warning: refine: zone must be structured.")
         else:
             ni0 = dims[1]; nj0 = dims[2]; nk0 = dims[3]
             C._deleteFlowSolutions__(z)
@@ -1126,7 +1168,7 @@ def collarMesh(s1, s2, distribj, distribk,
     """Generates a collar mesh starting from s1 and s2 surfaces, distributions
     along the surfaces and along the normal direction, with respect to the assembly type between grids.
     Usage: collarMesh(s1, s2, distribj, distribk, niterj, niterk, ext, alphaRef, type, contour,constraints1,constraints2,toldist)"""
-    import Collar
+    from . import Collar
     surf1 = C.getFields(Internal.__GridCoordinates__,s1)
     surf2 = C.getFields(Internal.__GridCoordinates__,s2)
     dj = C.getFields(Internal.__GridCoordinates__,distribj)[0]
@@ -1144,7 +1186,7 @@ def collarMesh(s1, s2, distribj, distribk,
     for info in infos:
         ranges = info[1:]
         z = C.convertArrays2ZoneNode('Collar', [info[0]])
-        for r in ranges: z = C.addBC2Zone(z,'wall','BCWall',r)
+        for r in ranges: C._addBC2Zone(z,'wall','BCWall',r)
         # ajout des BCOverlaps 
         if type == 'union':
             C._addBC2Zone(z, 'match', 'BCMatch', 'jmin', z, 'jmax', trirac=[1,2,3]) 
@@ -1152,7 +1194,7 @@ def collarMesh(s1, s2, distribj, distribk,
         elif type =='difference':
             C._addBC2Zone(z, 'match', 'BCMatch', 'imin', z, 'imax', trirac=[1,2,3]) 
             C._addBC2Zone(z, 'match', 'BCMatch', 'imax', z, 'imin', trirac=[1,2,3]) 
-        z = C.fillEmptyBCWith(z, 'overlap', 'BCOverlap')               
+        C._fillEmptyBCWith(z, 'overlap', 'BCOverlap')               
         zones += [z]
         
     return zones
@@ -1183,7 +1225,7 @@ def polyLineMesher(z, h, yplus, density):
     Usage: polyLineMesher(z, h, yplus, density)"""
     try:
         import Connector.PyTree as X
-        import PolyLine as GP
+        from . import PolyLine as GP
     except:
         raise ImportError("polyLineMesher: requires Polyline and Connector modules.")
     name = z[0]
@@ -1198,9 +1240,9 @@ def polyLineMesher(z, h, yplus, density):
         zone = C.convertArrays2ZoneNode(name+suffz,[m])
         walls = allwalls[noz-1]
         now = 1
-        for range in walls :
+        for wrange in walls :
             bndName = 'wall'+str(noz)+'_'+str(now)
-            zone = C.addBC2Zone(zone, bndName, 'BCWall', range)
+            zone = C.addBC2Zone(zone, bndName, 'BCWall', wrange)
             now = now + 1
         noz += 1
         zones.append(zone)
@@ -1217,7 +1259,7 @@ def polyLineMesher(z, h, yplus, density):
 def polyC1Mesher(z, h, yplus, density, splitCrit=10., dalpha=5., depth=1):
     """Generate a multiple mesh for a polyC1-curve defined by z.
     Usage: polyC1Mesher(z, h, yplus, density, splitCrit, dalpha, depth)"""
-    try: import Connector.PyTree as X; import PolyC1 as GP
+    try: import Connector.PyTree as X; from . import PolyC1 as GP
     except: raise ImportError("polyC1Mesher: requires PolyC1 and Connector.PyTree modules.")
     name = z[0]
     coord = C.getFields(Internal.__GridCoordinates__,z)[0]
@@ -1232,9 +1274,9 @@ def polyC1Mesher(z, h, yplus, density, splitCrit=10., dalpha=5., depth=1):
         zone = C.convertArrays2ZoneNode(name+suffz,[m])
         walls = allwalls[noz-1]
         now = 1
-        for range in walls :
+        for wrange in walls :
             bndName = 'wall'+str(noz)+'_'+str(now)
-            zone = C.addBC2Zone(zone, bndName, 'BCWall', range)
+            zone = C.addBC2Zone(zone, bndName, 'BCWall', wrange)
             now += 1
         noz += 1
         zones.append(zone)
@@ -1253,7 +1295,7 @@ def polyQuadMesher(z, h, hf, density, next):
      Usage: polyQuadMesher(z, h, hf, density, next)"""
     try:
         import Connector.PyTree as X
-        import PolyQuad as GP
+        from . import PolyQuad as GP
     except:
         raise ImportError("polyQuadMesher: requires PolyQuad and Connector modules.")
     name = z[0]
@@ -1268,9 +1310,9 @@ def polyQuadMesher(z, h, hf, density, next):
         zone = C.convertArrays2ZoneNode(name+suffz,[m])
         walls = allwalls[noz-1]
         now = 1
-        for range in walls :
+        for wrange in walls :
             bndName = 'wall'+str(noz)+'_'+str(now)
-            zone = C.addBC2Zone(zone, bndName, 'BCWall', range)
+            zone = C.addBC2Zone(zone, bndName, 'BCWall', wrange)
             now = now + 1
         noz = noz + 1
         zones.append(zone)
@@ -1289,7 +1331,7 @@ def polyTriMesher(z, h, hf, density, next):
     Usage: polyTriMesher(z, h, hf, density, next)"""
     try:
         import Connector.PyTree as X
-        import PolyTri as GP
+        from . import PolyTri as GP
     except:
         raise ImportError("polyTriMesher: requires PolyTri and Connector modules.")
     name = z[0]
@@ -1304,9 +1346,9 @@ def polyTriMesher(z, h, hf, density, next):
         zone = C.convertArrays2ZoneNode(name+suffz,[m])
         walls = allwalls[noz-1]
         now = 1
-        for range in walls :
+        for wrange in walls :
             bndName = 'wall'+str(noz)+'_'+str(now)
-            zone = C.addBC2Zone(zone, bndName, 'BCWall', range)
+            zone = C.addBC2Zone(zone, bndName, 'BCWall', wrange)
             now += 1
         noz += 1
         zones.append(zone)
@@ -1332,49 +1374,6 @@ def mapSplit(z, d, split_crit, dens_max=1000):
         zone = C.convertArrays2ZoneNode(name+str(c),[i])        
         zones.append(zone); c += 1
     return zones
-
-def intersection(surface1, surface2, tol=0.):
-    """Compute the intersection between two input closed surfaces.
-    Usage: intersection(s1, s2, tol)"""
-    s1 = C.getFields(Internal.__GridCoordinates__, surface1)[0]
-    s2 = C.getFields(Internal.__GridCoordinates__, surface2)[0]
-    s = Generator.intersection(s1, s2, tol)
-    return C.convertArrays2ZoneNode('inter', [s])
-
-def booleanIntersection(a1, a2, tol=0., preserve_right=1, solid_right=1, agg_mode=1): #agg_mode : 0(NONE), 1(CONVEX), 2(FULL)
-    """Compute the intersection between two input closed entities.
-    Usage for surfaces or bars: booleanIntersection(a1, a2, tol)
-    Usage for volumes: booleanIntersection(a1, a2, tol, preserve_right, solid_right)"""
-    s1 = C.getFields(Internal.__GridCoordinates__, a1)[0]
-    s2 = C.getFields(Internal.__GridCoordinates__, a2)[0]
-    s = Generator.booleanIntersection(s1, s2, tol, preserve_right, solid_right, agg_mode)
-    return C.convertArrays2ZoneNode('inter', [s])
-
-def booleanUnion(a1, a2, tol=0., preserve_right=1, solid_right=1, agg_mode=1): #agg_mode : 0(NONE), 1(CONVEX), 2(FULL)
-    """Compute the union between two input closed entities.
-    Usage for surfaces or bars: booleanUnion(a1, a2, tol)
-    Usage for volumes: booleanUnion(a1, a2, tol, preserve_right, solid_right)"""
-    s1 = C.getFields(Internal.__GridCoordinates__, a1)[0]
-    s2 = C.getFields(Internal.__GridCoordinates__, a2)[0]
-    s = Generator.booleanUnion(s1, s2, tol, preserve_right, solid_right, agg_mode)
-    return C.convertArrays2ZoneNode('union', [s])
-
-def booleanMinus(a1, a2, tol=0., preserve_right=1, solid_right=1, agg_mode=1): #agg_mode : 0(NONE), 1(CONVEX), 2(FULL)
-    """Compute the difference between the two input closed surfaces.
-    Usage for surfaces or bars: booleanMinus(a1, a2, tol)
-    Usage for volumes: booleanMinus(a1, a2, tol, preserve_right, solid_right)"""
-    s1 = C.getFields(Internal.__GridCoordinates__, a1)[0]
-    s2 = C.getFields(Internal.__GridCoordinates__, a2)[0]
-    s = Generator.booleanMinus(s1, s2, tol, preserve_right, solid_right, agg_mode)
-    return C.convertArrays2ZoneNode('minus', [s])
-    
-def booleanModifiedSolid(solid, a2, tol=0., preserve_solid=1, agg_mode=1): #agg_mode : 0(NONE), 1(CONVEX), 2(FULL)
-    """Compute the transformed input solid after solving the intersection of its skin with a2.
-    Usage: booleanMinus(a1, a2, tol, preserve_right, solid_right)"""
-    sld = C.getFields(Internal.__GridCoordinates__, solid)[0]
-    operand = C.getFields(Internal.__GridCoordinates__, a2)[0]
-    s = Generator.booleanModifiedSolid(operand, sld, tol, preserve_solid, agg_mode)
-    return C.convertArrays2ZoneNode('modified_solid', [s])
 
 #------------------------------------------------------------------------------
 # Calcul la carte d'orhogonalite d'une grille
@@ -1414,3 +1413,12 @@ def getTriQualityMap(t):
 
 def _getTriQualityMap(t):
     return C._TZGC(t, 'centers', Generator.getTriQualityMap)
+
+#------------------------------------------------------------------------------
+# Genere des pyramides ayant pour base les QUAD d'une surface donnee
+#------------------------------------------------------------------------------
+def quad2Pyra(t, hratio = 1.):
+     """Creates a set of pyramids from a set of quads.
+     Usage : quad2Pyra(array, hratio)"""
+     a = C.getFields(Internal.__GridCoordinates__,t)[0]
+     return C.convertArrays2ZoneNode('pyra', [Generator.quad2Pyra(a, hratio)])

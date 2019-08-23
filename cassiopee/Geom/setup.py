@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
-import os, sys
+import os
 
 #=============================================================================
 # Geom requires:
@@ -23,11 +23,10 @@ Dist.writeSetupCfg()
     
 # Compilation des fortrans ===================================================
 from KCore.config import *
-if (f77compiler == "None"):
-    print "Error: a fortran 77 compiler is required for compiling Geom."
+if f77compiler == "None":
+    print("Error: a fortran 77 compiler is required for compiling Geom.")
 args = Dist.getForArgs(); opt = ''
-for c in xrange(len(args)):
-    opt += 'FOPT'+str(c)+'='+args[c]+' '
+for c, v in enumerate(args): opt += 'FOPT'+str(c)+'='+v+' '
 os.system("make -e FC="+f77compiler+" WDIR=Geom/Fortran "+opt)
 prod = os.getenv("ELSAPROD")
 if prod is None: prod = 'xx'
@@ -44,7 +43,7 @@ libraryDirs += paths; libraries += libs
 import srcs
 setup(
     name="Geom",
-    version="2.5",
+    version="2.9",
     description="Geometry definition for *Cassiopee* modules.",
     author="Onera",
     package_dir={"":"."},

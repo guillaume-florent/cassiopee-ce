@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -253,7 +253,7 @@ getInterpolationCellStructv(FldArrayF& coord,
       break;
 
     case O5ABC :
-      if (indi.getNfld() != 16 )
+      if (indi.getNfld() != 16)
       {
         printf("Error: getInterpolationCellStructv: wrong size of indi.\n");
         exit(0);
@@ -271,7 +271,7 @@ getInterpolationCellStructv(FldArrayF& coord,
         compStandardIndicesv(istart, iend, icv, jcv, kcv, indi, interpType);
     
       
-      // modification des coefficients d interpolation : ordre 2 O2CF 
+      // modification des coefficients d'interpolation : ordre 2 O2CF 
       // pour les points mal approximes 
       // modif locale de indi
       correctInterpToO2CFv(coord, istart, iend, indi,
@@ -337,7 +337,7 @@ getInterpolationCellStructv(FldArrayF& coord,
     case O3ABC:
       if (indi.getNfld() != 10 )
       {
-        printf("getInterpolationCellStructv : wrong size of indi.\n");
+        printf("getInterpolationCellStructv: wrong size of indi.\n");
         exit(0);
       }
       searchInterpolationCellO3ABCv(coord, istart, iend, 
@@ -346,7 +346,7 @@ getInterpolationCellStructv(FldArrayF& coord,
                          corr, interpType, interpMeshType);
 
       // Indices par direction des points de la molecule d'interpolation
-      if ( interpMeshType == EXT_CENTERS)
+      if (interpMeshType == EXT_CENTERS)
         fromExtendedToStandardCentersv(
           istart, iend, icv, jcv, kcv, indi, extrap, interpType);
       else 
@@ -361,7 +361,7 @@ getInterpolationCellStructv(FldArrayF& coord,
       break;
 
     case O5ABC :
-      if (indi.getNfld() != 16 )
+      if (indi.getNfld() != 16)
       {
         printf("Error: getInterpolationCellStructv: wrong size of indi.\n");
         exit(0);

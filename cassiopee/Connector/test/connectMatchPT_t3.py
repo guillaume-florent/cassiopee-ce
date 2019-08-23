@@ -7,7 +7,7 @@ import Transform.PyTree as T
 import KCore.test as test
 
 a = G.cylinder((0.,0.,0.), 0.5, 1., 360., 0., 10., (50,50,30))
-t = C.newPyTree(['Base']); t[2][1][2].append(a)
+t = C.newPyTree(['Base', a])
 t = X.connectMatch(t)
 test.testT(t,1)
 
@@ -20,26 +20,25 @@ distrib = G.cart((0,0,0), (1./(Ni-1), 0.5/(Nj-1),1), (Ni,Nj,1))
 naca = G.hyper2D(a, distrib, "C")
 a = T.addkplane(naca) 
 # --- champ aux centres
-a = C.initVars(a, 'centers:Density', 1.)
+C._initVars(a, 'centers:Density', 1.)
 # --- champ aux noeuds
-a = C.initVars(a, 'cellN', 2.)
-t = C.newPyTree(['Base']); t[2][1][2].append(a)
+C._initVars(a, 'cellN', 2.)
+t = C.newPyTree(['Base', a])
 # --- Equation state
 t[2][1] = C.addState(t[2][1], 'EquationDimension', 3)
 t = X.connectMatch(t)
 test.testT(t,2)
 
-#
 # 2D raccord i=1 avec i = imax
 a = G.cylinder((0.,0.,0.), 0.5, 1., 360., 0., 10., (50,50,1))
-t = C.newPyTree(['Base',2]); t[2][1][2].append(a)
+t = C.newPyTree(['Base',2,a])
 # --- Equation state
 t[2][1] = C.addState(t[2][1], 'EquationDimension', 2)
 t = X.connectMatch(t, dim=2)
 test.testT(t,3)
 
 # 2D raccord i = 1 partiel
-t = C.newPyTree(['Base',2]); t[2][1][2].append(naca)
+t = C.newPyTree(['Base',2, naca])
 # --- Equation state
 t[2][1] = C.addState(t[2][1], 'EquationDimension', 2)
 t = X.connectMatch(t, dim=2)

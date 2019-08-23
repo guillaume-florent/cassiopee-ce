@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -26,7 +26,8 @@
 */
 //=============================================================================
 E_Int K_IO::GenIO::hdfcgnsread(char* file, PyObject*& tree, PyObject* dataShape, 
-                               int skeleton, int maxFloatSize, int maxDepth)
+                               PyObject* links, int skeleton, int maxFloatSize, 
+                               int maxDepth, PyObject* skipTypes)
 {
   printf("Error: Converter has been installed without CGNS/HDF support.\n");
   printf("Error: please install libhdf5 first for CGNS/HDF support.\n");
@@ -46,20 +47,13 @@ E_Int K_IO::GenIO::hdfcgnswrite(char* file, PyObject* tree, PyObject* links)
 }
 
 //=============================================================================
-PyObject* K_IO::GenIO::hdfcgnsReadFromPaths(char* file, PyObject* paths)
+PyObject* K_IO::GenIO::hdfcgnsReadFromPaths(char* file, PyObject* paths,
+                                            E_Int maxFloatSize, E_Int maxDepth, 
+                                            PyObject* skipTypes)
 { 
   printf("Error: Converter has been installed without CGNS/HDF support.\n");
   printf("Error: please install libhdf5 first for CGNS/HDF support.\n");
   return NULL;
-}
-
-//=============================================================================
-E_Int K_IO::GenIO::hdfcgnsWritePaths(char* file, PyObject* treeList, 
-                                     PyObject* paths)
-{
-  printf("Error: Converter has been installed without CGNS/HDF support.\n");
-  printf("Error: please install libhdf5 first for CGNS/HDF support.\n");
-  return 0;
 }
 //==============================================================================
 PyObject* K_IO::GenIO::hdfcgnsReadFromPathsPartial(char * file,
@@ -70,6 +64,16 @@ PyObject* K_IO::GenIO::hdfcgnsReadFromPathsPartial(char * file,
   printf("Error: please install libhdf5 first for CGNS/HDF support.\n");
   return NULL;
 }
+
+//=============================================================================
+E_Int K_IO::GenIO::hdfcgnsWritePaths(char* file, PyObject* treeList, 
+                                     PyObject* paths,  PyObject* links, 
+                                     E_Int maxDepth, E_Int mode)
+{
+  printf("Error: Converter has been installed without CGNS/HDF support.\n");
+  printf("Error: please install libhdf5 first for CGNS/HDF support.\n");
+  return 0;
+}
 //==============================================================================
 E_Int K_IO::GenIO::hdfcgnsWritePathsPartial(char* file, PyObject* tree,
                                             PyObject* Filter, int skeleton,
@@ -79,3 +83,11 @@ E_Int K_IO::GenIO::hdfcgnsWritePathsPartial(char* file, PyObject* tree,
   printf("Error: please install libhdf5 first for CGNS/HDF support.\n");
   return 0;
 }
+//===============================================================================
+E_Int K_IO::GenIO::hdfcgnsDeletePaths(char* file,
+                                      PyObject* paths)
+{
+  printf("Error: Converter has been installed without CGNS/HDF support.\n");
+  printf("Error: please install libhdf5 first for CGNS/HDF support.\n");
+  return 0;
+} 

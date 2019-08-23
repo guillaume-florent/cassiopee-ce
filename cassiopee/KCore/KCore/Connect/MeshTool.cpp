@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -368,7 +368,7 @@ K_CONNECT::MeshTool::computeNodeNormalsFromPGNormals
 
 E_Int
 K_CONNECT::MeshTool::computeNodeNormals
-(const K_FLD::FloatArray& crd, const ngon_unit& pgs, K_FLD::FloatArray& normals)
+(const K_FLD::FloatArray& crd, const ngon_unit& pgs, K_FLD::FloatArray& normals, E_Int smooth_iters)
 {
   // First Compute A Valid PG normal field : if a normal failed, look around
   E_Int nb_pgs = pgs.size();
@@ -444,8 +444,52 @@ K_CONNECT::MeshTool::computeNodeNormals
   };
 
   // average it at nodes
-  return computeNodeNormalsFromPGNormals(PGnormals, pgs, normals);
+  E_Int idmax = computeNodeNormalsFromPGNormals(PGnormals, pgs, normals);
+  
+  if (smooth_iters > 0)//smooth it a bit
+    smoothNodeNormals(pgs, normals, smooth_iters);
 
+  return idmax;
+}
+
+E_Int K_CONNECT::MeshTool::smoothNodeNormals(const ngon_unit& pgs, K_FLD::FloatArray& normals, E_Int smooth_iters)
+{
+  if (smooth_iters <= 0) return 0;
+  
+  //std::cout << "smoothing..." << std::endl;
+  
+  E_Int nb_pgs = pgs.size();
+  
+  while (smooth_iters--)
+  {
+    for (E_Int i = 0; i < nb_pgs; ++i)
+  {
+    const E_Int* nodes = pgs.get_facets_ptr(i);
+    E_Int nb_nodes = pgs.stride(i);
+    
+    E_Float incr[3], FACTOR = 0.5;
+    
+    for (E_Int n = 0; n < nb_nodes; ++n)
+    {
+      E_Int Nim1 = (n == 0) ? *(nodes + nb_nodes - 1) - 1 : *(nodes + n - 1) - 1;
+      E_Int Ni = *(nodes + n) - 1;
+      E_Int Nip1 = *(nodes + (n+1)%nb_nodes) - 1;
+      
+      K_FUNC::sum<3>(0.5, normals.col(Nim1), 0.5, normals.col(Nip1), incr);
+      
+      
+      K_FUNC::normalize<3>(incr);
+      
+      E_Float l2 = ::sqrt(incr[0] * incr[0] + incr[1] * incr[1] + incr[2] * incr[2]);
+      if(::fabs(l2 - 1.) >= E_EPSILON) // DEGEN
+        continue;
+      
+      K_FUNC::sum<3>(1. - FACTOR, incr, FACTOR, normals.col(Ni), normals.col(Ni));
+      K_FUNC::normalize<3>(normals.col(Ni));
+    }
+  }
+  }
+  return 1;  
 }
 
 void
@@ -816,8 +860,14 @@ E_Int  K_CONNECT::MeshTool::aggregate_convex
   K_FLD::IntArray connectB;
 
   E_Int err = 0;
+  E_Int iter(0), iterMax(connectT3.cols() * 100);
   while (!pool.empty() && !err)
   {
+    if (iter++ > iterMax)
+    {
+      err=1;
+      break;
+    }
     K_FLD::IntArray* ci = pool.back(); pool.pop_back();
     K_FLD::IntArray& connectMi = *ci;
 
@@ -858,9 +908,9 @@ E_Int  K_CONNECT::MeshTool::aggregate_convex
 #endif
 
     // get worst concavity
-    E_Int iworst;
+    E_Int iworst, ibest;
     E_Int nb_nodes = PGi.size();
-    bool convex = K_MESH::Polygon::is_convex(crd, &PGi[0], nb_nodes, 0, normal, convexity_tol, iworst);
+    bool convex = K_MESH::Polygon::is_convex(crd, &PGi[0], nb_nodes, 0, normal, convexity_tol, iworst, ibest/*unused here*/);
 
     if (convex)
     {
@@ -1245,9 +1295,13 @@ void K_CONNECT::MeshTool::computeIncidentEdgesSqrLengths
 (const K_FLD::FloatArray& crd, const ngon_unit& pgs, K_FLD::FloatArray& L)
 {
   E_Int                           nb_pgs(pgs.size());
-  E_Int idmaxp1 = pgs.get_facets_max_id();
   
   L.clear();
+  
+  if (nb_pgs == 0) return;
+  
+  E_Int idmaxp1 = pgs.get_facets_max_id();
+  
   L.resize(1, idmaxp1, K_CONST::E_MAX_FLOAT);  //mins
   L.resize(2, idmaxp1, -K_CONST::E_MAX_FLOAT); // maxs
   

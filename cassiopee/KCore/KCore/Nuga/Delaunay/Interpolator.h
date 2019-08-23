@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -21,6 +21,9 @@
 #define __DELAUNAY_INTERPOLATOR_H__
 
 #include "Def/DefTypes.h"
+
+namespace DELAUNAY
+{
 
 template <typename T>
 class Interpolator
@@ -53,5 +56,33 @@ public:
   inline T interpolate(const T& H0, const T& H1, E_Float u) const {return H0*(1-u) + H1*u;}
 
 };
+
+template <typename T>
+class GeometricInterpolator : public Interpolator<T>
+{
+public:
+  GeometricInterpolator(void)
+  {
+  }
+
+  ~GeometricInterpolator(void)
+  {
+  }
+
+  inline T interpolate(const T& H0, const T& H1, E_Float u) const {return H0 * ::pow(H1/H0, u);} //iso
+
+};
+
+//aniso
+template<> inline
+DELAUNAY::Aniso2D
+GeometricInterpolator<DELAUNAY::Aniso2D>::interpolate
+(const DELAUNAY::Aniso2D& H0, const DELAUNAY::Aniso2D& H1, E_Float u) const
+{
+  //fixme : in fact Linear currently
+  return H0*(1-u) + H1*u;
+}
+
+} // namespace DELAUNAY
 
 #endif

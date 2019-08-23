@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -62,6 +62,8 @@ void Data::renderBitmapString(float x, float y, float z,
   while (myString[i] != '\0') 
   {
     glutBitmapCharacter(font, myString[i]); i++;
+    //GLUT_STROKE_MONO_ROMAN
+    //glutStrokeCharacter(GLUT_STROKE_ROMAN, myString[i]); i++;
   }
 }
 

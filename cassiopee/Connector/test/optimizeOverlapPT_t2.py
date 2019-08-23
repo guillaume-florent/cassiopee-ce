@@ -14,7 +14,7 @@ a = C.addBC2Zone(a, 'nref', 'BCFarfield', 'jmax')
 b = C.addBC2Zone(b, 'wall', 'BCWall', 'jmin')
 b = C.fillEmptyBCWith(b,'overlap','BCOverlap',dim=2)
 t = C.newPyTree(['Base','Base2']); t[2][1][2] = [a]; t[2][2][2] = [b]
-t = C.initVars(t,'Density',1.); t = C.initVars(t,'centers:cellN',1)
+C._initVars(t,'Density',1.); C._initVars(t,'centers:cellN',1)
 t[2][1] = C.addState(t[2][1], 'EquationDimension',2)
 t2 = X.optimizeOverlap(t, double_wall=1, priorities=['Base2',0,'Base',1])
 test.testT(t2)

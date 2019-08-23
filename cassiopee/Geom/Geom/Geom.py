@@ -1,12 +1,18 @@
 """Geometry definition module.
 """
-__version__ = '2.5'
+__version__ = '2.9'
 __author__ = "Stephanie Peron, Christophe Benoit, Pascal Raud, Sam Landier"
 # 
 # Python Interface to define geometries in arrays
 #
-import geom
+from . import geom
 import numpy
+import KCore.Vector as Vector
+
+from .MapEdge import *
+
+try: range = xrange
+except: pass
 
 # - Basic entities -
 def point(P):
@@ -17,10 +23,30 @@ def point(P):
     c = numpy.ones((1, 0), numpy.int32)
     return ['x,y,z', a, c, 'NODE']
 
-def naca(e, N=101):
+def naca(e, N=101, sharpte=True):
     """Create a NACA00xx profile of N points and thickness e. 
     Usage: a = naca(e, N)"""
-    return geom.naca(e, N)    
+    im = -1; ip = -1; it = -1; ith = -1; iq = -1
+    if isinstance(e, str): # digits
+        if len(e) == 4:
+            im = int(e[0:1])
+            ip = int(e[1:2])
+            it = int(e[2:4])
+        elif len(e) == 5:
+            im = int(e[0:1]) # il
+            ip = int(e[1:2])
+            iq = int(e[2:3])
+            it = int(e[3:5])
+        elif len(e) == 7:
+            im = int(e[0:1])
+            ip = int(e[1:2])
+            ith = int(e[2:4])
+            iq = int(e[5:6]) # ii
+            it = int(e[6:7])
+        e = 0.
+    if sharpte == False: sharpte = 0
+    else: sharpte = 1
+    return geom.naca(e, N, im, ip, it, ith, iq, sharpte)    
     
 def line(P1, P2, N=100):
     """Create a line of N points. 
@@ -33,7 +59,7 @@ def spline(Pts, order=3, N=100, M=100, density=-1):
     return geom.spline(Pts, order, N, order, M, density)
 
 def nurbs(Pts, weight='weight', order=3, N=100, M=100, density=-1):
-    """Create a nurbs of N points. 
+    """Create a nurbs of N points.
     Usage: a = nurbs(ctrlsPts, order, N)"""
     try:
         import Converter
@@ -58,13 +84,11 @@ def sphere(C, R, N=100):
     Usage: a = sphere((xc,yc,zc), R, N)"""
     return geom.sphere(C, R, N)
 
-def sphere6(C, R, N=100):
-    """Create a sphere of 6NxN points and of center C and radius R, made of 6 zones.
+def sphere6(C, R, N=100, ntype='STRUCT'):
+    """Create a sphere of 6NxN points and of center C and radius R, made of 6 parts.
     Usage: a = sphere6((xc,yc,zc), R, N)"""
     try: import Transform as T; import Generator as G
-    except:
-        raise ImportError("sphere6: requires Transform and Generator modules.")
-    
+    except: raise ImportError("sphere6: requires Transform and Generator modules.")
     s = sphere(C, R, 2*N)
     b = G.cart((-R/2.+C[0],-R/2.+C[1],-R/2.+C[2]),
                (R/(N-1.),R/(N-1.),R/(N-1.)), (N,N,N))
@@ -80,20 +104,162 @@ def sphere6(C, R, N=100):
     c4 = T.projectRay(b4, [s], C); c4 = T.reorder(c4, (3,1,2))
     c5 = T.projectRay(b5, [s], C)
     c6 = T.projectRay(b6, [s], C); c6 = T.reorder(c6, (-1,3,2))
-    return [c1, c2, c3, c4, c5, c6]
+    m = [c1, c2, c3, c4, c5, c6]
+    return export__(m, ntype)
 
-def sphereYinYang(C, R, N=100):
-    """Create a sphere of center C and radius R made of two overset zones.
+def sphereYinYang(C, R, N=100, ntype='STRUCT'):
+    """Create a sphere of center C and radius R made of two overset parts.
     Usage: a = sphereYinYang((xc,yc,zc), R, N)"""
     try: import Transform as T
     except: raise ImportError("sphereYinYang: requires Transform module.")
     fringe = 2
-    Ni = 4*(N/2)
+    Ni = 4*(N//2)
     a = sphere(C, R, N=Ni)
-    a = T.subzone(a, (Ni/4-2,Ni/4-2,1), (3*Ni/4+2,7*Ni/4+2,1))
+    a = T.subzone(a, (Ni//4-2,Ni//4-2,1), (3*Ni//4+2,7*Ni//4+2,1))
     b = T.rotate(a, (0,0,0), (0,1,0), 90.)
     b = T.rotate(b, (0,0,0), (0,0,1), 180.)
-    return [a, b]
+    m = [a, b]
+    return export__(m, ntype)
+
+# IN: liste de maillages struct
+def export__(a, ntype='STRUCT'):
+    try: import Converter as C; import Transform as T; import Generator as G
+    except: raise ImportError("export: requires Converter, Generator and Transform modules.")
+    if ntype == 'STRUCT': return a
+    elif ntype == 'QUAD':
+        a = C.convertArray2Hexa(a)
+        a = T.join(a)
+        a = G.close(a)
+        return a
+    elif ntype == 'TRI':
+        a = C.convertArray2Tetra(a)
+        a = T.join(a)
+        a = G.close(a)
+        return a
+
+def disc(C, R, N=100, ntype='STRUCT'):
+    """Create a disc of center C and radius R made of 5 parts.
+    Usage: a = disc((xc,yc,zc), R, N)"""
+    try: import Generator as G; import Transform as T; import math
+    except: raise ImportError("disc: requires Generator and Transform module.")
+    coeff = R*math.sqrt(2.)*0.25
+    x = C[0]; y = C[1]; z = C[2]
+    c = circle(C, R, tetas=-45., tetae=45., N=N)
+    l1 = line((x+coeff,y-coeff,z), (x+coeff,y+coeff,z), N=N)
+    l2 = line((x+coeff,y-coeff,z), (x+2*coeff,y-2*coeff,z), N=N)
+    l3 = line((x+coeff,y+coeff,z), (x+2*coeff,y+2*coeff,z), N=N)
+    m1 = G.TFI([c, l1, l2, l3])
+
+    c = circle(C, R, tetas=45., tetae=45.+90., N=N)
+    l1 = line((x+coeff,y+coeff,z), (x-coeff,y+coeff,z), N=N)
+    l2 = line((x+coeff,y+coeff,z), (x+2*coeff,y+2*coeff,z), N=N)
+    l3 = line((x-coeff,y+coeff,z), (x-2*coeff,y+2*coeff,z), N=N)
+    m2 = G.TFI([c, l1, l2, l3])
+
+    c = circle(C, R, tetas=45.+90, tetae=45.+180., N=N)
+    l1 = line((x-coeff,y+coeff,z), (x-coeff,y-coeff,z), N=N)
+    l2 = line((x-coeff,y+coeff,z), (x-2*coeff,y+2*coeff,z), N=N)
+    l3 = line((x-coeff,y-coeff,z), (x-2*coeff,y-2*coeff,z), N=N)
+    m3 = G.TFI([c, l1, l2, l3])
+
+    c = circle(C, R, tetas=45.+180, tetae=45.+270., N=N)
+    l1 = line((x-coeff,y-coeff,z), (x+coeff,y-coeff,z), N=N)
+    l2 = line((x-coeff,y-coeff,z), (x-2*coeff,y-2*coeff,z), N=N)
+    l3 = line((x+coeff,y-coeff,z), (x+2*coeff,y-2*coeff,z), N=N)
+    m4 = G.TFI([c, l1, l2, l3])
+
+    h = 2*coeff/(N-1)
+    m5 = G.cart((x-coeff,y-coeff,z), (h,h,h), (N, N, 1))
+    m5 = T.reorder(m5, (-1,2,3))
+    m = [m1,m2,m3,m4,m5]
+    return export__(m, ntype)
+
+def quadrangle(P1, P2, P3, P4, N=0, ntype='QUAD'):
+    """Create a single quadrangle with points P1, P2, P3, P4.
+    Usage: a = quadrangle((x1,y,1,z1), (x2,y2,z2), (x3,y3,z3), (x4,y4,z4))"""
+    try: import Generator as G
+    except: raise ImportError("quadrangle: requires Generator module.")
+    if N == 0 and ntype == 'QUAD': return geom.quadrangle(P1, P2, P3, P4)
+    l1 = line(P1, P2, N)
+    l2 = line(P2, P3, N)
+    l3 = line(P3, P4, N)
+    l4 = line(P4, P1, N)
+    m = [G.TFI([l1, l2, l3, l4])]
+    return export__(m, ntype)
+
+def triangle(P0, P1, P2, N=0, ntype='TRI'):
+    """Create a triangle made of 3 parts.
+    Usage: a = triangle(P1, P2, P3, N)"""
+    if N == 0 and ntype == 'TRI': return geom.triangle(P0, P1, P2)
+    try: import Generator as G; import Transform as T
+    except: raise ImportError("disc: requires Generator and Transform module.")
+    C01 = (0.5*(P0[0]+P1[0]), 0.5*(P0[1]+P1[1]), 0.5*(P0[2]+P1[2]))
+    C12 = (0.5*(P1[0]+P2[0]), 0.5*(P1[1]+P2[1]), 0.5*(P1[2]+P2[2]))
+    C02 = (0.5*(P0[0]+P2[0]), 0.5*(P0[1]+P2[1]), 0.5*(P0[2]+P2[2]))
+    C = (1./3.*(P0[0]+P1[0]+P2[0]),
+         1./3.*(P0[1]+P1[1]+P2[1]),
+         1./3.*(P0[2]+P1[2]+P2[2]))
+    
+    l1 = line(P0, C01, N)
+    l2 = line(C01, C, N)
+    l3 = line(C, C02, N)
+    l4 = line(C02, P0, N)
+    m1 = G.TFI([l1, l2, l3, l4])
+    m1 = T.reorder(m1, (-1,2,3))
+    
+    l1 = line(C01, P1, N)
+    l2 = line(P1, C12, N)
+    l3 = line(C12, C, N)
+    l4 = line(C, C01, N)
+    m2 = G.TFI([l1, l2, l3, l4])
+    m2 = T.reorder(m2, (-1,2,3))
+    
+    l1 = line(C, C12, N)
+    l2 = line(C12, P2, N)
+    l3 = line(P2, C02, N)
+    l4 = line(C02, C, N)
+    m3 = G.TFI([l1, l2, l3, l4])
+    m3 = T.reorder(m3, (-1,2,3))    
+    m = [m1, m2, m3]
+    return export__(m, ntype)
+
+def box(Pmin, Pmax, N=100, ntype='STRUCT'):
+    """Create a box passing by Pmin and Pmax (axis aligned)."""
+    try: import Generator as G; import Transform as T
+    except: raise ImportError("box: requires Generator and Transform module.")
+    N = max(N, 2)
+    (xmin,ymin,zmin) = Pmin
+    (xmax,ymax,zmax) = Pmax
+    hx = abs(xmax-xmin)/(N-1.)
+    hy = abs(ymax-ymin)/(N-1.)
+    hz = abs(zmax-zmin)/(N-1.)
+
+    s1 = G.cart(Pmin, (hx,hy,hz), (N, N, 1))
+    s1 = T.reorder(s1, (-1,2,3))
+    s2 = G.cart((xmin,ymin,zmax), (hx,hy,hz), (N, N, 1))
+    s3 = G.cart( Pmin, (hx,hy,hz), (N, 1, N) )
+    s3 = T.reorder(s3, (2,1,3))
+    s4 = G.cart((xmin,ymax,zmin), (hx,hy,hz), (N, 1, N))
+    s4 = T.reorder(s4, (-2,1,3))
+    s5 = G.cart(Pmin, (hx,hy,hz), (1, N, N))
+    s5 = T.reorder(s5, (1,-2,3))
+    s6 = G.cart((xmax,ymin,zmin), (hx,hy,hz), (1, N, N))
+    s = [s1, s2, s3, s4, s5, s6]
+    return export__(s, ntype)
+
+def cylinder(C, R, H, N=100, ntype='STRUCT'):
+    """Create a cylinder of center C, radius R and height H."""
+    try: import Generator as G; import Transform as T
+    except: raise ImportError("cylinder: requires Generator and Transform module.")
+    (x0,y0,z0) = C
+    m0 = disc(C, R, N)
+    m1 = disc((x0,y0,z0+H), R, N)
+    m1 = T.reorder(m1, (-1,2,3))
+    m2 = circle(C, R, tetas=-45, tetae=-45+360, N=4*N-3)
+    l = line(C, (x0,y0,z0+H), N=N)
+    m2 = lineDrive(m2, l)
+    s = m0 + m1 + [m2]
+    return export__(s, ntype)
 
 def cone(C, Rb, Rv, H, N=100):
     """Create a cone of NxN points and of center C, basis radius Rb, vertex radius Rv and height H.
@@ -105,16 +271,6 @@ def torus(C, R, r, alphas=0., alphae=360.,
     """Create a surface mesh of a torus made by NRxNr points.
     Usage: a = torus((xc,yc,zc), R, r, alphas, alphae, betas, betae, NR, Nr)"""
     return geom.torus(C, R, r, alphas, alphae, betas, betae, NR, Nr)
-
-def triangle(P1, P2, P3):
-    """Create a single triangle with points P1, P2, P3.
-    Usage: a = triangle((x1,y,1,z1), (x2,y2,z2), (x3,y3,z3))"""
-    return geom.triangle(P1, P2, P3)
-
-def quadrangle(P1, P2, P3, P4):
-    """Create a single quadrangle with points P1, P2, P3, P4.
-    Usage: a = quadrangle((x1,y,1,z1), (x2,y2,z2), (x3,y3,z3), (x4,y4,z4))"""
-    return geom.quadrangle(P1, P2, P3, P4)
 
 def bezier(controlPts, N=100, M=100, density=-1):
     """Create a a Bezier curve defined by an array of control points controlPts.
@@ -141,7 +297,7 @@ def curve__(f, N):
     a = numpy.zeros((3, N), dtype=numpy.float64)
     r = f(0)
     if len(r) != 3:
-        print "Warning: curve: parametric function must return a (x,y,z) tuple."
+        print("Warning: curve: parametric function must return a (x,y,z) tuple.")
         return ['x,y,z', a, N, 1, 1]
     for i in range(N):
         t = 1.*i/(N-1)
@@ -169,11 +325,11 @@ def surface__(f, N):
     a = numpy.zeros((3, N*N), dtype=numpy.float64)
     r = f(0,0)
     if len(r) != 3:
-        print "Warning: surface: parametric function must return a (x,y,z) tuple."
+        print("Warning: surface: parametric function must return a (x,y,z) tuple.")
         return ['x,y,z', a, N, N, 1]
     for j in range(N):
         u = 1.*j/(N-1)
-        for i in xrange(N):
+        for i in range(N):
             ind = i + j*N
             t = 1.*i/(N-1)
             r = f(t,u)
@@ -206,11 +362,11 @@ def getNearestPointIndex(a, pointList):
     if isinstance(a[0], list):
         # keep nearest
         npts = len(pL)
-        res0 = [(0,1.e6) for i in xrange(npts)]
+        res0 = [(0,1.e6) for i in range(npts)]
         noi = 0
         for i in a:
             res = geom.getNearestPointIndex(i, pL)
-            for j in xrange(npts):
+            for j in range(npts):
                 if res0[j][1] > res[j][1]:
                     res0[j] = (res[j][0], res[j][1])
             noi += 1
@@ -315,9 +471,13 @@ def getTangent(a):
     if len(b)==1: return b[0]
     else: return b
 
+# Obsolete
 def lineGenerate(a, d):
+    return lineDrive(a, d)
+
+def lineDrive(a, d):
     """Generate a surface mesh starting from a curve and a driving curve defined by d.
-    Usage: lineGenerate(a, d)"""
+    Usage: lineDrive(a, d)"""
     if isinstance(d[0], list): # set of driving curves
         if isinstance(a[0], list):
             b = []
@@ -346,6 +506,77 @@ def lineGenerate2__(array, drivingCurves):
     for i in drivingCurves[1:]:
         d += [Generator.map(i, distrib)]
     return geom.lineGenerate2(array, d)
+
+# Ortho drive avec copy ou avec stack
+# IN: a et d doivent etre orthogonals
+# IN: mode=0 (stack), mode=1 (copy)
+def orthoDrive(a, d, mode=0):
+    """Generate a surface mesh starting from a curve and a driving orthogonally to curve defined by d.
+    Usage: orthoDrive(a, d)"""
+    try: import Generator as G
+    except: raise ImportError("orthoDrive: requires Generator module.")
+    coord = d[1]
+    center = (coord[0,0],coord[1,0],coord[2,0])
+    coordA = a[1]
+    P0 = [coordA[0,0],coordA[1,0],coordA[2,0]]
+    P1 = [coordA[0,1],coordA[1,1],coordA[2,1]]
+    xg = G.barycenter(a)
+    v0 = Vector.sub(P0, xg)
+    v1 = Vector.sub(P1, xg)
+    S = Vector.cross(v0, v1)
+    S = Vector.normalize(S)
+    if abs(S[1]) > 1.e-12 and abs(S[2]) > 1.e-12: # x,S plane
+        alpha = -S[0]
+        U = Vector.mul(alpha, S)
+        U = Vector.add(U, [1,0,0])
+    else: # y,S plane
+        alpha = -S[0]
+        U = Vector.mul(alpha, S)
+        U = Vector.add(U, [0,1,0])
+    V = Vector.cross(U, S)
+    #print 'S',S
+    #print 'U',U
+    #print 'V',V
+
+    n = d[2]
+    all = []
+    
+    e2p = None
+    P0 = [coord[0,0],coord[1,0],coord[2,0]]
+    for i in range(n):
+        if i == n-1:
+            Pi = [coord[0,i-1],coord[1,i-1],coord[2,i-1]]
+            Pip = [coord[0,i],coord[1,i],coord[2,i]]
+            v = Vector.sub(Pip, P0)
+        else:                
+            Pi = [coord[0,i],coord[1,i],coord[2,i]]
+            Pip = [coord[0,i+1],coord[1,i+1],coord[2,i+1]]
+            v = Vector.sub(Pi, P0)
+        # vecteur e1 (transformation de S)
+        e1 = Vector.sub(Pip, Pi)
+        e1 = Vector.normalize(e1)
+        # vecteur e2 (intersection plan)
+        # intersection du plan normal a e1 avec le plan x,y
+        if abs(S[1]) > 1.e-12 and abs(S[2]) > 1.e-12: # x,S plane
+            alpha = -e1[0]
+            e2 = Vector.mul(alpha, e1)
+            e2 = Vector.add(e2, [1,0,0])
+        else:
+            alpha = -e1[0]
+            e2 = Vector.mul(alpha, e1)
+            e2 = Vector.add(e2, [0,2,0])
+        e2 = Vector.normalize(e2)
+        if e2p is not None:
+            if Vector.dot(e2,e2p) < -0.9:
+                e2 = Vector.mul(-1,e2)
+        e2p = e2
+        e3 = Vector.cross(e2,e1)
+
+        b2 = T.rotate(a, center, (S,U,V), (e1,e2,e3))
+        b2 = T.translate(b2, v)
+        all.append(b2)
+    if mode == 0: all = G.stack(all)
+    return all
 
 def addSeparationLine(array, array2):
     """Add a separation line defined in array2 to a mesh defined in array.
@@ -422,12 +653,12 @@ def volumeFromCrossSections(contours):
 def text1D(string, font='text1', smooth=0, offset=0.5):
     """Create a 1D text.
     Usage: text1D(string, font, smooth, offset)"""
-    if font == 'text1': import text1 as Text
-    elif font == 'vera': import vera as Text
-    elif font == 'chancery': import chancery as Text
-    elif font == 'courier': import courier as Text
-    elif font == 'nimbus': import nimbus as Text
-    else: import text1 as Text
+    if font == 'text1': from . import text1 as Text
+    elif font == 'vera': from . import vera as Text
+    elif font == 'chancery': from . import chancery as Text
+    elif font == 'courier': from . import courier as Text
+    elif font == 'nimbus': from . import nimbus as Text
+    else: from . import text1 as Text
     try: import Transform
     except: raise ImportError("text1D: requires Transform.")
     retour = []
@@ -563,7 +794,7 @@ def text3D(string, font='text1', smooth=0, offset=0.5, thickness=8.):
         raise ImportError("text3D: requires Generator, Transform, Converter.")
     a = text1D(string, font, smooth, offset)
     l = line((0,0,0),(0,0,thickness),2)
-    a = lineGenerate(a, l)
+    a = lineDrive(a, l)
     a = Converter.convertArray2Tetra(a)
     b = Transform.join(a)
     
@@ -583,7 +814,6 @@ def connect1D(curves, sharpness=0, N=10, lengthFactor=1.):
     """Connect 1D curves in a single curve.
     Usage: a = connect1D(A, sharpness, N, lengthFactor)"""
     try:
-        import KCore.Vector as Vector
         import Transform as T
         import Converter as C
         import Generator as G    
@@ -604,13 +834,14 @@ def connect1D(curves, sharpness=0, N=10, lengthFactor=1.):
         PtsM.append([e1M, e2M])
 
     added = []
-    for c in xrange(ncurves):
+    for c in range(ncurves):
         lcurve = getLength(curves[c]) * lengthFactor
         P1 = Pts[c][0] 
         minDist, P2, d, ext = findNearest__(P1, Pts, c)
         n1 = Vector.sub(P1, PtsM[c][0])
         n1 = Vector.normalize(n1)
-        n2 = Vector.sub(P2, PtsM[d][ext]) 
+        n2 = Vector.sub(P2, PtsM[d][ext])
+        n2 = Vector.normalize(n2)
         PI = intersectionPoint__(P1,n1,P2,n2)
         if sharpness == 0: # sharp
             la = line(P1,PI, N=N)
@@ -647,9 +878,8 @@ def connect1D(curves, sharpness=0, N=10, lengthFactor=1.):
 
 # Pt d'intersection par minimal distance
 def intersectionPoint__(P1,n1,P2,n2):
-    import KCore.Vector as Vector
     s = Vector.dot(n1, n2)
-    s2 = 1.-s*s
+    s2 = max(1.-s*s, 1.e-12)
     dP1P2 = Vector.sub(P1, P2)
     sn1 = Vector.mul(s, n1)
     p2 = Vector.sub(n2, sn1)
@@ -664,9 +894,8 @@ def intersectionPoint__(P1,n1,P2,n2):
 
 # trouve le pt le plus proche de Pt dans Pts mais different de c
 def findNearest__(Pt, Pts, c):
-    import KCore.Vector as Vector
     minDist = 1.e6; nearest = None; dmin = -1; ext=0;
-    for d in xrange(len(Pts)):
+    for d in range(len(Pts)):
         if d <= c: # possible sur lui meme !!
             e2a = Pts[d][0]; e2b = Pts[d][1]    
             d1 = Vector.squareDist(Pt, e2a)

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -46,50 +46,61 @@ PyObject* K_CONNECTOR::getIBMPtsWithoutFront(PyObject* self, PyObject* args)
 {
     PyObject *allCorrectedPts, *bodySurfaces, *normalNames, *distName;
     E_Int signOfDist; //if correctedPts are inside bodies: sign = -1, else sign=1
-    if (!PYPARSETUPLEI(args, "OOOOl","OOOOi", &allCorrectedPts, &bodySurfaces, &normalNames, &distName, &signOfDist))
+    if (!PYPARSETUPLEI(args, "OOOOl","OOOOi", &allCorrectedPts, &bodySurfaces, 
+                       &normalNames, &distName, &signOfDist))
         return NULL;
 
     E_Int sign = -signOfDist; // sens de projection sur la paroi
 
     // check distname
     char* distname;
-    if (PyString_Check(distName) == 0)
+    if (PyString_Check(distName)) distname = PyString_AsString(distName);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(distName)) distname = PyBytes_AsString(PyUnicode_AsUTF8String(distName));
+#endif
+    else
     {    
         PyErr_SetString(PyExc_TypeError, 
-                        "getIBMPts: distName must be a string.");
+                        "getIBMPtsWithoutFront: distName must be a string.");
         return NULL;
     }
-    else distname = PyString_AsString(distName);
-
 
     // Check normal components
     if (PyList_Check(normalNames) == 0)
     {
         PyErr_SetString(PyExc_TypeError, 
-                        "getIBMPts: normal vars must be a list of strings.");
+                        "getIBMPtsWithoutFront: normal vars must be a list of strings.");
         return NULL;
     }
     E_Int nvars = PyList_Size(normalNames);
     if (nvars != 3)
     {
         PyErr_SetString(PyExc_TypeError, 
-                        "getIBMPts: normal vars must be a 3-component vector.");
+                        "getIBMPtsWithoutFront: normal vars must be a 3-component vector.");
         return NULL;
     }
     char* var;
     vector<char*> varsn;// normal components names
     for (E_Int v = 0; v < 3; v++)
     {
-        if (PyString_Check(PyList_GetItem(normalNames, v)) == 0)
+        PyObject* l = PyList_GetItem(normalNames, v);
+        if (PyString_Check(l))
+        {
+            var = PyString_AsString(l);
+            varsn.push_back(var);
+        }
+#if PY_VERSION_HEX >= 0x03000000
+        else if (PyUnicode_Check(l)) 
+        {
+            var = PyBytes_AsString(PyUnicode_AsUTF8String(l));
+            varsn.push_back(var);
+        } 
+#endif
+        else
         {
             PyErr_SetString(PyExc_TypeError,
-                            "getIBMPts: invalid string for normal component.");
+                            "getIBMPtsWithoutFront: invalid string for normal component.");
             return NULL;
-        }
-        else 
-        {
-            var = PyString_AsString(PyList_GetItem(normalNames, v));
-            varsn.push_back(var);
         }
     }
     // Extract correctedPts
@@ -170,6 +181,7 @@ PyObject* K_CONNECTOR::getIBMPtsWithoutFront(PyObject* self, PyObject* args)
                                   structbF, unstrbF, nib, njb, nkb, cnb, eltTypeb, objsb, objub, 
                                   skipDiffVars, skipNoCoord, skipStructured, skipUnstructured, true);
     E_Int nbodies = objub.size(); E_Int nbodiesS = objsb.size();
+
     if (isOk == -1)   
     {
         PyErr_SetString(PyExc_TypeError,"getIBMPts: 2nd arg is not valid.");
@@ -295,6 +307,7 @@ PyObject* K_CONNECTOR::getIBMPtsWithoutFront(PyObject* self, PyObject* args)
     E_Int ok, notri, indp;
     E_Float rx, ry, rz, rad;
     // Corresponding directions
+    PyObject* PyListIndicesByIBCType = PyList_New(0);
     for (E_Int noz = 0; noz < nzones; noz++)
     {
         FldArrayF* correctedPts = unstrF[noz];
@@ -313,9 +326,19 @@ PyObject* K_CONNECTOR::getIBMPtsWithoutFront(PyObject* self, PyObject* args)
         E_Float* ptrZI = zit[noz];
         E_Float* distp  = correctedPts->begin(posdist[noz]);
 
+        vector<FldArrayI*> vectOfIndicesByIBCType(nbodies);
+        vector<E_Int> nPtsPerIBCType(nbodies);//nb de pts projetes sur la surface paroi de type associe 
+        for (E_Int notype = 0; notype < nbodies; notype++)
+        {
+            FldArrayI* indicesByIBCType = new FldArrayI(npts);
+            vectOfIndicesByIBCType[notype] = indicesByIBCType;
+            nPtsPerIBCType[notype]=0;
+        }
+
         for (E_Int ind = 0; ind < npts; ind++)
         {
             xc0 = ptrXC[ind]; yc0 = ptrYC[ind]; zc0 = ptrZC[ind];
+            E_Int noibctype = -1;
 
             /*--------------------------------------------------*/
             /*  STEP 1/ projection following normals onto bodies*/
@@ -361,7 +384,26 @@ PyObject* K_CONNECTOR::getIBMPtsWithoutFront(PyObject* self, PyObject* args)
             ptrXI[ind] = ptrXW[ind] + dirx0*dist0;
             ptrYI[ind] = ptrYW[ind] + diry0*dist0;
             ptrZI[ind] = ptrZW[ind] + dirz0*dist0;
+
+            E_Int& nptsByType = nPtsPerIBCType[noibctype];
+            E_Int* indicesForIBCType = vectOfIndicesByIBCType[noibctype]->begin();
+            indicesForIBCType[nptsByType] = ind+1; 
+            nptsByType+=1;
+        }//ind
+
+        PyObject* PyListIndicesByIBCTypeForZone = PyList_New(0);
+        for (E_Int noibctype = 0; noibctype < nbodies; noibctype++)
+        {
+            E_Int nptsByType = nPtsPerIBCType[noibctype];
+            FldArrayI* indicesByIBCTypeL = vectOfIndicesByIBCType[noibctype];
+            indicesByIBCTypeL->resize(nptsByType);
+            PyObject* tpl0 = K_NUMPY::buildNumpyArray(*indicesByIBCTypeL,1);
+            PyList_Append(PyListIndicesByIBCTypeForZone, tpl0); 
+            Py_DECREF(tpl0); delete indicesByIBCTypeL;
         }
+        PyList_Append(PyListIndicesByIBCType, PyListIndicesByIBCTypeForZone); 
+        Py_DECREF(PyListIndicesByIBCTypeForZone);
+
     }
     delete bodySurfacesPts;
     // Cleaning
@@ -377,9 +419,10 @@ PyObject* K_CONNECTOR::getIBMPtsWithoutFront(PyObject* self, PyObject* args)
 
 
     // Sortie
-    PyObject* tpl = Py_BuildValue("[OO]", PyListOfWallPts, PyListOfImagePts);
+    PyObject* tpl = Py_BuildValue("[OOO]", PyListOfWallPts, PyListOfImagePts, PyListIndicesByIBCType);
     Py_DECREF(PyListOfWallPts);
     Py_DECREF(PyListOfImagePts);
+    Py_DECREF(PyListIndicesByIBCType);
     RELEASEZONES; RELEASEBODIES;
     return tpl;
 }

@@ -34,7 +34,8 @@ if [ $? -eq 0 ]; then
     fi
     scons install prefix="$INSTALLPATH" "$SCONSOPT"
     [ $? != 0 ] && exit;
-    touch Dist2Walls/dist2walls.cpp
+    #touch Dist2Walls/dist2walls.cpp
+    rm -f build/lib.*/Dist2Walls/dist2walls.*
     python setupScons.py install --prefix="$INSTALLPATH"
 else
     python setup.py install --prefix="$INSTALLPATH"

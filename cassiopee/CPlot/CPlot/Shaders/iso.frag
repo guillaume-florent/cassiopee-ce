@@ -23,11 +23,13 @@ void main()
   float f, fs;
   int vali;
   f = color.r; f = alpha*f + beta;
+  f = clamp(f, 0.0f, 1.f-0.5/niso);
+  
   fs = f;
   vali = int(f*niso);
   f = float(vali)/niso;
   vec3 val; 
-  val = vec3(texture1D(colormap, f));
+  val = vec3(texture1D(colormap, f+0.5f/niso));
 
   float df, borne, borne1, borne2;
   df = fwidth(fs);

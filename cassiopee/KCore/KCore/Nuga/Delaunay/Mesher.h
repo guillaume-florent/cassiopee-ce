@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -33,18 +33,40 @@
 #include "MeshElement/Edge.h"
 #include "chrono.h"
 #include "Linear/DelaunayMath.h"
+#include "Connect/IdTool.h"
 #include <list>
 #include <deque>
+#include <set>
 
-#ifdef DEBUG_MESHER
+#if defined(DEBUG_METRIC)
 #include "iodata.h"
 #include <sstream>
 #include "IO/io.h"
 #endif
 #include <iostream>
 
+#ifdef DEBUG_MESHER
+#include "medit.hxx"
+#endif
+
+//#define FORCING_EDGE_ERROR 999
+#define NODE_IN_EDGE_ERROR 3
+#define COINCIDENT_NODE_ERROR 4
+
 namespace DELAUNAY
 {
+  struct edge_error_t
+  {
+    edge_error_t():Ni(E_IDX_NONE),Nj(E_IDX_NONE){};
+    edge_error_t(const edge_error_t& e)
+    {
+      Ni = e.Ni;
+      Nj = e.Nj;
+      nodes = e.nodes;
+    }
+    E_Int Ni,Nj;
+    std::set<E_Int> nodes;
+  };
 
   template <typename T, typename MetricType>
   class Mesher
@@ -104,11 +126,12 @@ namespace DELAUNAY
       const K_FLD::FloatArray& pos, K_FLD::IntArray& connect, K_FLD::IntArray& neighbors,
       int_vector_type& ancestors);    
 
+    E_Int __store_edge_error(E_Int Ni, E_Int Nj, const K_FLD::IntArray& connect, const int_pair_vector_type& Xedges);
   private:
 
     MeshData*                   _data;
 
-    const MesherMode            _mode;
+    /*const*/ MesherMode            _mode;
 
     MetricType&                 _metric;
 
@@ -124,8 +147,10 @@ namespace DELAUNAY
     E_Int                       _err;
 
     E_Int                       _N0;
+  public:
+    std::vector<edge_error_t>  _edge_errors;
     
-#ifdef DEBUG_MESHER
+#if defined(DEBUG_MESHER)
     public:
       bool dbg_flag;
 #endif
@@ -135,6 +160,9 @@ namespace DELAUNAY
   template <typename T, typename MetricType>
   Mesher<T, MetricType>::Mesher(MetricType& metric, const MesherMode& mode)
     :_data(0), _mode(mode), _metric(metric),_tool(0), _posAcc(0), _tree(0)
+#ifdef DEBUG_MESHER
+  , dbg_flag(false)
+#endif
   {
     std::srand(1);//to initialize std::rand and ensure repeatability
   }
@@ -194,12 +222,12 @@ namespace DELAUNAY
 
     // Triangulate.
     _err = triangulate();
-    
+
     if (_err)
     {
-      std::cout << "error triangulating" << std::endl;
+      if (!_mode.silent_errors) std::cout << "error triangulating" << std::endl;
 #ifdef DEBUG_MESHER
-      MIO::write("err_tria.mesh", *_data->pos, *_data->connectB, "BAR");
+      medith::write("err_tria.mesh", *_data->pos, *_data->connectB, "BAR");
 #endif
       return _err;
     }
@@ -215,10 +243,10 @@ namespace DELAUNAY
     _err = restoreBoundaries(*data.pos, data.connectM, data.neighbors, data.ancestors);
     if (_err)
     {
-      std::cout << "error restoring boundaries" << std::endl;
+      if (!_mode.silent_errors) std::cout << "error restoring boundaries" << std::endl;
       return _err;
     }
-      
+    
 
 #ifdef E_TIME
     std::cout << c.elapsed() << std::endl;
@@ -226,7 +254,7 @@ namespace DELAUNAY
 
 #ifdef DEBUG_MESHER
     if (dbg_flag)
-      MIO::write("triangulationC.mesh", *_data->pos, _data->connectM, "TRI", &_data->mask);
+      medith::write("triangulationC.mesh", *_data->pos, _data->connectM, "TRI", &_data->mask);
 #endif
 
 #ifdef E_TIME
@@ -238,7 +266,7 @@ namespace DELAUNAY
     _err = setColors(data.pos->cols()-1, data);//fixme : Nbox
     if (_err)
     {
-      std::cout << "error setting colors" << std::endl;
+      if (!_mode.silent_errors) std::cout << "error setting colors" << std::endl;
       return _err;
     }
 
@@ -268,8 +296,7 @@ namespace DELAUNAY
     c.start();
 #endif
 
-    if (_err)
-      std::cout << "error finalizing" << std::endl;
+    if (_err && !_mode.silent_errors) std::cout << "error finalizing" << std::endl;
     
     return _err;
   }
@@ -310,8 +337,16 @@ namespace DELAUNAY
     // Reset hard nodes to be consistent with hard edges
     hNodes.insert(ALL(_data->hardNodes)); // Append with the input hard nodes.
     _data->hardNodes.clear();
-    for (int_set_type::const_iterator it = hNodes.begin(); it != hNodes.end(); ++it)
+    E_Int idmax=-1;
+    for (int_set_type::const_iterator it = hNodes.begin(); it != hNodes.end(); ++it){
       _data->hardNodes.push_back(*it);
+      idmax = std::max(idmax, *it);
+    }
+    
+    if (_mode.ignore_unforceable_edges) _mode.ignore_coincident_nodes=true;
+    // 
+    if (_mode.ignore_coincident_nodes == true)
+      K_CONNECT::IdTool::init_inc(_data->hnids, idmax+1);
 
     // Build the initial mesh.
     E_Float minX, minY, maxX, maxY, L;
@@ -403,14 +438,21 @@ namespace DELAUNAY
       Ni = _data->hardNodes[i];
 
       _err = _kernel->insertNode(Ni, _metric[Ni], unconstrained);
-      _tree->insert(Ni);  
+      if (_err == 0)_tree->insert(Ni);
+      if (_err == 2 && _mode.ignore_coincident_nodes)
+      {
+        _data->unsync_nodes = true;
+        _data->hnids[Ni]=_kernel->_Nmatch;
+        _err = 0; //to carry on
+      }
+
 #ifdef DEBUG_MESHER
       if (dbg_flag)
       {
         std::ostringstream o;
         o << "t_" << i << ".mesh";
         //K_CONVERTER::DynArrayIO::write(o.str().c_str(), _data->pos, _data->connectM, "TRI", &_data->mask);
-        MIO::write(o.str().c_str(), *_data->pos, _data->connectM, "TRI", &_data->mask);
+        medith::write(o.str().c_str(), *_data->pos, _data->connectM, "TRI", &_data->mask);
       }
 #endif
     }
@@ -419,7 +461,7 @@ namespace DELAUNAY
 
 #ifdef DEBUG_MESHER
     if (dbg_flag)
-      MIO::write("triangulation0.mesh", *_data->pos, _data->connectM, "TRI", &_data->mask);
+      medith::write("triangulation0.mesh", *_data->pos, _data->connectM, "TRI", &_data->mask);
 #endif
 
     clean_data(*_data, _data->mask); // Clean by removing invalidated elements and update the data structure. 
@@ -468,33 +510,77 @@ namespace DELAUNAY
     std::set_difference (ALL(_data->hardEdges), ALL(all_edges), std::back_inserter(missing_edges));
 
     size_type sz = (size_type)missing_edges.size();
+    
+    E_Int Ni, Nj;
+    
     for (size_type i = 0; (i < sz) && !_err; ++i)
     {
+      Ni = missing_edges[i].node(0);
+      Nj = missing_edges[i].node(1);
+      
 #ifdef DEBUG_MESHER
       if (dbg_flag)
-        MIO::write("triangulationi.mesh", pos, connect, "TRI", &(_data->mask));
-      E_Int ni,nj;
-      ni = missing_edges[i].node(0);
-      nj = missing_edges[i].node(1);
+        medith::write("triangulationi.mesh", pos, connect, "TRI", &(_data->mask));
 #endif
-      _err = __getPipe(missing_edges[i].node(0), missing_edges[i].node(1), pos, connect, neighbors,
-        ancestors, pipe, Xedges);
-      if (_err){
-        std::cout << "error getting pipe : " << _err << std::endl;
+      _err = __getPipe(Ni, Nj, pos, connect, neighbors, ancestors, pipe, Xedges);
+      
+      if (_err)
+      {
+        if (_mode.ignore_unforceable_edges)
+        {
+          //store this edge and the faulty entities and carry on with other missing edges
+          __store_edge_error(Ni,Nj, connect, Xedges);
+          _err = 0;
+          continue;
+        }
+        else if (!_mode.silent_errors)
+          std::cout << "error getting pipe : " << _err << std::endl;
       }
 
       if (!_err)
-        _err = __forceEdge(missing_edges[i].node(0), missing_edges[i].node(1), /*pipe,*/ Xedges,
-        pos, connect, neighbors, ancestors);
-      if (_err){
-        std::cout << "error forcing edge" << std::endl;
-        //fixme : store this edge as not forceable (and carry on if there is a "non strict" mode...)
+        _err = __forceEdge(Ni, Nj, /*pipe,*/ Xedges, pos, connect, neighbors, ancestors);
+      
+      if (_err)
+      {
+        if (_mode.ignore_unforceable_edges)
+        {
+          //store this edge and the faulty entities and carry on with other missing edges
+          __store_edge_error(Ni,Nj, connect, Xedges);
+          _err = 0;
+          continue;
+        }
+        else if (!_mode.silent_errors)
+          std::cout << "error forcing edge" << std::endl;
       }
     }
 
     return _err;
   }
-
+  
+  ///
+  template <typename T, typename MetricType>
+  E_Int Mesher<T, MetricType>::__store_edge_error(E_Int Ni, E_Int Nj, const K_FLD::IntArray& connect, const int_pair_vector_type& Xedges)
+  {
+    edge_error_t e;
+    e.Ni = Ni;
+    e.Nj = Nj;
+    
+    for (size_t i=0; i < Xedges.size(); ++i)
+    {
+      E_Int K = Xedges[i].first;
+      E_Int n = Xedges[i].second;
+      const E_Int* pK = connect.col(K);
+      E_Int N0 = *(pK+(n+1)%3);
+      E_Int N1 = *(pK+(n+2)%3);
+      
+      e.nodes.insert(N0);
+      e.nodes.insert(N1);    
+    }
+    
+    _edge_errors.push_back(e);
+    
+    return 0;
+  }
   ///
   template <typename T, typename MetricType>
   E_Int
@@ -623,6 +709,26 @@ namespace DELAUNAY
   E_Int
     Mesher<T, MetricType>::refine()
   {
+    
+#ifdef DEBUG_METRIC
+    {
+      std::ostringstream o;
+      o << "ellipse_triangulation.mesh";
+      _metric.draw_ellipse_field(o.str().c_str(), *_data->pos, _data->connectM, &_data->mask);
+      
+      std::vector<bool> tmask = _data->mask;
+      E_Int cols = _data->connectM.cols();
+      tmask.resize(cols);
+      for (size_type i = 0; i < cols; ++i) // mask box elements in top of invalidated ones.
+      {
+        if (tmask[i])
+          tmask[i] = (_data->colors[i] != 0);
+      }
+      
+      MIO::write("triangulation.mesh", *_data->pos, _data->connectM, "TRI", &tmask);
+    }
+#endif
+    
     K_FLD::FloatArray& pos = *_data->pos;
 
     _kernel->setConstraint(_data->hardEdges);
@@ -634,13 +740,14 @@ namespace DELAUNAY
 
     size_type Ni, nb_refine_nodes;
 
-    Refiner<MetricType> saturator(_metric);
+    Refiner<MetricType> saturator(_metric, _mode.growth_ratio, _mode.nb_smooth_iter, _mode.symmetrize);
 
 #ifdef E_TIME
     chrono c;
 #endif
 
     float contrained;
+    E_Int iter(0);
     bool carry_on = false;
     do
     {
@@ -648,11 +755,29 @@ namespace DELAUNAY
 #ifdef E_TIME
       c.start();
 #endif
-      saturator.computeRefinePoints(*_data, _box_nodes, _data->hardEdges, refine_nodes);
+
+//#ifdef DEBUG_METRIC
+//    {
+//      std::ostringstream o;
+//      o << "ellipse_refine_iter_" << iter << ".mesh";
+//      _metric.draw_ellipse_field(o.str().c_str(), *_data->pos, _data->connectM, &_data->mask);
+//    }
+//#endif
+
+      saturator.computeRefinePoints(iter, *_data, _box_nodes, _data->hardEdges, refine_nodes, _N0);
+
 
 #ifdef E_TIME
       std::cout << "__compute_refine_points : " << c.elapsed() << std::endl;
       c.start();
+#endif
+#ifdef DEBUG_METRIC
+    {
+      std::ostringstream o;
+      o << "ellipse_refine_points_iter_" << iter << ".mesh";
+      _metric.draw_ellipse_field(o.str().c_str(), *_data->pos, refine_nodes);
+    }
+    //if (iter == 5) saturator._debug = true;
 #endif
 
       saturator.filterRefinePoints(*_data, _box_nodes, refine_nodes, filter_tree);
@@ -685,11 +810,37 @@ namespace DELAUNAY
 #endif
 
       this->clean_data(*_data, _data->mask);// Clean the current mesh by removing invalidated elements.
+      
+#ifdef DEBUG_MESHER
+      /*{
+        
+        std::ostringstream o;
+        o << "mesh_iter_" << iter << ".mesh";
+        
+        std::vector<bool> tmask = _data->mask;
+        E_Int cols = _data->connectM.cols();
+        tmask.resize(cols);
+        for (size_type i = 0; i < cols; ++i) // mask box elements in top of invalidated ones.
+        {
+          if (tmask[i])
+            tmask[i] = (_data->colors[i] != 0);
+        }
+        medith::write(o.str().c_str(), *_data->pos, _data->connectM, "TRI", &tmask);
+      }*/
+#endif
+#ifdef DEBUG_METRIC
+    {
+      std::ostringstream o;
+      o << "ellipse_mesh_iter_" << iter << ".mesh";
+      _metric.draw_ellipse_field(o.str().c_str(), *_data->pos, _data->connectM);
+    }
+#endif
 
 #ifdef E_TIME
       std::cout << "compacting : " << c.elapsed() << std::endl;
       std::cout << "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%" << std::endl;
 #endif
+      ++iter;
     }
     while (carry_on);
 
@@ -775,7 +926,10 @@ namespace DELAUNAY
       if (done && (count != 0))  // Error : we must have Nj = N1 at i = 0 when reaching the end of pipe.
       {err=2; break;}
       if (!done && (count != 1)) // Error : one node is on the edge N0N1.
-      {err=3; break;}
+      {
+        err=NODE_IN_EDGE_ERROR;
+        break;
+      }
 
       pipe.insert(S);
     }
@@ -1059,6 +1213,10 @@ namespace DELAUNAY
     //std::cout << _data->connectM;
     //std::cout << _data->neighbors;
 #endif
+    
+    // synchronize hard entitities regarding the removed nodes
+    if (_data->unsync_nodes) // if and only if ignore_coincident_nodes = true
+      _data->sync_hards();
 
     return (cols - data.connectM.cols());
   }

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -168,7 +168,7 @@ E_Int K_IO::GenIO::v3dread(
                        ptrFile, _convertEndian, si, si2);
   E_Int domain = 0;
 
-  // Il y deux philosophie au multibloc.
+  // Il y deux philosophies au multibloc.
   // 1. Stocker au debut nrec = nvar*nb, lire tous les nrecs et distribue suivant ndom
   // 2. Lire plusieurs nrec = nvar pour chaque bloc
   // Cette routine doit pouvoir lire les 2.
@@ -408,7 +408,8 @@ E_Int K_IO::GenIO::v3dwrite(
   E_Int nvar = field[0]->getNfld();
 
   // Construction de la liste des variables
-  typedef char fixStr[21];
+#define VARLENGTH 20
+  typedef char fixStr[VARLENGTH+1];
   fixStr* vars = new fixStr[nvar];
   fixStr temp;
 
@@ -463,7 +464,7 @@ E_Int K_IO::GenIO::v3dwrite(
       vars[i][4] = '\0'; strcat(vars[i], temp);
     }
     l = strlen(vars[i]);
-    for (c = l; c < 20; c++) vars[i][c] = ' ';
+    for (c = l; c < VARLENGTH; c++) vars[i][c] = ' ';
     vars[i][20] = '\0';
   }
 

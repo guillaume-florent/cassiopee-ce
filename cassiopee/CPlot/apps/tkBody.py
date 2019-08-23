@@ -1,5 +1,6 @@
 # - tkBody: creates closed and watertight bodies -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import Converter.Internal as Internal
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -8,8 +9,7 @@ import Generator.PyTree as G
 import Post.PyTree as P
 
 # local widgets list
-WIDGETS = []
-VARS = []
+WIDGETS = []; VARS = []
 
 #==============================================================================
 # Extraction des BCWall,BCWallInviscid et BCWallViscous des bases basename
@@ -17,12 +17,12 @@ VARS = []
 #==============================================================================
 def extractBodies():
     pref = 'BODY#'
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (nzs == []):
+    if nzs == []:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 

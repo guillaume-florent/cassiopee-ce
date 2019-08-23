@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -121,8 +121,12 @@ GapFixer::run
   DELAUNAY::SurfaceMesherMode           mode;
   if (refine == false)
     mode.mesh_mode = mode.TRIANGULATION_MODE;
+  else
+    mode.symmetrize = true;
+
   data.hardNodes = hN;
-   
+  mode.growth_ratio = 1.2;
+
   DELAUNAY::SurfaceMesher<UBSSurface> mesher(mode);
     
   E_Int err = mesher.run (data);
@@ -133,7 +137,7 @@ GapFixer::run
   connectG = data.connectM;
   
 #ifdef DEBUG_GAPFIXER
-  K_CONVERTER::DynArrayIO::write("param.mesh", data.pos, data.connectM, "TRI");
+  K_CONVERTER::DynArrayIO::write("param.mesh", *data.pos, data.connectM, "TRI");
 #endif
 
   return err;

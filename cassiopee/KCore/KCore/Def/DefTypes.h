@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -19,6 +19,7 @@
 
 #include <stdlib.h>
 #include <limits.h>
+#include <stdint.h>
 
 // ==========================================================================
 #ifndef _KCORE_DEF_DEFTYPES_H_
@@ -33,6 +34,8 @@
 // Essai de trouve si long long existe (8 octets)
 #ifdef LLONG_MAX
 #define E_LONG long long
+//int64_t
+//long long
 #else
 #define E_LONG long
 #endif

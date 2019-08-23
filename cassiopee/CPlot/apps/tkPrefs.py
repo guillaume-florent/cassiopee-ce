@@ -1,5 +1,6 @@
 # - global preferences -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -52,8 +53,12 @@ def setPrefs(event=None):
 
 def setUndo(event=None):
     v = VARS[1].get()
-    if v == 'Active': Tk.__UNDO__ = True
-    else: Tk.__UNDO__ = False
+    if v == 'Active': CTK.__UNDO__ = True
+    else: CTK.__UNDO__ = False
+    va = '0'
+    if v == 'Active': va = '1'
+    elif v == 'Inactive': va = '0'
+    CTK.PREFS['undo'] = va
 
 def setBgColor(event=None):
     v = VARS[3].get(); va = 0
@@ -69,6 +74,7 @@ def setBgColor(event=None):
     elif v == 'Jarvis': va = 9
     elif v == 'Onera': va = 10
     CPlot.setState(bgColor=va)
+    CTK.PREFS['bgColor'] = str(va)
 
 def setDisplayInfo(event=None):
     v = VARS[2].get(); va = 0
@@ -76,24 +82,27 @@ def setDisplayInfo(event=None):
     elif v == 'Inactive': va = 0
     CPlot.setState(displayInfo=va)
     CPlot.setState(displayBB=va)
+    CTK.PREFS['displayInfo'] = str(va)
 
 def setSelectionStyle(event=None):
     v = VARS[7].get(); style = 0
     if v == 'Blue': style = 0
     elif v == 'Alpha': style = 1
     CPlot.setState(selectionStyle=style)
+    CTK.PREFS['selectionStyle'] = v
 
 def setEnvmap(event=None):
     val = VARS[6].get()
     CPlot.setState(envmap=val)
+    CTK.PREFS['envmap'] = val
 
 def setExportRes(event=None):
-    # must be in PREFS
-    PREFS['exportResolution'] = VARS[12]
+    CTK.PREFS['exportResolution'] = VARS[8].get()
 
 def setTheme(event=None):
     theme = VARS[9].get()
     TTK.setTheme(theme)
+    CTK.PREFS['guitheme'] = theme
 
 def updateThemeList(event=None):
     m = WIDGETS['guitheme'].children['menu']
@@ -143,7 +152,7 @@ def createApp(win):
                            text='tkPrefs', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Set Cassiopee preferences.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=2)
@@ -181,7 +190,7 @@ def createApp(win):
 
     # Init VARS par le fichier de preferences
     CTK.loadPrefFile()
-    for i in CTK.PREFS.iterkeys():
+    for i in CTK.PREFS:
         k1 = CTK.PREFS[i]
         if i == 'undo':
             if k1 == '1': VARS[1].set('Active')

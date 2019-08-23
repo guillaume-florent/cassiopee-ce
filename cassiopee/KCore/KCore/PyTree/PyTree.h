@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -20,7 +20,7 @@
 
 #ifndef _KCORE_PYTREE_H_
 #define _KCORE_PYTREE_H_
-#include "Python.h"
+#include "kPython.h"
 #include "Def/DefTypes.h"
 #include "Def/DefCplusPlusConst.h"
 
@@ -66,17 +66,17 @@ namespace K_PYTREE
   E_Int csize, cfld;                      \
   char* eltType;                          
   E_Int getFromZone(PyObject* o, E_Int xyz, E_Int loc,
-		    char*& varString,
-		    std::vector<E_Float*>& fields,
-		    std::vector<E_Int>& locs,
-		    E_Int& ni, E_Int& nj, E_Int& nk,
-		    std::vector<E_Int*>& cn, 
+                    char*& varString,
+                    std::vector<E_Float*>& fields,
+                    std::vector<E_Int>& locs,
+                    E_Int& ni, E_Int& nj, E_Int& nk,
+                    std::vector<E_Int*>& cn, 
                     E_Int& csize, E_Int& cnfld,
-		    char*& eltType,
+                    char*& eltType,
                     std::vector<PyArrayObject*>& hook,
-		    char* GridCoordinates=NULL,
-		    char* FlowSolutionNodes=NULL,
-		    char* FlowSolutionCenters=NULL);
+                    char* GridCoordinates=NULL,
+                    char* FlowSolutionNodes=NULL,
+                    char* FlowSolutionCenters=NULL);
   /* Recherche par nom d'un seul niveau, retourne un seul noeud.
      IN: o: objet representant un noeud de pyTree
      IN: name: le nom du noeud

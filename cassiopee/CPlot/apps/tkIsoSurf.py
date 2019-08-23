@@ -1,5 +1,6 @@
 # - Draw isosurfaces -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -39,7 +40,7 @@ def updateVarNameList2(event=None):
         vars = C.getVarNames(CTK.t[2][nob][2][noz])
     
     if len(vars) == 0: return
-    if WIDGETS.has_key('field'):
+    if 'field' in WIDGETS:
         WIDGETS['field']['values'] = vars[0]
         
 #==============================================================================
@@ -71,7 +72,7 @@ def extractIsoSurf(event=None):
     try:
         iso = P.isoSurfMC(z, field, value)
         isos += iso
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: isoSurf')
     if isos == []:
         CTK.TXT.insert('START', 'isoSurf failed.\n')
@@ -126,7 +127,7 @@ def createApp(win):
                            text='tkIsoSurf', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Compute iso-surfaces.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -146,7 +147,7 @@ def createApp(win):
     V = TK.StringVar(win); V.set('CoordinateX'); VARS.append(V)
     # -1- value -
     V = TK.StringVar(win); V.set('1.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkIsoSurfValue'): 
+    if 'tkIsoSurfValue' in CTK.PREFS: 
         V.set(CTK.PREFS['tkIsoSurfValue'])
 
     # - field name -
@@ -217,11 +218,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

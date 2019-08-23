@@ -6,13 +6,13 @@ import KCore.test as test
 
 a = G.cart((0.,0.,0.), (0.1, 0.1, 0.1), (11, 21, 1))
 # --- champ au centre
-a = C.initVars(a, 'centers:Density', 1.)
+C._initVars(a, 'centers:Density', 1.)
 # --- CL
 a = C.addBC2Zone(a, 'wall1', 'BCWall', 'jmin')
 # partiellement coincident
 a2 = G.cart((1., 0.5, 0.), (0.1, 0.1, 0.1), (11, 21, 1))
 # --- champ au noeud
-a2 = C.initVars(a2, 'Density',1.)
+C._initVars(a2, 'Density',1.)
 a2 = C.addBC2Zone(a2, 'wall1', 'BCOverlap', 'imax')
 t = C.newPyTree(['Base',2]); t[2][1][2] += [a, a2]
 t[2][1] = C.addState(t[2][1], 'EquationDimension', 2)

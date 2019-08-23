@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -40,9 +40,9 @@ PyObject* K_TRANSFORM::splitNGon(PyObject* self, PyObject* args)
   // Check array
   E_Int ni, nj, nk, res;
   FldArrayF* f; FldArrayI* cn;
-  char* varString; char* eltTypes;
+  char* varString; char* eltType;
   res = K_ARRAY::getFromArray(array, varString, 
-                              f, ni, nj, nk, cn, eltTypes, true);
+                              f, ni, nj, nk, cn, eltType, true);
 
   if (res != 2)
   {
@@ -51,12 +51,12 @@ PyObject* K_TRANSFORM::splitNGon(PyObject* self, PyObject* args)
                     "splitNGon: array is invalid.");
     return NULL;
   }
-  if (strcmp(eltTypes, "TRI")   == 0 || strcmp(eltTypes, "QUAD") == 0 ||
-      strcmp(eltTypes, "TETRA") == 0 || strcmp(eltTypes, "HEXA") == 0 ||
-      strcmp(eltTypes, "PENTA") == 0 || strcmp(eltTypes, "BAR")  == 0 || 
-      strcmp(eltTypes, "PYRA")  == 0 || strcmp(eltTypes, "NODE") == 0)
+  if (strcmp(eltType, "TRI")   == 0 || strcmp(eltType, "QUAD") == 0 ||
+      strcmp(eltType, "TETRA") == 0 || strcmp(eltType, "HEXA") == 0 ||
+      strcmp(eltType, "PENTA") == 0 || strcmp(eltType, "BAR")  == 0 || 
+      strcmp(eltType, "PYRA")  == 0 || strcmp(eltType, "NODE") == 0)
   { RELEASESHAREDU(array, f, cn); return array; }
-  if (strcmp(eltTypes, "NGON") != 0)
+  if (strcmp(eltType, "NGON") != 0)
   {
     PyErr_SetString(PyExc_TypeError, 
                     "splitNGon: elt type must be NGON.");
@@ -138,7 +138,7 @@ PyObject* K_TRANSFORM::splitNGon(PyObject* self, PyObject* args)
   {
     p = parts[i]; partSize[p] += 1;
   }
-  for (E_Int i = 0; i < nparts; i++) printf("partSize=%d\n", partSize[i]);
+  for (E_Int i = 0; i < nparts; i++) printf("Info: partSize=%d\n", partSize[i]);
 
   // output numpy of elements
   PyObject* tpl;
@@ -160,5 +160,4 @@ PyObject* K_TRANSFORM::splitNGon(PyObject* self, PyObject* args)
   delete [] parts;
   RELEASESHAREDU(array, f, cn); 
   return l;
-  
 }

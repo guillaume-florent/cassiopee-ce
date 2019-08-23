@@ -35,16 +35,15 @@ import srcs
 if Dist.getSystem()[0] == 'mingw': tools = ['mingw']
 else: tools = None
 AR = Dist.getAR()
-env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CCFLAGS=[], CXXFLAGS=[],
+env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CPPFLAGS=[],
                   LIBPATH=["Compressor"]+additionalLibPaths+libraryDirs,
                   LIBS=libraries+additionalLibs,
                   CPPPATH=additionalIncludePaths+[pythonIncDir, numpyIncDir, kcoreIncDir],
-                  CPPFLAGS=Dist.getCppArgs(),
+                  CFLAGS=Dist.getCArgs(),
+                  CXXFLAGS=Dist.getCppArgs(),
                   SHLIBSUFFIX=so_ext, SHLIBPREFIX='',
                   LINKFLAGS=Dist.getLinkArgs(),
-                  ENV = {'PATH': Dist.getenv('PATH'),
-                         'LD_LIBRARY_PATH': Dist.getenv('LD_LIBRARY_PATH'),
-                         'LM_LICENSE_FILE': Dist.getenv('LM_LICENSE_FILE')})
+                  ENV=Dist.getEnvForScons())
 
 #==============================================================================
 

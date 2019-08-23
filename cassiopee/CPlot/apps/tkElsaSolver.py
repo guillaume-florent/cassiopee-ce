@@ -1,13 +1,13 @@
 # - elsA solver app for elsAxdt -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def export(event=None):
@@ -44,7 +44,7 @@ def createApp(win):
                            text='tkElsaSolver', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Export to Onera\nelsA fluid solver.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -61,7 +61,7 @@ def createApp(win):
     # - VARS -
     # -0- file name for export -
     V = TK.StringVar(win); V.set('elsA.cgns'); VARS.append(V)
-    if CTK.PREFS.has_key('tkElsaSolverFile'): 
+    if 'tkElsaSolverFile' in CTK.PREFS: 
         V.set(CTK.PREFS['tkElsaSolverFile'])
     # -1- Method for createElsaHybrid
     V = TK.IntVar(win); V.set(0); VARS.append(V)
@@ -118,7 +118,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

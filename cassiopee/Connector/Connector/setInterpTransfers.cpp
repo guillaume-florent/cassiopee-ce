@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -16,9 +16,25 @@
     You should have received a copy of the GNU General Public License
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef _MPI
+#if defined(_WIN64)
+# define __int64 long long
+#endif
+#include <mpi.h>
+#endif
+
 # include "connector.h"
+
 using namespace std;
 using namespace K_FLD;
+
+#undef TimeShowsetinterp
+
+#ifdef TimeShowsetinterp
+E_Float time_in_0;
+E_Float time_out_0;
+E_Int rank_intp;
+#endif
 
 //=============================================================================
 /* Effectue les transferts par interpolation */
@@ -90,14 +106,12 @@ PyObject* K_CONNECTOR::setInterpTransfers(PyObject* self, PyObject* args)
   if (PyList_Check(pyVariables) != 0)
   {
     int nvariables = PyList_Size(pyVariables);
-    if ( nvariables > 0 )
+    if (nvariables > 0)
     {
       for (int i = 0; i < nvariables; i++)
       {
         PyObject* tpl0 = PyList_GetItem(pyVariables, i);
-        if (PyString_Check(tpl0) == 0)
-          PyErr_Warn(PyExc_Warning, "setInterpTransfers: variable must be a string. Skipped.");
-        else 
+        if (PyString_Check(tpl0))
         {
           char* varname = PyString_AsString(tpl0);        
           posvd = K_ARRAY::isNamePresent(varname, varStringD);      
@@ -108,6 +122,21 @@ PyObject* K_CONNECTOR::setInterpTransfers(PyObject* self, PyObject* args)
             posvarsR.push_back(posvr+1);
           }
         }
+#if PY_VERSION_HEX >= 0x03000000
+        else if (PyUnicode_Check(tpl0))
+        {
+          char* varname = PyBytes_AsString(PyUnicode_AsUTF8String(tpl0));
+          posvd = K_ARRAY::isNamePresent(varname, varStringD);      
+          posvr = K_ARRAY::isNamePresent(varname, varStringR);      
+          if (posvd != -1 && posvr != -1) 
+          {
+            posvarsD.push_back(posvd+1);
+            posvarsR.push_back(posvr+1);
+          }  
+        }
+#endif
+        else  
+          PyErr_Warn(PyExc_Warning, "setInterpTransfers: variable must be a string. Skipped.");
       }
     }
     else // toutes les variables communes sont transferees sauf le cellN
@@ -172,7 +201,7 @@ PyObject* K_CONNECTOR::setInterpTransfers(PyObject* self, PyObject* args)
     posmy = K_ARRAY::isNamePresent("MomentumY", varStringR);
     posmz = K_ARRAY::isNamePresent("MomentumZ", varStringR);
   }
-  //
+  
   E_Int nvars   = fr->getNfld();//nb de champs a interpoler
   E_Int* ptrcnd = cnd->begin(); 
   E_Int cnNfldD = cnd->getNfld();
@@ -206,10 +235,10 @@ PyObject* K_CONNECTOR::setInterpTransfers(PyObject* self, PyObject* args)
   vector<E_Float*> vectOfDnrFields(nvars);
 
   for (E_Int eq = 0; eq < nvars; eq++)
-   {
+  {
     vectOfRcvFields[eq] = fieldROut.begin(posvarsR[eq]);
     vectOfDnrFields[eq] = fd->begin(posvarsD[eq]);
-   }
+  }
 
 ////
 ////
@@ -219,7 +248,7 @@ PyObject* K_CONNECTOR::setInterpTransfers(PyObject* self, PyObject* args)
 # include "commonInterpTransfers_indirect.h" 
 
   // Prise en compte de la periodicite par rotation
-  if ( dirR != 0 )
+  if (dirR != 0)
   {
     # include "includeTransfers.h"
   }
@@ -239,7 +268,7 @@ PyObject* K_CONNECTOR::setInterpTransfers(PyObject* self, PyObject* args)
 //=============================================================================
 PyObject* K_CONNECTOR::_setInterpTransfers(PyObject* self, PyObject* args)
 {
-  char* GridCoordinates; char* FlowSolutionNodes; char* FlowSolutionCenters;
+  char *GridCoordinates, *FlowSolutionNodes, *FlowSolutionCenters;
 
   PyObject *zoneR, *zoneD;
   PyObject *pyIndRcv, *pyIndDonor; PyObject *pyArrayTypes;
@@ -258,7 +287,7 @@ PyObject* K_CONNECTOR::_setInterpTransfers(PyObject* self, PyObject* args)
   {
       return NULL;
   }
-  // Extraction de l angle de rotation
+  // Extraction de l'angle de rotation
   E_Int dirR = 0; E_Float theta = 0.;
   if ( K_FUNC::E_abs(AngleX) > 0.) {dirR = 1; theta=AngleX;}
   else if (K_FUNC::E_abs(AngleY) > 0.){dirR=2; theta=AngleY;}
@@ -284,7 +313,7 @@ PyObject* K_CONNECTOR::_setInterpTransfers(PyObject* self, PyObject* args)
   char* eltTypeR; char* eltTypeD;
 
   //codage general (lent ;-) )
-  if (compact==0)
+  if (compact == 0)
   {
     // recupere les champs du donneur (nodes)
     E_Int cnSizeD;
@@ -331,10 +360,10 @@ PyObject* K_CONNECTOR::_setInterpTransfers(PyObject* self, PyObject* args)
     }
 
     // Extrait les positions des variables a transferer
-    E_Int posvr, posvd;
     E_Int initAll = false;
     E_Int poscd = K_ARRAY::isNamePresent(cellNVariable, varStringD);      
     E_Int poscr = K_ARRAY::isNamePresent(cellNVariable, varStringR);
+    E_Int posvr, posvd, posvarcr=-1, posvarcd=-1;
 
     if (PyList_Check(pyVariables) != 0)
     {
@@ -344,19 +373,36 @@ PyObject* K_CONNECTOR::_setInterpTransfers(PyObject* self, PyObject* args)
         for (int i = 0; i < nvariables; i++)
         {
           PyObject* tpl0 = PyList_GetItem(pyVariables, i);
-          if (PyString_Check(tpl0) == 0)
-            PyErr_Warn(PyExc_Warning, "_setInterpTransfers: variable must be a string. Skipped.");
-          else 
+          if (PyString_Check(tpl0))  
           {
             char* varname = PyString_AsString(tpl0);        
             posvd = K_ARRAY::isNamePresent(varname, varStringD);      
             posvr = K_ARRAY::isNamePresent(varname, varStringR);      
+            if (posvd == poscd) posvarcd = posvd;
+            if (posvr == poscr) posvarcr = posvr;
             if (posvd != -1 && posvr != -1) 
             {
               posvarsD.push_back(posvd);
               posvarsR.push_back(posvr);
             }
           }
+#if PY_VERSION_HEX >= 0x03000000
+          else if (PyUnicode_Check(tpl0))
+          {
+            char* varname = PyBytes_AsString(PyUnicode_AsUTF8String(tpl0));
+            posvd = K_ARRAY::isNamePresent(varname, varStringD);      
+            posvr = K_ARRAY::isNamePresent(varname, varStringR);      
+            if (posvd == poscd) posvarcd = posvd;
+            if (posvr == poscr) posvarcr = posvr;
+            if (posvd != -1 && posvr != -1) 
+            {
+              posvarsD.push_back(posvd);
+              posvarsR.push_back(posvr);
+            } 
+          }
+#endif
+          else
+            PyErr_Warn(PyExc_Warning, "_setInterpTransfers: variable must be a string. Skipped.");
         }
       }
       else initAll = true;
@@ -375,8 +421,6 @@ PyObject* K_CONNECTOR::_setInterpTransfers(PyObject* self, PyObject* args)
     }
     if (initAll == true)// all common variables are transfered
     {
-      posvd = K_ARRAY::isCellNatureField2Present(varStringD);
-      posvr = K_ARRAY::isCellNatureField2Present(varStringR);
       char* varStringC; // chaine de caractere commune
       E_Int l = strlen(varStringR);
       varStringC = new char [l+1];
@@ -389,16 +433,12 @@ PyObject* K_CONNECTOR::_setInterpTransfers(PyObject* self, PyObject* args)
 
       for (E_Int i = 0; i < sizeVarsD; i++) posvarsD[i] -= 1;
       for (E_Int i = 0; i < sizeVarsR; i++) posvarsR[i] -= 1;
-    
-      if (posvd != -1) 
-        posvarsD.erase(remove(posvarsD.begin(), posvarsD.end(), posvd), posvarsD.end());
-      if (posvr != -1)
-        posvarsR.erase(remove(posvarsR.begin(), posvarsR.end(), posvr), posvarsR.end());
+      posvarcr = poscr; posvarcd = poscd;// position de cellNVariable dans la liste des variables a interpoler
     }
-    if (poscd > -1 && poscr > -1) // cellNVariable exists : do not interpolate but specific update
+    if (posvarcd > -1 && posvarcr > -1) // cellNVariable exists : do not interpolate but specific update
     {
-      posvarsD.erase(remove(posvarsD.begin(), posvarsD.end(), poscd), posvarsD.end());
-      posvarsR.erase(remove(posvarsR.begin(), posvarsR.end(), poscr), posvarsR.end());
+      posvarsD.erase(remove(posvarsD.begin(), posvarsD.end(), posvarcd), posvarsD.end());
+      posvarsR.erase(remove(posvarsR.begin(), posvarsR.end(), posvarcr), posvarsR.end());
     }
     delete [] varStringR; delete [] varStringD; delete [] eltTypeR; delete [] eltTypeD;
 
@@ -419,12 +459,23 @@ PyObject* K_CONNECTOR::_setInterpTransfers(PyObject* self, PyObject* args)
 # include "commonInterpTransfers_indirect.h" 
 
     // transfer of cellN variable
-    if ( poscd > -1 && poscr > -1) // cellNVariable exists
+    if (posvarcr > -1 && posvarcd > -1) // cellNVariable exists and is transfered specifically
     {  
-# include "commonCellNTransfersStrict.h"    
-    }    
+      E_Int indR, type, nocf;
+      E_Int indD0, indD, i, j, k, ncfLoc;
+      E_Int noi = 0; // compteur sur le tableau d indices donneur
+      E_Int sizecoefs = 0;
+      E_Float* cellNR = fieldsR[poscr];
+      E_Float* cellND = fieldsD[poscd];
+      for (E_Int noind = 0; noind < nbRcvPts; noind++)
+      { 
+        // adressage indirect pour indR
+        indR = rcvPts[noind];
+      # include "commonCellNTransfersStrict.h"   
+      }  
+    }
     // Prise en compte de la periodicite par rotation
-    if ( dirR != 0 )
+    if (dirR != 0)
     {
     # include "includeTransfers.h"
     }
@@ -485,7 +536,6 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
       return NULL;
   }
 
-  E_Int bcType = E_Int(bctype); // 0 : wallslip; 1: noslip; 2: log law of wall; 3: Musker law of wall
   /* varType : 
      1  : conservatives, 
      11 : conservatives + ronutildeSA 
@@ -495,6 +545,7 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
      31 : (ro,u,v,w,p) + ronutildeSA */
   E_Int varType = E_Int(vartype); 
   E_Int flagIbc = E_Int(flagibc); 
+  E_Int ibcType =  E_Int(bctype);
   vector<PyArrayObject*> hook;
   E_Int imdjmd, imd,jmd,kmd, cnNfldD, nvars,ndimdxR, ndimdxD,meshtype;
   E_Float* iptroD; E_Float* iptroR; 
@@ -504,6 +555,19 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
   E_Int* ipt_ndimdxR; E_Float** ipt_roR;
   ipt_ndimdxR = new E_Int[nidom];
   ipt_roR     = new E_Float*[nidom];
+
+  E_Float Pr = 0.71;
+  PyObject* zone0 = PyList_GetItem(zonesR, 0);  
+  PyObject* own   = K_PYTREE::getNodeFromName1(zone0 , ".Solver#ownData");
+  if (own != NULL)
+  {
+    PyObject* paramreal0 = K_PYTREE::getNodeFromName1(own, "Parameter_real");
+    if (paramreal0 != NULL)
+    {
+      E_Float* paramreal0val = K_PYTREE::getValueAF(paramreal0, hook);
+      Pr = paramreal0val[10];
+    }
+  }
 
   /*-------------------------------------*/
   /* Extraction tableau int et real      */
@@ -521,13 +585,13 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
   E_Int nractot= nracID+nracIBC;
 
   E_Int nrac, shift_rac;
-  if( flagIbc == 0) {nrac = nracID ; shift_rac = 2       ;}
+  if (flagIbc == 0) {nrac = nracID ; shift_rac = 2       ;}
   else              {nrac = nracIBC; shift_rac = 2+nracID;}
 
   vector<E_Float*> fieldsR;vector<E_Float*> fieldsD;
   vector<E_Int> posvarsD; vector<E_Int> posvarsR;
   E_Int* ptrcnd;
-  char* eltTypeR; char* eltTypeD;
+  //char* eltTypeR; char* eltTypeD;
   
 
   //Loc restrictif, tous les zones receveuses doivent avoir la meme loc
@@ -543,7 +607,7 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
       //printf("pos_rac %d %d %d %d \n", pos_rac, no_zR, shift_rac+irac, irac); 
       PyObject* zoneR = PyList_GetItem(zonesR, no_zR); // domaine i
 #     include "getfromzoneRcompact.h"
-      ipt_ndimdxR[irac] = ndimdxR;
+      ipt_ndimdxR[irac] = ndimdxR;      
       ipt_roR[irac]     = iptroR;
     }
  
@@ -599,7 +663,7 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
      //printf("nbRcvPts %d %d %d %d %d \n", nbRcvPts , types[0], irac, pos, pos + 7 + nbRcvPts + nbDonPts );
    
      E_Int indR, type;
-     E_Int indD0, indD, i, j, k, ncfLoc, nocf;
+     E_Int indD0, indD, i, j, k, ncfLoc;
      E_Int noi = 0; // compteur sur le tableau d indices donneur
      E_Int sizecoefs = 0;
 
@@ -618,18 +682,17 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
      } 
     }// omp
 
-    if(flagIbc== 1)
+    if(flagIbc>0)
     {
       E_Int threadmax_sdm  = __NUMTHREADS__;
-
       E_Int pos      = ipt_param_int[ shift_rac + irac];
       E_Int nbRcvPts = ipt_param_int[  pos + 1        ];
-      E_Int nbDonPts = ipt_param_int[  pos            ];
+      //E_Int nbDonPts = ipt_param_int[  pos            ];
       E_Int nbInterpD= ipt_param_int[  pos + 2        ];
 
       E_Int* rcvPts  = ipt_param_int +  pos + 7 +   nbRcvPts;// donor et receveur inverser car storage donor
 
-            pos         = ipt_param_int[ shift_rac + nractot + irac];
+      pos         = ipt_param_int[ shift_rac + nractot + irac];
       E_Float* ptrCoefs = ipt_param_real + pos;
 
       E_Int size = (nbRcvPts/threadmax_sdm)+1; // on prend du gras pour gerer le residus
@@ -637,7 +700,7 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
       if (r != 0) size  = size + 8 - r;        // on rajoute du bas pour alignememnt 64bits
       if (bctype <=1 ) size = 0;               // tableau inutile
 
-      FldArrayF  tmp(size*13*threadmax_sdm);
+      FldArrayF  tmp(size*14*threadmax_sdm);
       E_Float* ipt_tmp=  tmp.begin();
 
       E_Float* xPC     = ptrCoefs + nbInterpD;
@@ -646,9 +709,8 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
       E_Float* densPtr = ptrCoefs + nbInterpD +9*nbRcvPts;
 #     pragma omp parallel default(shared)
       {
-
-      //indice loop pour paralelisation omp
-      E_Int ideb, ifin;
+        //indice loop pour paralelisation omp
+        E_Int ideb, ifin;
 #ifdef _OPENMP
         E_Int  ithread           = omp_get_thread_num()+1;
         E_Int  Nbre_thread_actif = omp_get_num_threads(); // nombre de thread actif dans cette zone
@@ -656,6 +718,7 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
         E_Int ithread = 1;
         E_Int Nbre_thread_actif = 1;
 #endif
+
         // Calcul du nombre de champs a traiter par chaque thread
         E_Int chunk = nbRcvPts/Nbre_thread_actif;
         E_Int r = nbRcvPts - chunk*Nbre_thread_actif;
@@ -665,32 +728,43 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
         else { ideb = (chunk+1)*r+(ithread-r-1)*chunk; ifin = ideb + chunk; } 
         //  creer 2 zone  para pour threder au Max les loi de paroi
         if (varType == 1 || varType == 11)
-		setIBCTransfersCommonVar1(bcType, rcvPts, nbRcvPts, ideb, ifin, ithread, 
-                             xPC, xPC+nbRcvPts, xPC     +nbRcvPts*2,
-                                        xPW    , xPW     +nbRcvPts, xPW     +nbRcvPts*2,
-                                        xPI    , xPI     +nbRcvPts, xPI     +nbRcvPts*2, 
-                                        densPtr, densPtr +nbRcvPts, densPtr +nbRcvPts*2, densPtr +nbRcvPts*3,
-					ipt_tmp, size,
-					gamma, cv, muS, Cs, Ts,
-					vectOfDnrFields, vectOfRcvFields);
-	else if (varType == 2 || varType == 21)
-		setIBCTransfersCommonVar2(bcType, rcvPts, nbRcvPts, ideb, ifin, ithread,
-					xPC    , xPC     +nbRcvPts, xPC     +nbRcvPts*2,
-                                        xPW    , xPW     +nbRcvPts, xPW     +nbRcvPts*2,
-                                        xPI    , xPI     +nbRcvPts, xPI     +nbRcvPts*2, 
-                                        densPtr, densPtr +nbRcvPts, densPtr +nbRcvPts*2, densPtr +nbRcvPts*3,
-					ipt_tmp, size,
-					gamma, cv, muS, Cs, Ts,
-					vectOfDnrFields, vectOfRcvFields);
-	else if (varType == 3 || varType == 31)
-		setIBCTransfersCommonVar3(bcType, rcvPts, nbRcvPts, ideb, ifin, ithread,
-					xPC    , xPC     +nbRcvPts, xPC     +nbRcvPts*2,
-                                        xPW    , xPW     +nbRcvPts, xPW     +nbRcvPts*2,
-                                        xPI    , xPI     +nbRcvPts, xPI     +nbRcvPts*2, 
-                                        densPtr, densPtr +nbRcvPts, densPtr +nbRcvPts*2, densPtr +nbRcvPts*3,
-					ipt_tmp, size,
-					gamma, cv, muS, Cs, Ts,
-					vectOfDnrFields, vectOfRcvFields);
+          setIBCTransfersCommonVar1(ibcType, rcvPts, nbRcvPts, ideb, ifin, ithread, 
+                                    xPC, xPC+nbRcvPts, xPC+nbRcvPts*2,
+                                    xPW, xPW+nbRcvPts, xPW+nbRcvPts*2,
+                                    xPI, xPI+nbRcvPts, xPI+nbRcvPts*2, 
+                                    densPtr, densPtr+nbRcvPts, //dens + press
+                                    densPtr+nbRcvPts*2, densPtr+nbRcvPts*3, densPtr+nbRcvPts*4, // vx + vy + vz 
+                                    densPtr+nbRcvPts*5, densPtr+nbRcvPts*6, // utau + yplus
+                                    densPtr+nbRcvPts*7, densPtr+nbRcvPts*8, densPtr+nbRcvPts*9, densPtr+nbRcvPts*10, densPtr+nbRcvPts*11,
+                                    ipt_tmp, size,
+                                    gamma, cv, muS, Cs, Ts, Pr,
+                                    vectOfDnrFields, vectOfRcvFields);
+        else if (varType == 2 || varType == 21)
+        { 
+          setIBCTransfersCommonVar2(ibcType, rcvPts, nbRcvPts, ideb, ifin, ithread,
+                                    xPC, xPC+nbRcvPts, xPC+nbRcvPts*2,
+                                    xPW, xPW+nbRcvPts, xPW+nbRcvPts*2,
+                                    xPI, xPI+nbRcvPts, xPI+nbRcvPts*2, 
+                                    densPtr, densPtr+nbRcvPts, //dens + press
+                                    densPtr+nbRcvPts*2, densPtr+nbRcvPts*3, densPtr+nbRcvPts*4, // vx + vy + vz 
+                                    densPtr+nbRcvPts*5, densPtr+nbRcvPts*6, // utau + yplus
+                                    densPtr+nbRcvPts*7, densPtr+nbRcvPts*8, densPtr+nbRcvPts*9, densPtr+nbRcvPts*10, densPtr+nbRcvPts*11,
+                                    ipt_tmp, size,
+                                    gamma, cv, muS, Cs, Ts, Pr,
+                                    vectOfDnrFields, vectOfRcvFields);
+        }
+        else if (varType == 3 || varType == 31)
+          setIBCTransfersCommonVar3(ibcType, rcvPts, nbRcvPts, ideb, ifin, ithread,
+                                    xPC, xPC+nbRcvPts, xPC+nbRcvPts*2,
+                                    xPW, xPW+nbRcvPts, xPW+nbRcvPts*2,
+                                    xPI, xPI+nbRcvPts, xPI+nbRcvPts*2, 
+                                    densPtr, densPtr+nbRcvPts, //dens + press
+                                    densPtr+nbRcvPts*2, densPtr+nbRcvPts*3, densPtr+nbRcvPts*4, // vx + vy + vz 
+                                    densPtr+nbRcvPts*5, densPtr+nbRcvPts*6, // utau + yplus
+                                    densPtr+nbRcvPts*7, densPtr+nbRcvPts*8, densPtr+nbRcvPts*9, densPtr+nbRcvPts*10, densPtr+nbRcvPts*11,
+                                    ipt_tmp, size,
+                                    gamma, cv, muS, Cs, Ts, Pr,
+                                    vectOfDnrFields, vectOfRcvFields);
 
       } // Fin zone // omp
     } //ibc
@@ -713,22 +787,64 @@ PyObject* K_CONNECTOR::__setInterpTransfers(PyObject* self, PyObject* args)
 PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
 {
   PyObject *zonesR, *zonesD;
+
   PyObject *pyVariables;
   PyObject *pyParam_int, *pyParam_real;
-  E_Int /*loc,*/ vartype, bctype, type_transfert, no_transfert, nitrun;
+  E_Int vartype, bctype, type_transfert, no_transfert, It_target, nstep, nitmax;
+  E_Int rk, exploc, num_passage;
   E_Float gamma, cv, muS, Cs, Ts;
 
-  if (!PYPARSETUPLE(args,
-                    "OOOOOlllllddddd", "OOOOOiiiiiddddd",
-                    "OOOOOlllllfffff", "OOOOOiiiiifffff",
-                    &zonesR, &zonesD, &pyVariables, &pyParam_int,  &pyParam_real, &nitrun, &vartype,
-                    &bctype, &type_transfert, &no_transfert, &gamma, &cv, &muS, &Cs, &Ts))
-  {
-      return NULL;
-  }
+#ifdef TimeShowsetinterp  
+PyObject *timecount;
+      if (!PYPARSETUPLE(args,
+                        "OOOOOlllllllllldddddO", "OOOOOiiiiiiiiiidddddO",
+                        "OOOOOllllllllllfffffO", "OOOOOiiiiiiiiiifffffO",
+                        &zonesR, &zonesD, &pyVariables, &pyParam_int,  &pyParam_real, &It_target, &vartype,
+                        &bctype, &type_transfert, &no_transfert, &nstep, &nitmax, &rk, &exploc, &num_passage, &gamma, &cv, &muS, &Cs, &Ts, &timecount))
+      {
+          return NULL;
+      }
 
-  E_Int bcType = E_Int(bctype); // 0 : wallslip; 1: noslip; 2: log law of wall; 3: Musker law of wall
-  E_Int NitRun = E_Int(nitrun);
+#else
+      if (!PYPARSETUPLE(args,
+                        "OOOOOllllllllllddddd", "OOOOOiiiiiiiiiiddddd",
+                        "OOOOOllllllllllfffff", "OOOOOiiiiiiiiiifffff",
+                        &zonesR, &zonesD, &pyVariables, &pyParam_int,  &pyParam_real, &It_target, &vartype,
+                        &bctype, &type_transfert, &no_transfert, &nstep, &nitmax, &rk, &exploc, &num_passage, &gamma, &cv, &muS, &Cs, &Ts))
+      {
+          return NULL;
+      }
+#endif
+
+  
+  //E_Int init=0;
+
+#ifdef TimeShowsetinterp
+  FldArrayF* timecnt;
+  E_Float* ipt_timecount = NULL;
+  K_NUMPY::getFromNumpyArray(timecount, timecnt, true);
+  ipt_timecount = timecnt->begin();
+
+#ifdef _MPI
+  MPI_Initialized( &init );
+  if(init)
+  {
+    MPI_Comm_rank (MPI_COMM_WORLD, &rank_intp);  
+  }
+#endif
+#endif
+
+
+#ifdef TimeShowsetinterp
+ if ( rank_intp == 0)
+ {
+   time_in_0 = omp_get_wtime();
+ }
+#endif
+
+  //E_Int bcType   = E_Int(bctype);    // 0 : wallslip; 1: noslip; 2: log law of wall; 3: Musker law of wall
+  E_Int it_target= E_Int(It_target);
+
   /* varType : 
      1  : conservatives, 
      11 : conservatives + ronutildeSA 
@@ -745,13 +861,10 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
   else if(TypeTransfert==1) { pass_deb =0; pass_fin =1; }//IBCD
   else                      { pass_deb =0; pass_fin =2; }//ALL
 
+  E_Int NoTransfert  = E_Int(no_transfert);
 
-  E_Int NoTransfert   = E_Int(no_transfert);
-
-  vector<PyArrayObject*> hook;
-  //E_Int kmd, cnNfldD, nvars,ndimdxR, ndimdxD,meshtype;
-  E_Int /*imd, jmd, imdjmd,*/ kmd, cnNfldD, nvars,/*ndimdxR, ndimdxD,*/meshtype;
-  //E_Float* iptroD; E_Float* iptroR; 
+  
+  E_Int kmd, cnNfldD, nvars, meshtype;
 
   if( vartype <= 3 &&  vartype >= 1) nvars =5;
   else                               nvars =6;
@@ -772,6 +885,53 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
   ipt_roD          = new E_Float*[nidomD*2];
   ipt_roD_vert     = ipt_roD + nidomD;
 
+
+  vector<PyArrayObject*> hook ;
+
+  E_Float Pr = 0.71;
+  PyObject* zone0 = PyList_GetItem(zonesR, 0);  
+  PyObject* own   = K_PYTREE::getNodeFromName1(zone0 , ".Solver#ownData");
+  if (own != NULL)
+  {
+    PyObject* paramreal0 = K_PYTREE::getNodeFromName1(own, "Parameter_real");
+    if (paramreal0 != NULL)
+    {
+      E_Float* paramreal0val = K_PYTREE::getValueAF(paramreal0, hook);
+      Pr = paramreal0val[10];
+    }
+  }
+
+  /*----------------------------------*/
+  /* Get the Shift values for Padding */
+  /*----------------------------------*/
+
+  E_Int** ipt_param_int_Shift;
+
+  ipt_param_int_Shift = new E_Int*[nidomR];
+
+  for (E_Int nd = 0; nd < nidomR; nd++)
+  {
+    
+  PyObject* zone = PyList_GetItem(zonesR, nd);  
+  PyObject* own  = K_PYTREE::getNodeFromName1(zone , ".Solver#ownData");
+  if (own != NULL)
+  {
+    PyObject* paramint = K_PYTREE::getNodeFromName1(own, "Parameter_int");
+    if (paramint != NULL)
+    {
+      ipt_param_int_Shift[nd] = K_PYTREE::getValueAI(paramint, hook);      
+    }
+    else
+    {
+      ipt_param_int_Shift[nd] = NULL;    
+    }       
+  }  
+  else
+   {
+      ipt_param_int_Shift[nd] = NULL;    
+   }  
+  } 
+
   /*-------------------------------------*/
   /* Extraction tableau int et real      */
   /*-------------------------------------*/
@@ -782,10 +942,13 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
   res_donor = K_NUMPY::getFromNumpyArray(pyParam_real, param_real, true);
   E_Float* ipt_param_real = param_real->begin();
 
-  
-
   //On recupere le nom de la 1ere variable a recuperer 
-   PyObject* tpl0= PyList_GetItem(pyVariables, 0); char* varname = PyString_AsString(tpl0);
+  PyObject* tpl0= PyList_GetItem(pyVariables, 0); 
+  char* varname = NULL;
+  if (PyString_Check(tpl0)) varname = PyString_AsString(tpl0);
+#if PY_VERSION_HEX >= 0x03000000
+  else if (PyUnicode_Check(tpl0)) varname = PyBytes_AsString(PyUnicode_AsUTF8String(tpl0)); 
+#endif
 
   //on recupere sol et solcenter ainsi que connectivite et taille zones Donneuses (tc)
   for (E_Int nd = 0; nd < nidomD; nd++)
@@ -796,46 +959,130 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
 
   //on recupere sol et solcenter et taille zones receuveuses (t)
   for (E_Int nd = 0; nd < nidomR; nd++)
-  {  
-     PyObject* zoneR = PyList_GetItem(zonesR, nd);
-#    include "getfromzoneRcompact_all.h"
-  }
+    {  
+      PyObject* zoneR = PyList_GetItem(zonesR, nd);
+#     include "getfromzoneRcompact_all.h"
+    }
 
+  E_Int nbcomIBC = ipt_param_int[1];
+  E_Int nbcomID  = ipt_param_int[2+nbcomIBC];
+  
+  E_Int shift_graph = nbcomIBC + nbcomID + 2;
 
   E_Int threadmax_sdm  = __NUMTHREADS__;
-  E_Int ech            = ipt_param_int[ NoTransfert ];
+  E_Int ech            = ipt_param_int[ NoTransfert +shift_graph];
   E_Int nrac           = ipt_param_int[ ech +1 ];          //nb total de raccord
   E_Int nrac_inst      = ipt_param_int[ ech +2 ];          //nb total de raccord instationnaire
   E_Int timelevel      = ipt_param_int[ ech +3 ];          //nb de pas de temps stocker pour chaque raccord instationnaire
+  E_Int nrac_steady    = nrac - nrac_inst;                 //nb total de raccord stationnaire
 
-  E_Int it_target = 0;
-  if (timelevel !=0) { it_target = NitRun%timelevel; }//selection du pas de temps dans la base instationnaire 
 
-  E_Int nrac_steady = nrac - nrac_inst;                     //nb total de raccord stationnaire
 
-  // printf("nrac = %d, nrac_inst = %d, level= %d, it_target= %d  \n",  nrac, nrac_inst, timelevel,it_target);
+  //gestion nombre de pass pour raccord instationnaire
+  E_Int pass_inst_deb=0; 
+  E_Int pass_inst_fin=1;
+  if (nrac_inst > 0) pass_inst_fin=2;
+
+  E_Int size_autorisation = nrac_steady+1;
+  size_autorisation = K_FUNC::E_max(size_autorisation , nrac_inst+1);
+
+  //E_Int autorisation_transferts[nrac_inst+1][nrac_steady+1];
+  E_Int autorisation_transferts[pass_inst_fin][size_autorisation];
+  //E_Int** autorisation_transfert = new E_int*[pass_inst_fin]
+  //for (E_Int i = 0 ; i < pass_inst_fin; i++)
+  //    {
+  //	E_Int* autorisation_transfert[i] = new E_Int[size_autorisation];
+  //   }
+
+
+  // printf("nrac = %d, nrac_inst = %d, level= %d, it_target= %d , nitrun= %d \n",  nrac, nrac_inst, timelevel,it_target, NitRun);
   //on dimension tableau travail pour IBC
   E_Int nbRcvPts_mx =0;
-  for  (E_Int ipass_inst=0; ipass_inst< 2; ipass_inst++)
+  for  (E_Int pass_inst=pass_inst_deb; pass_inst< pass_inst_fin; pass_inst++)
   {
-    E_Int irac_deb= 0; E_Int irac_fin= nrac_steady;
-    if(ipass_inst == 1){ irac_deb = ipt_param_int[ ech + 4 + it_target             ];
-                         irac_fin = ipt_param_int[ ech + 4 + it_target + timelevel ];  }
+      E_Int irac_deb= 0; E_Int irac_fin= nrac_steady;
+      if (pass_inst == 1) { irac_deb = ipt_param_int[ ech + 4 + it_target ];
+	   irac_fin = ipt_param_int[ ech + 4 + it_target + timelevel ];}
 
-    for  (E_Int irac=irac_deb; irac< irac_fin; irac++)
-    { 
-      E_Int shift_rac =  ech + 4 + timelevel*2 + irac;
-      if( ipt_param_int[ shift_rac+ nrac*10 + 1] > nbRcvPts_mx) nbRcvPts_mx = ipt_param_int[ shift_rac+ nrac*10 + 1]; 
+
+      for  (E_Int irac=irac_deb; irac< irac_fin; irac++)
+	{ 
+	  E_Int shift_rac =  ech + 4 + timelevel*2 + irac;
+	  if( ipt_param_int[ shift_rac+ nrac*10 + 1] > nbRcvPts_mx) nbRcvPts_mx = ipt_param_int[ shift_rac+ nrac*10 + 1];
+	  //E_Int NoD      =  ipt_param_int[ shift_rac + nrac*5     ];
+	  //E_Int NoR      =  ipt_param_int[ shift_rac + nrac*11 +1 ];
+
+    E_Int irac_auto= irac-irac_deb;
+	  autorisation_transferts[pass_inst][irac_auto]=0;
+
+	  if(rk==3 && exploc == 2) // Si on est en explicit local, on va autoriser les transferts entre certaines zones seulement en fonction de la ss-ite courante
+
+	    {
+
+	      E_Int debut_rac = ech + 4 + timelevel*2 + 1 + nrac*16 + 27*irac;     
+	      E_Int levelD = ipt_param_int[debut_rac + 25];
+	      E_Int levelR = ipt_param_int[debut_rac + 24];
+	      E_Int cyclD  = nitmax/levelD;
+
+		// Le pas de temps de la zone donneuse est plus petit que celui de la zone receveuse   
+		if (levelD > levelR && num_passage == 1)		
+		  {
+		    if (nstep%cyclD==cyclD-1 or nstep%cyclD==cyclD/2 && (nstep/cyclD)%2==1)
+		      {
+			autorisation_transferts[pass_inst][irac_auto]=1;
+			//if( ipt_param_int[ shift_rac+ nrac*10 + 1] > nbRcvPts_mx) nbRcvPts_mx = ipt_param_int[ shift_rac+ nrac*10 + 1];
+		      }
+		    else {continue;}
+		  }
+		// Le pas de temps de la zone donneuse est plus grand que celui de la zone receveuse
+		else if (levelD < levelR && num_passage == 1) 
+		  {
+		    if (nstep%cyclD==1 || nstep%cyclD==cyclD/4 || nstep%cyclD== cyclD/2-1 || nstep%cyclD== cyclD/2+1 || nstep%cyclD== cyclD/2+cyclD/4 || nstep%cyclD== cyclD-1)
+                         {
+			   autorisation_transferts[pass_inst][irac_auto]=1;
+			   //if( ipt_param_int[ shift_rac+ nrac*10 + 1] > nbRcvPts_mx) nbRcvPts_mx = ipt_param_int[ shift_rac+ nrac*10 + 1];
+			 }
+		    else {continue;}
+		  }
+		// Le pas de temps de la zone donneuse est egal a celui de la zone receveuse
+		else if (levelD == levelR && num_passage == 1)
+		  {
+		    if (nstep%cyclD==cyclD/2-1 || (nstep%cyclD==cyclD/2 && (nstep/cyclD)%2==0) || nstep%cyclD==cyclD-1) 
+		      { 
+			autorisation_transferts[pass_inst][irac_auto]=1; 
+			//if( ipt_param_int[ shift_rac+ nrac*10 + 1] > nbRcvPts_mx) nbRcvPts_mx = ipt_param_int[ shift_rac+ nrac*10 + 1];
+		      }
+		    else {continue;}
+		  }
+		// Le pas de temps de la zone donneuse est egal a celui de la zone receveuse (cas du deuxieme passage)   
+		else if (levelD == ipt_param_int[debut_rac +24] && num_passage == 2)
+		  {
+		  if (nstep%cyclD==cyclD/2 && (nstep/cyclD)%2==1)
+		    {
+		      autorisation_transferts[pass_inst][irac_auto]=1;
+		      //if( ipt_param_int[ shift_rac+ nrac*10 + 1] > nbRcvPts_mx) nbRcvPts_mx = ipt_param_int[ shift_rac+ nrac*10 + 1];
+		    }
+		  else                                            {continue;}
+		  }
+		else {continue;} 
+	    }
+           // Sinon, on autorise les transferts entre ttes les zones a ttes les ss-ite
+	   else 
+	     { 
+	       autorisation_transferts[pass_inst][irac_auto]=1; 
+	       //if( ipt_param_int[ shift_rac+ nrac*10 + 1] > nbRcvPts_mx) nbRcvPts_mx = ipt_param_int[ shift_rac+ nrac*10 + 1];
+	     }
+	    
+	}
     }
-  }
 
   E_Int size = (nbRcvPts_mx/threadmax_sdm)+1; // on prend du gras pour gerer le residus
   E_Int r =  size % 8;
   if (r != 0) size  = size + 8 - r;           // on rajoute du bas pour alignememnt 64bits
-  if (bctype <=1 ) size = 0;                  // tableau inutile
+  if (bctype <=1 ) size = 0;                  // tableau inutile : SP voir avec Ivan 
 
-  FldArrayF  tmp(size*13*threadmax_sdm);
-  E_Float* ipt_tmp=  tmp.begin();
+  FldArrayF  tmp(size*14*threadmax_sdm);
+  E_Float* ipt_tmp = tmp.begin();
 
     //# pragma omp parallel default(shared)  num_threads(1)
     # pragma omp parallel default(shared)
@@ -857,41 +1104,51 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
 
   //1ere pass_typ: IBC
   //2eme pass_typ: transfert
-  //
+
   for  (E_Int ipass_typ=pass_deb; ipass_typ< pass_fin; ipass_typ++)
   {
-   // printf("ipass_typ = %d \n",  ipass_typ );
    //1ere pass_inst: les raccord fixe
    //2eme pass_inst: les raccord instationnaire
-   for  (E_Int ipass_inst=0; ipass_inst< 2; ipass_inst++)
+   for  (E_Int pass_inst=pass_inst_deb; pass_inst< pass_inst_fin; pass_inst++)
    {
-
-    //printf("ipass_inst = %d, level= %d \n",  ipass_inst, nrac_inst_level );
+    //printf("pass_inst = %d, level= %d \n",  pass_inst, nrac_inst_level );
     E_Int irac_deb= 0; E_Int irac_fin= nrac_steady;
-    if(ipass_inst == 1){ irac_deb = ipt_param_int[ ech + 4 + it_target             ];
-                         irac_fin = ipt_param_int[ ech + 4 + it_target + timelevel ];  }
+    if(pass_inst == 1)
+    { 
+      irac_deb = ipt_param_int[ ech + 4 + it_target             ];
+      irac_fin = ipt_param_int[ ech + 4 + it_target + timelevel ];  
+    }
 
-    //printf("iracdeb=  %d, iracfin= %d \n", irac_deb, irac_fin  );
+    //cout << irac_deb << " "  << endl;
     for  (E_Int irac=irac_deb; irac< irac_fin; irac++)
     {
-      //E_Int shift_rac =  ech + 4 + irac;
+
+     E_Int irac_auto= irac-irac_deb;
+
+     if (autorisation_transferts[pass_inst][irac_auto]==1)
+     
+      {
+
       E_Int shift_rac =  ech + 4 + timelevel*2 + irac;
 
-      //printf("ipass_typ = %d, ipass_inst= %d, irac=  %d, ithread= %d \n", ipass_typ,ipass_inst,irac , ithread );
-      E_Int ibc =  ipt_param_int[ shift_rac + nrac*3     ];
+      //printf("ipass_typ = %d, pass_inst= %d, irac=  %d, ithread= %d \n", ipass_typ,pass_inst,irac , ithread );
+      // ibc: -1 : raccord ID, 0 : wallslip, 1 slip, 2 : log , 3 : Musker, 4 : outpress
+      E_Int ibcType =  ipt_param_int[shift_rac+nrac*3];
+      E_Int ibc = 1;
+      if (ibcType < 0) ibc = 0;
       if( 1-ibc != ipass_typ)  continue;
 
       E_Int NoD      =  ipt_param_int[ shift_rac + nrac*5     ];
       E_Int loc      =  ipt_param_int[ shift_rac + nrac*9  +1 ]; //+1 a cause du nrac mpi
       E_Int NoR      =  ipt_param_int[ shift_rac + nrac*11 +1 ];
       E_Int nvars_loc=  ipt_param_int[ shift_rac + nrac*13 +1 ]; //neq fonction raccord rans/LES
-      E_Int rotation =  ipt_param_int[ shift_rac + nrac*14 +1 ]; //flag pour periodicite azymuthal
+      E_Int rotation =  ipt_param_int[ shift_rac + nrac*14 +1 ]; //flag pour periodicite azimutale
 
       E_Int meshtype = ipt_ndimdxD[NoD + nidomD*6];
       E_Int cnNfldD  = ipt_ndimdxD[NoD + nidomD*7];
       E_Int* ptrcnd  = ipt_cnd[    NoD           ];
 
-      if(loc == 0)
+      if (loc == 0)
       {
         for (E_Int eq = 0; eq < nvars_loc; eq++)
         {
@@ -904,13 +1161,20 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
       {
         for (E_Int eq = 0; eq < nvars_loc; eq++)
         {
-         vectOfRcvFields[eq] = ipt_roR[ NoR] + eq*ipt_ndimdxR[ NoR ];
-         vectOfDnrFields[eq] = ipt_roD[ NoD] + eq*ipt_ndimdxD[ NoD ];
+         vectOfRcvFields[eq] = ipt_roR[ NoR] + eq*(ipt_ndimdxR[ NoR ] + ipt_param_int_Shift[NoR][66] );
+         vectOfDnrFields[eq] = ipt_roD[ NoD] + eq*(ipt_ndimdxD[ NoD ] + ipt_param_int_Shift[NoD][66] );
         }
          imd= ipt_ndimdxD[ NoD+ nidomD  ]; jmd= ipt_ndimdxD[ NoD+ nidomD*2];
       }
 
       imdjmd = imd*jmd;
+
+          // std::cout << "loc" << loc << std::endl;
+          // std::cout << "Dim trans Py " << " dim  R " << ipt_ndimdxR[NoR] << std::endl;
+          // std::cout << "Dim trans Py " << " dim  D " << ipt_ndimdxD[NoD] << std::endl;
+          // std::cout << "Dim trans Py " << " dim  imd " << ipt_ndimdxD[NoD + nidomD] << std::endl;
+          // std::cout << "Dim trans Py " << " dim  jmd " << ipt_ndimdxD[NoD + nidomD*2] << std::endl;
+
 
       ////
       //  Interpolation parallele
@@ -921,14 +1185,15 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
        //E_Int nbDonPts = ipt_param_int[ shift_rac                ];
   
        E_Int pos;
-       pos  = ipt_param_int[ shift_rac + nrac*7 ]     ; E_Int* ntype      = ipt_param_int +  pos;
-       pos  = pos +1 + ntype[0]                       ; E_Int* types      = ipt_param_int +  pos;
-       pos  = ipt_param_int[ shift_rac + nrac*6      ]; E_Int* donorPts   = ipt_param_int +  pos;
-       pos  = ipt_param_int[ shift_rac + nrac*12 + 1 ]; E_Int* rcvPts     = ipt_param_int +  pos;   // donor et receveur inverser car storage donor
+       pos  = ipt_param_int[ shift_rac + nrac*7 ]     ; E_Int* ntype      = ipt_param_int  + pos;
+       pos  = pos +1 + ntype[0]                       ; E_Int* types      = ipt_param_int  + pos;
+       pos  = ipt_param_int[ shift_rac + nrac*6      ]; E_Int* donorPts   = ipt_param_int  + pos;
+       pos  = ipt_param_int[ shift_rac + nrac*12 + 1 ]; E_Int* rcvPts     = ipt_param_int  + pos;   // donor et receveur inverser car storage donor
        pos  = ipt_param_int[ shift_rac + nrac*8      ]; E_Float* ptrCoefs = ipt_param_real + pos;
+       //printf("%d %d\n", ibcType, pos);
 
        E_Int nbInterpD = ipt_param_int[ shift_rac +  nrac ]; E_Float* xPC=NULL; E_Float* xPI=NULL; E_Float* xPW=NULL; E_Float* densPtr=NULL;
-       if(ibc ==1)
+       if (ibc == 1)
        { 
         xPC     = ptrCoefs + nbInterpD;
         xPI     = ptrCoefs + nbInterpD +3*nbRcvPts;
@@ -939,7 +1204,7 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
        E_Int ideb      = 0;
        E_Int ifin      = 0;
        E_Int shiftCoef = 0;
-       E_Int shiftDonnor  = 0;
+       E_Int shiftDonor  = 0;
        
        for (E_Int ndtyp = 0; ndtyp < ntype[0]; ndtyp++)
        { 
@@ -992,13 +1257,12 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
 //        if (nd  <  r) { pt_deb = ideb + nd*(chunk+1)               ; pt_fin = pt_deb + (chunk+1); }  
 //        else          { pt_deb = ideb +    (chunk+1)*r+(nd-r)*chunk; pt_fin = pt_deb +  chunk;    }
 
-      //printf(" irac= %d, NoR= %d, nvar=  %d, NoD= %d, Rans=  %d, rot= %d, fin= %d, ithread= %d \n", irac, NoR, nvars_loc, NoD, ipass_inst ,rotation, pt_fin , ithread );
+      //printf(" irac= %d, NoR= %d, nvar=  %d, NoD= %d, Rans=  %d, rot= %d, fin= %d, ithread= %d \n", irac, NoR, nvars_loc, NoD, pass_inst ,rotation, pt_fin , ithread );
       //if(ithread <=8 && NoD==83 )  printf(" shift %d  %d %d %d  %d %d %d  %d \n", irac, NoR,NoD, ntype[ 1 + ndtyp],pt_deb,pt_fin  , type, ithread );
       //if(ithread <=8 && NoR==114 )  printf(" new   %d  %d %d %d  %d %d %d  %d \n", irac, NoR,NoD, ntype[ 1 + ndtyp],pt_deb,pt_fin  , type, ithread );
 
-          noi       = shiftDonnor;                             // compteur sur le tableau d indices donneur
+          noi       = shiftDonor;                             // compteur sur le tableau d indices donneur
           indCoef   = (pt_deb-ideb)*sizecoefs +  shiftCoef;
-
           if     (nvars_loc==5)
           {
 #           include "commonInterpTransfers_reorder_5eq.h" 
@@ -1009,67 +1273,96 @@ PyObject* K_CONNECTOR::___setInterpTransfers(PyObject* self, PyObject* args)
           }
           else
           {
-#           include "commonInterpTransfers_reorder_neq.h" 
+#           include "commonInterpTransfers_reorder_neq.h"
           }
            
-
           // Prise en compte de la periodicite par rotation
-          if ( rotation == 1 )
+          if (rotation == 1)
           {
            E_Float* angle = ptrCoefs + nbInterpD;
 #          include "includeTransfers_rotation.h"
           }
-
           // ibc    
-          if(ibc== 1)
+          if (ibc == 1)
           {
+            E_Int nvars = vectOfDnrFields.size();
+            if ( (ibcType==2 || (ibcType==3)) && nvars < 6)
+            {
+              printf("Warning: setIBCTransfersCommonVar: number of variables (<6) inconsistent with ibctype (wall law).\n"); 
+            }
+            else 
+            {
             if (varType == 1 || varType == 11)
-              setIBCTransfersCommonVar1(bcType, rcvPts, nbRcvPts, pt_deb, pt_fin, ithread,
-                                        xPC    , xPC     +nbRcvPts, xPC     +nbRcvPts*2,
-                                        xPW    , xPW     +nbRcvPts, xPW     +nbRcvPts*2,
-                                        xPI    , xPI     +nbRcvPts, xPI     +nbRcvPts*2, 
-                                        densPtr, densPtr +nbRcvPts, densPtr +nbRcvPts*2, densPtr +nbRcvPts*3,
+              setIBCTransfersCommonVar1(ibcType, rcvPts, nbRcvPts, pt_deb, pt_fin, ithread,
+                                        xPC, xPC+nbRcvPts, xPC+nbRcvPts*2,
+                                        xPW, xPW+nbRcvPts, xPW+nbRcvPts*2,
+                                        xPI, xPI+nbRcvPts, xPI+nbRcvPts*2, 
+                                        densPtr, densPtr+nbRcvPts, //dens + press
+                                        densPtr+nbRcvPts*2, densPtr+nbRcvPts*3, densPtr+nbRcvPts*4, // vx + vy + vz 
+                                        densPtr+nbRcvPts*5, densPtr+nbRcvPts*6, // utau + yplus
+                                        densPtr+nbRcvPts*7, densPtr+nbRcvPts*8, densPtr+nbRcvPts*9, densPtr+nbRcvPts*10, densPtr+nbRcvPts*11,
                                         ipt_tmp, size,
-                                        gamma, cv, muS, Cs, Ts,
+                                        gamma, cv, muS, Cs, Ts, Pr,
                                         vectOfDnrFields, vectOfRcvFields);
             else if (varType == 2 || varType == 21)
-              setIBCTransfersCommonVar2(bcType, rcvPts, nbRcvPts, pt_deb, pt_fin, ithread,
+            {
+              setIBCTransfersCommonVar2(ibcType, rcvPts, nbRcvPts, pt_deb, pt_fin, ithread,
                                         xPC    , xPC     +nbRcvPts, xPC     +nbRcvPts*2,
                                         xPW    , xPW     +nbRcvPts, xPW     +nbRcvPts*2,
                                         xPI    , xPI     +nbRcvPts, xPI     +nbRcvPts*2, 
-                                        densPtr, densPtr +nbRcvPts, densPtr +nbRcvPts*2, densPtr +nbRcvPts*3,
+                                        densPtr, densPtr+nbRcvPts, //dens + press
+                                        densPtr+nbRcvPts*2, densPtr+nbRcvPts*3, densPtr+nbRcvPts*4, // vx + vy + vz 
+                                        densPtr+nbRcvPts*5, densPtr+nbRcvPts*6, // utau + yplus
+                                        densPtr+nbRcvPts*7, densPtr+nbRcvPts*8, densPtr+nbRcvPts*9, densPtr+nbRcvPts*10, densPtr+nbRcvPts*11,
                                         ipt_tmp, size,
-                                        gamma, cv, muS, Cs, Ts,
+                                        gamma, cv, muS, Cs, Ts, Pr,
                                         vectOfDnrFields, vectOfRcvFields);
+            }
             else if (varType == 3 || varType == 31)
-              setIBCTransfersCommonVar3(bcType, rcvPts, nbRcvPts, pt_deb, pt_fin, ithread,
+              setIBCTransfersCommonVar3(ibcType, rcvPts, nbRcvPts, pt_deb, pt_fin, ithread,
                                         xPC    , xPC     +nbRcvPts, xPC     +nbRcvPts*2,
                                         xPW    , xPW     +nbRcvPts, xPW     +nbRcvPts*2,
                                         xPI    , xPI     +nbRcvPts, xPI     +nbRcvPts*2, 
-                                        densPtr, densPtr +nbRcvPts, densPtr +nbRcvPts*2, densPtr +nbRcvPts*3,
+                                        densPtr, densPtr+nbRcvPts, //dens + press
+                                        densPtr+nbRcvPts*2, densPtr+nbRcvPts*3, densPtr+nbRcvPts*4, // vx + vy + vz 
+                                        densPtr+nbRcvPts*5, densPtr+nbRcvPts*6, // utau + yplus
+                                        densPtr+nbRcvPts*7, densPtr+nbRcvPts*8, densPtr+nbRcvPts*9, densPtr+nbRcvPts*10, densPtr+nbRcvPts*11,
                                         ipt_tmp, size,
-                                        gamma, cv, muS, Cs, Ts,
+                                        gamma, cv, muS, Cs, Ts, Pr,
                                         vectOfDnrFields, vectOfRcvFields);
+          }
           }//ibc          
   //*
   //        } //chunk
   //*/
           ideb       = ideb + ifin;
-          shiftCoef  = shiftCoef    +  ntype[1+ndtyp]*sizecoefs; //shift coef   entre 2 types successif
-          shiftDonnor= shiftDonnor  +  ntype[1+ndtyp];           //shift donnor entre 2 types successif
+          shiftCoef  = shiftCoef   +  ntype[1+ndtyp]*sizecoefs; //shift coef   entre 2 types successif
+          shiftDonor = shiftDonor +  ntype[1+ndtyp];           //shift donor entre 2 types successif
        }// type 
+      }// autorisation transfert
     }//irac
-   }//ipass_inst
+   }//pass_inst
   #pragma omp barrier 
   }//ipass
   }// omp
 
- delete [] ipt_ndimdxR; delete [] ipt_roR; delete [] ipt_ndimdxD; delete [] ipt_roD; delete [] ipt_cnd;
 
- RELEASESHAREDZ(hook, (char*)NULL, (char*)NULL); 
- RELEASESHAREDN(pyParam_int    , param_int    );
- RELEASESHAREDN(pyParam_real   , param_real   );
+  delete [] ipt_ndimdxR; delete [] ipt_roR; delete [] ipt_ndimdxD; delete [] ipt_roD; delete [] ipt_cnd;
+  delete [] ipt_param_int_Shift;
 
- Py_INCREF(Py_None);
- return Py_None;
+  RELEASESHAREDZ(hook, (char*)NULL, (char*)NULL); 
+  RELEASESHAREDN(pyParam_int    , param_int    );
+  RELEASESHAREDN(pyParam_real   , param_real   );
+
+  Py_INCREF(Py_None);
+
+#ifdef TimeShowsetinterp  
+if ( rank_intp == 0)
+    {
+      time_out_0 = omp_get_wtime();
+      ipt_timecount[2]  =  ipt_timecount[2] + time_out_0 - time_in_0;
+    }
+#endif
+
+  return Py_None;
 }

@@ -1,6 +1,5 @@
 # - overlayField -
 import Converter as C
-import Generator as G
 import Initiator as I
 
 from math import *

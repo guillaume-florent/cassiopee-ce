@@ -1,5 +1,6 @@
 # - tkCanvas : create drawing canvas -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -22,7 +23,7 @@ DIRX = 0; DIRY = 0; DIRZ = 0
 #==============================================================================
 def initCanvas(event=None):
     dir = VARS[0].get()
-    if (dir == 'None' and CTK.t == []): return
+    if dir == 'None' and CTK.t == []: return
 
     global CANVASSIZE, XC, YC, ZC, UX, UY, UZ, LX, LY, LZ, DIRX, DIRY, DIRZ
     if CANVASSIZE == -1:
@@ -51,8 +52,8 @@ def initCanvas(event=None):
         LX = posEye[0]-posCam[0]
         LY = posEye[1]-posCam[1]
         LZ = posEye[2]-posCam[2]
-        if (LX*LX + LY*LY + LZ*LZ < 1.e-10): LX = -1
-        if (dirCam[0]*dirCam[0] + dirCam[1]*dirCam[1] + dirCam[2]*dirCam[2] == 0.):
+        if LX*LX + LY*LY + LZ*LZ < 1.e-10: LX = -1
+        if dirCam[0]*dirCam[0] + dirCam[1]*dirCam[1] + dirCam[2]*dirCam[2] == 0.:
             dirCam = (0,0,1)
         DIRX = dirCam[0]; DIRY = dirCam[1]; DIRZ = dirCam[2]
     
@@ -120,7 +121,7 @@ def setCanvas(event=None):
     nob = C.getNobOfBase(base, CTK.t)
     CTK.add(CTK.t, nob, -1, a)
     
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -221,7 +222,7 @@ def createApp(win):
                            text='tkCanvas', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Manage a canvas\nfor drawing..\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -243,11 +244,11 @@ def createApp(win):
     V = TK.StringVar(win); V.set('0.'); VARS.append(V)
     # -2- Canvas dir step
     V = TK.StringVar(win); V.set('0.1'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCanvasDirStep'):
+    if 'tkCanvasDirStep' in CTK.PREFS:
         V.set(CTK.PREFS['tkCanvasDirStep'])
     # -3- Canvas enlarge step
     V = TK.StringVar(win); V.set('1.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCanvasEnlargeStep'):
+    if 'tkCanvasEnlargeStep' in CTK.PREFS:
         V.set(CTK.PREFS['tkCanvasEnlargeStep'])
 
     # - Direction -
@@ -325,7 +326,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

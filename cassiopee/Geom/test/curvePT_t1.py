@@ -9,6 +9,6 @@ def f(t):
     return (x,y,z)
 
 a = D.curve(f)
-t = C.newPyTree(['Base',1]); t[2][1][2].append(a)
+t = C.newPyTree(['Base',1,a])
 test.testT(t, 1)
 test.writeCoverage(100)

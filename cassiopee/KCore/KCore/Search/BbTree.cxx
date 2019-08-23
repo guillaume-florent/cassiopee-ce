@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -21,12 +21,15 @@
 
 #include "Search/BbTree.h"
 #include <algorithm>
+#include "Fld/ngon_t.hxx"
 
-/// Builds a tree and inserts the boxes from begin to end.
+using ngon_type = ngon_t<K_FLD::IntArray>;
+
+/// Builds a tree and inserts the boxes (externally built) from begin to end.
 template <E_Int DIM, typename BBoxType>
 K_SEARCH::BbTree<DIM, BBoxType>::BbTree
 (const std::vector<BBoxType*> & boxes, E_Float tolerance)
-:_boxes(boxes), _tolerance(tolerance)
+:_boxes(boxes), _tolerance(tolerance), _owes_boxes(false), _pool(NULL)
 {
 
   size_type none = E_IDX_NONE, size = boxes.size();
@@ -45,6 +48,80 @@ K_SEARCH::BbTree<DIM, BBoxType>::BbTree
 #ifdef E_TIME1
 //_append_tree = _get_box_boxes = _get_longest_axis = _build_vectors = _fill_vectors = 0.;
 #endif
+}
+
+namespace K_SEARCH
+{
+/// Builds a tree and inserts the boxes (externally built) from begin to end.
+template <>
+template <typename array_t>
+BbTree<3>::BbTree
+(const K_FLD::FloatArray& crd, const array_t& ng, E_Float tolerance)
+: _tolerance(tolerance), _owes_boxes(true), _pool(NULL)
+{
+    
+  E_Int nb_elts = ng.PHs.size();
+  _pool = new K_SEARCH::BBox3D[nb_elts];
+
+  _boxes.reserve(nb_elts);
+  
+  Vector_t<E_Int> nodes;
+
+  for (int i = 0; i < nb_elts; i++){
+    ng.nodes_ph(i, nodes, true);
+    K_SEARCH::BBox3D* box = &_pool[i];
+    box->compute(crd, nodes);
+    _boxes.push_back(box);
+  }
+  
+  size_type none = E_IDX_NONE, size = _boxes.size();
+
+  _root_id = (size > 1) ? size : 0;
+  
+  //
+  _tree.resize(BBTREE_ROWS, size, &none); //fixme 
+  _tree.reserve(BBTREE_ROWS, 2*size); //fixme
+  
+  std::vector<size_type> indices(size);
+  for (size_type i = 0; i < size; ++i) indices[i] = i;
+
+  __insert(indices.begin(), indices.end());
+}
+
+template <>
+template <typename array_t>
+BbTree<3>::BbTree
+(const K_FLD::FloatArray& crd, const array_t& PGs)
+: _tolerance(E_EPSILON), _owes_boxes(true), _pool(NULL)
+{
+    
+  E_Int nb_elts = PGs.size();
+  _pool = new K_SEARCH::BBox3D[nb_elts];
+
+  _boxes.reserve(nb_elts);
+
+  for (int i = 0; i < nb_elts; i++){
+    
+    const E_Int* nodes = PGs.get_facets_ptr(i);
+    E_Int stride = PGs.stride(i);
+    K_SEARCH::BBox3D* box = &_pool[i];
+    box->compute(crd, nodes, stride, 1);
+    _boxes.push_back(box);
+  }
+  
+  size_type none = E_IDX_NONE, size = _boxes.size();
+
+  _root_id = (size > 1) ? size : 0;
+  
+  //
+  _tree.resize(BBTREE_ROWS, size, &none); //fixme 
+  _tree.reserve(BBTREE_ROWS, 2*size); //fixme
+  
+  std::vector<size_type> indices(size);
+  for (size_type i = 0; i < size; ++i) indices[i] = i;
+
+  __insert(indices.begin(), indices.end());
+}
 }
 
 ///

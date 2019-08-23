@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -38,13 +38,13 @@ inline E_Int fact(E_Int n)
 {
   switch (n)
   {
-    case 1: return 1; break;
-    case 2: return 2; break;
-    case 3: return 6; break;
-    case 4: return 24; break;
-    case 5: return 120; break;
-    case 6: return 720; break;
-    case 7: return 5040; break;
+    case 1: return 1;
+    case 2: return 2;
+    case 3: return 6;
+    case 4: return 24;
+    case 5: return 120;
+    case 6: return 720;
+    case 7: return 5040;
     default: return (n)*fact(n-1);
   }
 }
@@ -135,22 +135,28 @@ inline double E_abs(double a)
 }
 #endif
 
-/** Absolute value for E_Int */
+/** Absolute value for E_Int */ 
 inline E_Int E_abs(E_Int a)
 {
   return (a < 0) ? -a : a;
 }
 
-/** Sign for E_Float */
+/** Sign for E_Float (return -1 or 1) */
 inline E_Float E_sign(E_Float a)
 {
   return (a < 0.0) ? -1.0 : 1.0;
 }
 
-/** Sign for E_Int */
+/** Sign for E_Int (return -1 or 1) */
 inline E_Int E_sign(E_Int a)
 {
   return (a < 0) ? -1 : 1;
+}
+
+/** Sign for E_Int (-1,0,1) */
+inline E_Int E_signum(E_Int a)
+{
+  return (a > 0)-(a < 0);
 }
 
 /** Swap for E_Float */
@@ -284,8 +290,7 @@ E_Float sqrNorm(InputIterator it)
   E_Float result = 0.;
 
   for (E_Int i = 0; i < dim; ++i)
-    result += (*(it+i))*(*(it+i));
-
+  { result += (*it) * (*it); it++; }
   return result;
 }
 
@@ -330,7 +335,6 @@ E_Float tripleProduct(const E_Float* u, const E_Float* v, E_Float* w)
 inline
 E_Float zzdet4(const E_Float* P0, const E_Float* P1, const E_Float* P2, const E_Float* Q)
 {
-  // zzdet3(P0Q, P0P1, P0P2)
   return zzdet3(Q[0]-P0[0], Q[1]-P0[1], Q[2]-P0[2],  P1[0]-P0[0], P1[1]-P0[1], P1[2]-P0[2], P2[0]-P0[0], P2[1]-P0[1], P2[2]-P0[2]);
 }
 
@@ -357,7 +361,7 @@ inline
 E_Float normalize (InputIterator it)
 {
   E_Float L0 = ::sqrt(sqrNorm<dim>(it));
-  if (L0 > E_EPSILON)
+  if (L0 != 0.)
   {
     E_Float L1 = 1./L0;
     for (E_Int i = 0; i < dim; ++i) *(it+i) *= L1;

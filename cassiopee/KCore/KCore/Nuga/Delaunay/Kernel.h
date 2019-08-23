@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -147,7 +147,7 @@ private:
   std::map<size_type, int_pair_set_type::iterator> _node_to_rightS;
   
 public:
- 
+ size_type _Nmatch;
 #ifdef E_TIME
 public:
   double inval_time;

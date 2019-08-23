@@ -25,14 +25,14 @@ a = G.cart((0,0,0), (10./(ni-1),10./(nj-1),1), (ni,nj,nk)); a[0] = 'extraction'
 
 # 2nd order, nodes, direct storage
 t = C.newPyTree(['Rcv','Dnr']); t[2][1][2] = [a]; t[2][2][2] = [m]
-t[2][1] = C.initVars(t[2][1], 'cellN=2')
+t[2][1] = C.initVars(t[2][1], 'cellN', 2)
 t[2][1] = X.setInterpData(t[2][1],t[2][2],loc='nodes',storage='direct',order=2,method='leastsquares')
 t[2][1] = C.initVars(t[2][1],'F',0.)
 t[2][1] = X.setInterpTransfers(t[2][1],t[2][2],variables=['F'])
 test.testT(t,1)
 
 t = C.deleteChimeraInfo__(t)
-t[2][1] = C.initVars(t[2][1], 'centers:cellN=2')
+t[2][1] = C.initVars(t[2][1], 'centers:cellN', 2)
 t[2][1] = X.setInterpData(t[2][1],t[2][2],loc='centers',storage='direct',order=2,method='leastsquares')
 t[2][1] = C.initVars(t[2][1],'centers:F',0.)
 t[2][1] = X.setInterpTransfers(t[2][1],t[2][2],variables=['F'])

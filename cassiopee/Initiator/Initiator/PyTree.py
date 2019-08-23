@@ -1,8 +1,11 @@
 # 
 # Python Interface to initialize pyTrees solutions
 #
-import Initiator
+from . import Initiator
 __version__ = Initiator.__version__
+
+try: range = xrange
+except: pass
 
 try:
     import Converter
@@ -65,21 +68,20 @@ def _initLamb(t, position=(0.,0.), Gamma=2., MInf=0.5, loc='nodes'):
     for z in nodes:
         coordn = C.getFields(Internal.__GridCoordinates__, z)
         if coordn == []:
-            print 'Warning: initLamb: zone '+z[0]+\
-            ' has no coordinates. Skipped...'
+            print ('Warning: initLamb: zone '+z[0]+' has no coordinates. Skipped...')
             continue
         coordn = coordn[0]
         if loc == 'nodes':
             a = C.getFields(Internal.__FlowSolutionNodes__, z)[0]
             if a == []: a = coordn
-            else: a = Converter.addVars([a, coordn])
+            else: Converter._addVars([a, coordn])
             a = Initiator.initLamb(a, position, Gamma, MInf)
             z = C.setFields([a], z, 'nodes')
         else:
             coordc = Converter.node2Center(coordn)
             ac = C.getFields(Internal.__FlowSolutionCenters__, z)[0]
             if ac == []: ac = coordc
-            else: ac = Converter.addVars([ac, coordc])
+            else: Converter._addVars([ac, coordc])
             ac = Initiator.initLamb(ac, position, Gamma, MInf)
             ac = Converter.rmVars(ac, ['x', 'y', 'z'])
             z = C.setFields([ac], z, 'centers')
@@ -99,20 +101,20 @@ def _initVisbal(t, position=(0.,0.), Gamma=2., MInf=0.5, loc='nodes'):
     for z in nodes:
         coordn = C.getFields(Internal.__GridCoordinates__, z)
         if coordn == []:
-            print 'Warning: initVisbal: zone '+z[0]+' has no coordinates. Skipped...'
+            print ('Warning: initVisbal: zone '+z[0]+' has no coordinates. Skipped...')
             continue
         coordn = coordn[0]
         if loc == 'nodes':
             a = C.getFields(Internal.__FlowSolutionNodes__, z)[0]
-            if (a == []): a = coordn
-            else: a = Converter.addVars([a, coordn])
+            if a == []: a = coordn
+            else: Converter._addVars([a, coordn])
             a = Initiator.initVisbal(a, position, Gamma, MInf)
             z = C.setFields([a], z, 'nodes')
         else:
             coordc = Converter.node2Center(coordn)
             ac = C.getFields(Internal.__FlowSolutionCenters__, z)[0]
-            if (ac == []): ac = coordc
-            else: ac = Converter.addVars([ac, coordc])
+            if ac == []: ac = coordc
+            else: Converter._addVars([ac, coordc])
             ac = Initiator.initVisbal(ac, position, Gamma, MInf)
             ac = Converter.rmVars(ac, ['x', 'y', 'z'])
             z = C.setFields([ac], z, 'centers')
@@ -132,20 +134,20 @@ def _initYee(t, position=(0.,0.), Gamma=2., MInf=0.5, loc='nodes'):
     for z in nodes:
         coordn = C.getFields(Internal.__GridCoordinates__, z)
         if coordn == []:
-            print 'Warning: initYee: zone '+z[0]+' has no coordinates. Skipped...'
+            print ('Warning: initYee: zone '+z[0]+' has no coordinates. Skipped...')
             continue
         coordn = coordn[0]
         if loc == 'nodes':
             a = C.getFields(Internal.__FlowSolutionNodes__, z)[0]
             if a == []: a = coordn
-            else: a = Converter.addVars([a, coordn])
+            else: Converter._addVars([a, coordn])
             a = Initiator.initYee(a, position, Gamma, MInf)
             z = C.setFields([a], z, 'nodes')
         else:
             coordc = Converter.node2Center(coordn)
             ac = C.getFields(Internal.__FlowSolutionCenters__, z)[0]
             if ac == []: ac = coordc
-            else: ac = Converter.addVars([ac, coordc])
+            else: Converter._addVars([ac, coordc])
             ac = Initiator.initYee(ac, position, Gamma, MInf)
             ac = Converter.rmVars(ac, ['x', 'y', 'z'])
             z = C.setFields([ac], z, 'centers')
@@ -166,22 +168,21 @@ def _initScully(t, position=(0.,0.), Gamma=2.,
     for z in nodes:
         coordn = C.getFields(Internal.__GridCoordinates__, z)
         if (coordn == []):
-            print 'Warning: initScully: zone '+z[0]+\
-            ' has no coordinates. Skipped...'
+            print ('Warning: initScully: zone '+z[0]+' has no coordinates. Skipped...')
             continue
         coordn = coordn[0]
-        if (loc == 'nodes'):
+        if loc == 'nodes':
             a = C.getFields(Internal.__FlowSolutionNodes__, z)[0]
-            if (a == []): a = coordn
-            else: a = Converter.addVars([a, coordn])
+            if a == []: a = coordn
+            else: Converter._addVars([a, coordn])
             a = Initiator.initScully(a, position, Gamma, coreRadius, MInf,
                                      model)
             C.setFields([a], z, 'nodes')
         else:
             coordc = Converter.node2Center(coordn)
             ac = C.getFields(Internal.__FlowSolutionCenters__, z)[0]
-            if (ac == []): ac = coordc
-            else: ac = Converter.addVars([ac, coordc])
+            if ac == []: ac = coordc
+            else: Converter._addVars([ac, coordc])
             ac = Initiator.initScully(ac, position, Gamma, coreRadius, MInf,
                                       model)
             ac = Converter.rmVars(ac, ['x', 'y', 'z'])
@@ -198,7 +199,7 @@ def overlayField(t1, t2, MInf=0.5, loc='nodes'):
 def _overlayField(t1, t2, MInf=0.5, loc='nodes'):
     nodes = Internal.getZones(t1)
     nodes2 = Internal.getZones(t2)
-    for c in xrange(len(nodes)):
+    for c in range(len(nodes)):
         z1 = nodes[c]
         if loc == 'centers':
             a1 = C.getAllFields(z1, 'centers')[0]

@@ -22,7 +22,7 @@
 #define	__NGON_T_HXX__
 
 #include "ngon_unit.h"
-
+#include "parallel.h"
 #include <iostream>
 #include <map>
 #include "MeshElement/Edge.h"
@@ -34,6 +34,8 @@
 #include "Connect/EltAlgo.h"
 #include "Connect/BARSplitter.h"
 #include "Connect/MeshTool.h"
+
+#include "Nuga/include/macros.h"
 
 #ifdef DEBUG_NGON_T
 #include "IO/io.h"
@@ -49,25 +51,51 @@
 #define STARTELTS(cn) (2+cn[1])
 #define CONVEXITY_TOL 1.e-8 //to be consistent with what is implemented
 
-#define dPATHO_PH_NONE 0
-#define dNO_STAR_FOUND 1
-#define dCENTROID_NOT_STAR 2
-#define dISO_BARY_NOT_STAR 3
-#define dOPEN_PHS 4
-#define dCONCAVITY_TO_SPLIT 5
-#define dSHOWSTOPPER 6
-#define dUNCOMPUTABLES 7
 ///
 template <typename Connectivity_t>
 struct ngon_t
 {
-  enum ePathoPG { PATHO_PG_NONE=0, SPIKE, HAT, DELAUNAY_FAILURE};
-  enum ePathoPH { PATHO_PH_NONE=dPATHO_PH_NONE, NO_STAR_FOUND = dNO_STAR_FOUND, CENTROID_NOT_STAR =dCENTROID_NOT_STAR, 
-                  ISO_BARY_NOT_STAR =dISO_BARY_NOT_STAR, OPEN_PHS = dOPEN_PHS, CONCAVITY_TO_SPLIT = dCONCAVITY_TO_SPLIT, SHOWSTOPPER = dSHOWSTOPPER, UNCOMPUTABLES = dUNCOMPUTABLES};
+  enum ePathoPG { PATHO_PG_NONE=0, SPIKE, HAT, DEGEN_PG, PG_DELAUNAY_FAILURE = dDELAUNAY_FAILURE};
+  enum ePathoPH { PATHO_PH_NONE=dPATHO_PH_NONE, CENTROID_NOT_STAR =dCENTROID_NOT_STAR, 
+                  ISO_BARY_NOT_STAR =dISO_BARY_NOT_STAR, OPEN_PHS = dOPEN_PHS, CONCAVITY_TO_SPLIT = dCONCAVITY_TO_SPLIT, PH_DELAUNAY_FAILURE = dDELAUNAY_FAILURE, PH_DEGEN = 999};
+  enum eExtrudeStrategy { CST_ABS=0, CST_REL_MEAN, CST_REL_MIN, VAR_REL_MEAN, VAR_REL_MIN};
+  
+  using unit_type = ngon_unit;
+  
   ///
   ngon_t(const Connectivity_t& cNGON) :PGs(cNGON.begin() + STARTFACE), PHs(cNGON.begin() + STARTELTS(cNGON)){ PGs.updateFacets(); PHs.updateFacets(); }
   ///
   ngon_t(const ngon_t& ngt) :PGs(ngt.PGs), PHs(ngt.PHs){ PGs.updateFacets(); PHs.updateFacets(); }
+  ///
+  template <typename ELT>
+  static void convert(const K_FLD::IntArray& cnt,ngon_t& ng)
+  {
+    E_Int nbe = cnt.cols();
+    
+    using btype = typename ELT::boundary_type;
+    
+    E_Int molec[ELT::NB_BOUNDS];
+    
+    E_Int pg_count(1);
+    
+    for (E_Int i=0; i < nbe; ++i)
+    {
+      ELT e(cnt.col(i), 1); //convert to 1-based
+      
+      for (E_Int j=0; j< ELT::NB_BOUNDS; ++j)
+      {
+        btype b;
+        e.getBoundary(j, b);
+        
+        ng.PGs.add(btype::NB_NODES, b.nodes());
+        molec[j] = pg_count++;
+      }
+      
+      ng.PHs.add(ELT::NB_BOUNDS, molec);
+    }
+  }
+  /// 
+  ngon_t(const E_Int* cNGon, E_Int sz1, E_Int nb_pgs, const E_Int* cNFace, E_Int sz2, E_Int nb_phs) :PGs(cNGon, sz1, nb_pgs), PHs(cNFace, sz2, nb_phs){ PGs.updateFacets(); PHs.updateFacets(); }
   ///
   ngon_t& operator=(const Connectivity_t& cNGON)
   {
@@ -106,33 +134,57 @@ struct ngon_t
   ///
   ngon_t(){}
 
-  bool is_consistent(){ return PHs.is_consistent() && PGs.is_consistent(); }
+  bool is_consistent(E_Int max_node_id) const { 
+    
+    if (! attributes_are_consistent()) return false;
+       
+    E_Int maxPGid = PHs.get_facets_max_id();
+    E_Int nb_pgs =  PGs.size();
+    if (maxPGid > nb_pgs) return false;
+    
+    E_Int maxNodid = PGs.get_facets_max_id();
+    if (maxNodid > max_node_id) return false;
+    
+    return true;
+  }
+  
+  bool attributes_are_consistent() const
+  {
+    if (! PGs.attributes_are_consistent()) return false;
+    if (! PHs.attributes_are_consistent()) return false;
+    return true;
+  }
   
   ///
-  void addPH(const ngon_t& ngi, E_Int PHi)
+  void addPH(const ngon_t& ngi, E_Int PHi, bool extractFaces = false)
   {
     if (PGs.size()) PGs.updateFacets();
     if (PHs.size()) PHs.updateFacets();
     
-    E_Int npgid = PGs.size()+1;
-    E_Int nb_pgs = ngi.PHs.stride(PHi);
-    
-    Vector_t<E_Int> molecPH;
-        
-    const E_Int* pPGi = ngi.PHs.get_facets_ptr(PHi);
-    for (E_Int i = 0; i <nb_pgs; ++i, ++npgid)
+    if (extractFaces)
     {
-      E_Int PGi = *(pPGi+i)-1;
-      PGs.add(ngi.PGs.stride(PGi), ngi.PGs.get_facets_ptr(PGi));
-      if (!ngi.PGs._type.empty())
-        PGs._type.push_back(ngi.PGs._type[PGi]);
-      if (ngi.PGs._ancEs.cols() != 0)
-        PGs._ancEs.pushBack(ngi.PGs._ancEs.col(PGi), ngi.PGs._ancEs.col(PGi)+2);
-
-      molecPH.push_back(npgid);
-    }
+      E_Int npgid = PGs.size()+1;
+      E_Int nb_pgs = ngi.PHs.stride(PHi);
     
-    PHs.add(molecPH.size(), &molecPH[0]);
+      Vector_t<E_Int> molecPH;
+        
+      const E_Int* pPGi = ngi.PHs.get_facets_ptr(PHi);
+      for (E_Int i = 0; i <nb_pgs; ++i, ++npgid)
+      {
+        E_Int PGi = *(pPGi+i)-1;
+        PGs.add(ngi.PGs.stride(PGi), ngi.PGs.get_facets_ptr(PGi));
+        if (!ngi.PGs._type.empty())
+          PGs._type.push_back(ngi.PGs._type[PGi]);
+        if (ngi.PGs._ancEs.cols() != 0)
+          PGs._ancEs.pushBack(ngi.PGs._ancEs.col(PGi), ngi.PGs._ancEs.col(PGi)+2);
+
+        molecPH.push_back(npgid);
+      }  
+      PHs.add(molecPH.size(), &molecPH[0]);
+    }
+    else //warning : the caller must ensure to add these PGs outside  
+      PHs.add(ngi.PHs.stride(PHi), ngi.PHs.get_facets_ptr(PHi));
+    
     if (!ngi.PHs._type.empty())
       PHs._type.push_back(ngi.PHs._type[PHi]);
     if (ngi.PHs._ancEs.cols() != 0)
@@ -162,7 +214,7 @@ struct ngon_t
   
   // Converts a SURFACE formatted as Edges/PGs into a ngon_unit (PHs is cleared) representing the PGs
   // WARNING : inconsistent orientation of the surface upon exit
-  void export_surfacic_view(Connectivity_t& c)
+  E_Int export_surfacic_view(Connectivity_t& c)
   {
     c.clear();
     
@@ -172,7 +224,7 @@ struct ngon_t
     // Surfacic ngon ?
     for (E_Int i=0; (i<PGs.size()); ++i){
       if (PGs.stride(i) != 2)
-        return;
+        return 1;
     }
     
     c.resize(1, 2, 0);
@@ -187,10 +239,13 @@ struct ngon_t
     for (E_Int i=0; (i<polys.size()); ++i){
             
       E_Int nb_edges = polys.stride(i);
+
+      if (nb_edges < 3) continue; //degen
+
       const E_Int* pEs = polys.get_facets_ptr(i);
       
       cB.clear();
-      for (size_t j=0; j < nb_edges; ++j)
+      for (E_Int j=0; j < nb_edges; ++j)
       {
         E_Int Ej = pEs[j]-1;
         const E_Int* pN = edges.get_facets_ptr(Ej);
@@ -203,11 +258,11 @@ struct ngon_t
       // sort the nodes
       BARSplitter::getSortedNodes(cB, snodes);
       
-      /*if (snodes.size() != nb_edges) //degen
+      if (snodes.size() != (size_t)nb_edges) //degen
       {
-        std::cout << cB << std::endl;
+        //std::cout << cB << std::endl;
         continue;
-      }*/
+      }
       
       ++nb_polys;
       
@@ -220,6 +275,8 @@ struct ngon_t
     
     c[0]=nb_polys;
     c[1]=c.getSize()-2;
+    
+    return 0;
     
   }
   
@@ -358,6 +415,8 @@ struct ngon_t
   ///
   static void select_phs(const ngon_t& NGin, const Vector_t<bool>& keep, Vector_t<E_Int>& new_pg_ids, ngon_t& NGout)
   {
+    //WARNING : change the PG numerotation (even if keep is always true)
+    
     new_pg_ids.clear();
     NGout.clear();
     
@@ -372,6 +431,8 @@ struct ngon_t
   ///
   static void split_phs(const ngon_t& NGin, const Vector_t<bool>& flag, ngon_t& cng_ok, ngon_t& cng_nok)
   {
+    //WARNING : change the PG numerotation (even if flag is always true)
+    
     ngon_t tmp(NGin); //use tmp because cng_ok or cng_nok could be NGin
     Vector_t<bool> nflag(flag); //copy at the beginnning because flag might change after compress (if it is NGin._external)
     K_CONNECT::IdTool::negative(nflag);
@@ -471,7 +532,8 @@ struct ngon_t
   }
   
   ///
-  void flag_facets_of_elts(const std::vector<E_Int>& elts, E_Int index_start, std::vector<bool> & flag) const
+  template <typename T>
+  void flag_facets_of_elts(const std::vector<E_Int>& elts, E_Int index_start, std::vector<T> & flag) const
   {  
     PHs.updateFacets();
     PGs.updateFacets();
@@ -479,7 +541,7 @@ struct ngon_t
     //E_Int nb_elts = PHs.size();
   
     flag.clear();
-    flag.resize(PGs.size(), false);
+    flag.resize(PGs.size(), 0);
   
     E_Int nb_in_set(elts.size());
     // 
@@ -490,7 +552,53 @@ struct ngon_t
       const E_Int* facets = PHs.get_facets_ptr(ei);
     
       for (E_Int n=0; n < nb_facets; ++n)
-        flag[*(facets+n) - index_start] = true;
+        flag[*(facets+n) - index_start] = 1;
+    }
+  }
+  
+  template <typename T>
+  void flag_facets_of_elts(E_Int index_start, std::vector<T> & flag) const
+  {  
+    PHs.updateFacets();
+    PGs.updateFacets();
+  
+    E_Int nb_elts = PHs.size();
+  
+    flag.clear();
+    flag.resize(PGs.size(), 0);
+
+    // 
+    for (E_Int ei = 0; ei < nb_elts; ++ei)
+    {
+      E_Int nb_facets = PHs.stride(ei);
+      const E_Int* facets = PHs.get_facets_ptr(ei);
+    
+      for (E_Int n=0; n < nb_facets; ++n)
+        flag[*(facets+n) - index_start] = 1;
+    }
+  }
+  
+  ///
+  void type_facets_as_elts_type(E_Int ignore_type, E_Int shft, E_Int index_start)
+  {  
+    PHs.updateFacets();
+    PGs.updateFacets();
+  
+    E_Int nb_elts = PHs.size();
+  
+    PGs._type.resize(PGs.size(), ignore_type);
+  
+    // 
+    for (E_Int i = 0; i < nb_elts; ++i)
+    {
+      const E_Int& typ = PHs._type[i];
+      if (typ == ignore_type) continue;
+      
+      E_Int nb_facets = PHs.stride(i);
+      const E_Int* facets = PHs.get_facets_ptr(i);
+    
+      for (E_Int n=0; n < nb_facets; ++n)
+        PGs._type[*(facets+n) - index_start] = typ + shft;
     }
   }
   
@@ -921,13 +1029,14 @@ struct ngon_t
     PGs.updateFacets();
 
     E_Int sz = PGs.size(), err(0);
-    for (E_Int i=0; (i<sz) && !err ; ++i)
+    E_Int i=0;
+    for (; (i<sz) && !err ; ++i)
     {
       if (process && (*process)[i] == false)
         continue;
 
 #ifdef DEBUG_TRIANGULATOR
-      if (i == 650)
+      if (i == 15138)
         dt.dbg_enabled=true;
       else
         dt.dbg_enabled=false;
@@ -937,6 +1046,9 @@ struct ngon_t
       
       colors.resize(connectT3.getSize(), i);
     }
+    
+    if (err)
+      std::cout << "triangulate_pgs error at PG : " << i-1 << " (" << PGs.stride(i-1) << " nodes)" << std::endl; 
 
     return err;
   }
@@ -1178,7 +1290,7 @@ struct ngon_t
     PHs.updateFacets();
     PGs.updateFacets();
     
-    E_Int nb_pgs, nb_phs(PHs.size()), pgi, count(0);
+    E_Int nb_pgs, nb_phs(PHs.size()), pgi;
     E_Float g[3], G[3], K;
     K_FLD::FloatArray barys;
     barys.reserve(3, nb_phs);
@@ -1270,7 +1382,7 @@ struct ngon_t
   
   ///
   template<typename TriangulatorType>
-  static bool detect_pathological_PHs(const K_FLD::FloatArray& crd, const ngon_t& ng, const ngon_unit& orient, std::vector<ePathoPH>& PHtype, E_Float concave_threshold = E_EPSILON)
+  static bool detect_pathological_PHs(const K_FLD::FloatArray& crd, ngon_t& ng, const ngon_unit& orient, std::vector<ePathoPH>& PHtype)
   {
     TriangulatorType dt;
     
@@ -1280,21 +1392,23 @@ struct ngon_t
     PHtype.resize(nb_phs, PATHO_PH_NONE);
     
     bool has_problems(false);
+    E_Int open(0), showstopper(0), to_split(0);
 
 #ifndef DEBUG_NGON_T
-#pragma omp parallel for shared(has_problems)
+#pragma omp parallel for shared(has_problems) private(dt)
 #endif
     for (E_Int PHi=0; PHi < nb_phs; ++PHi)
     {
       const E_Int* first_pg = ng.PHs.get_facets_ptr(PHi);
       E_Int nb_pgs = ng.PHs.stride(PHi);
-      bool concave;
-      E_Int err = K_MESH::Polyhedron<UNKNOWN>::is_concave(crd, ng.PGs, first_pg, nb_pgs, false/*closed PH*/, orient.get_facets_ptr(PHi), concave, concave_threshold);
       
-      if (err)
+      PHtype[PHi] = (ePathoPH)K_MESH::Polyhedron<UNKNOWN>::is_pathological(dt, crd, ng.PGs, first_pg, nb_pgs, orient.get_facets_ptr(PHi));
+            
+      if (PHtype[PHi] == dOPEN_PHS) //this should be a bug
       {
-        PHtype[PHi] = (ePathoPH)dOPEN_PHS;
         has_problems = true;
+        std::cout << "OPEN PHS : " << PHi << std::endl;
+        ++open;
         continue;
         
 #ifdef DEBUG_NGON_T
@@ -1302,20 +1416,28 @@ struct ngon_t
 #endif
       }
       
-      ePathoPH centroid_test = (ePathoPH)K_MESH::Polyhedron<UNKNOWN>::is_centroid_star_shaped_PTH3(dt, crd, ng.PGs, first_pg, nb_pgs, orient.get_facets_ptr(PHi));
-      ePathoPH isob_test = (ePathoPH)K_MESH::Polyhedron<UNKNOWN>::is_iso_bary_star_shaped(dt, crd, ng.PGs, first_pg, nb_pgs, orient.get_facets_ptr(PHi));
-      
-      if (centroid_test == PATHO_PH_NONE || isob_test == PATHO_PH_NONE) // OK
+      if (PHtype[PHi] == PATHO_PH_NONE ) // OK
         continue;
-      else if (concave) // FLAG IT FOR SPLIT
+      else if (PHtype[PHi] == CONCAVITY_TO_SPLIT) // FLAG IT FOR SPLIT
       {
-        PHtype[PHi] = CONCAVITY_TO_SPLIT;
         has_problems = true;
+        ++to_split;
       }
-      else /*if (nb_pgs > 6)*/ /* fixme : temporary hack to avoid detecting highly anisotropic prisms*/
+      else if (PHtype[PHi] == PH_DELAUNAY_FAILURE) /*if (nb_pgs > 6)*/ /* fixme : temporary hack to avoid detecting highly anisotropic prisms*/
       {
         has_problems = true;
-        PHtype[PHi] = SHOWSTOPPER; // WORST CASE : cannot deal with such cell 
+        std::cout << "DELAUNAY_FAILURE : " << PHi << std::endl;
+        ++showstopper;
+      }
+      else if (PHtype[PHi] == PH_DEGEN)
+      {
+        has_problems = true;
+        std::cout << "SPIKE OR HAT OR DEGEN PG : " << PHi << std::endl;
+        ++showstopper;
+      }
+      else
+      {
+        //todo
       }
       
       //if (concave) std::cout << "concave " << std::endl;
@@ -1323,36 +1445,43 @@ struct ngon_t
 #ifdef DEBUG_NGON_T
       if (PHtype[PHi] == PATHO_PH_NONE) continue;
 
-      ngon_unit phs;
-      phs.add(ng.PHs.stride(PHi), ng.PHs.get_facets_ptr(PHi));
-      ngon_t ngo;
-      ngo.PGs=ng.PGs;
-      ngo.PHs= phs;
-      std::vector<E_Int> pgnids, phnids;
-      ngo.remove_unreferenced_pgs(pgnids, phnids);
-      K_FLD::IntArray cnto;
-      ngo.export_to_array(cnto);
-      MIO::write("patho.plt", crd, cnto, "NGON");
-    
-      DELAUNAY::Triangulator t;
-      E_Float v, centroid[3];
-      K_MESH::Polyhedron<UNKNOWN>::metrics2<DELAUNAY::Triangulator>(t, crd, ng.PGs, ng.PHs.get_facets_ptr(PHi), ng.PHs.stride(PHi), v, centroid);
-          
-      E_Float isoG[3];
-      typedef K_FLD::ArrayAccessor<K_FLD::FloatArray> acrd_t;
-      acrd_t acrd(crd);
-      std::vector<E_Int> phnodes;
-      K_MESH::Polyhedron<UNKNOWN>::unique_nodes(ng.PGs, ng.PHs.get_facets_ptr(PHi), ng.PHs.stride(PHi), phnodes);
-      K_MESH::Polyhedron<UNKNOWN>::iso_barycenter(acrd, &phnodes[0], phnodes.size(), 1, isoG);
-        
-      K_FLD::IntArray cn(2,1,0);
-      cn(1,0)=1;
-      K_FLD::FloatArray crd;
-      crd.pushBack(isoG, isoG+3);
-      crd.pushBack(centroid, centroid+3);
-
-      MIO::write("barycentroid0.mesh", crd, cn, "BAR");    
+//      ngon_unit phs;
+//      phs.add(ng.PHs.stride(PHi), ng.PHs.get_facets_ptr(PHi));
+//      ngon_t ngo;
+//      ngo.PGs=ng.PGs;
+//      ngo.PHs= phs;
+//      std::vector<E_Int> pgnids, phnids;
+//      ngo.remove_unreferenced_pgs(pgnids, phnids);
+//      K_FLD::IntArray cnto;
+//      ngo.export_to_array(cnto);
+//      MIO::write("patho.plt", crd, cnto, "NGON");
+//    
+//      DELAUNAY::Triangulator t;
+//      E_Float v, centroid[3];
+//      K_MESH::Polyhedron<UNKNOWN>::metrics2<DELAUNAY::Triangulator>(t, crd, ng.PGs, ng.PHs.get_facets_ptr(PHi), ng.PHs.stride(PHi), v, centroid);
+//          
+//      E_Float isoG[3];
+//      typedef K_FLD::ArrayAccessor<K_FLD::FloatArray> acrd_t;
+//      acrd_t acrd(crd);
+//      std::vector<E_Int> phnodes;
+//      K_MESH::Polyhedron<UNKNOWN>::unique_nodes(ng.PGs, ng.PHs.get_facets_ptr(PHi), ng.PHs.stride(PHi), phnodes);
+//      K_MESH::Polyhedron<UNKNOWN>::iso_barycenter(acrd, &phnodes[0], phnodes.size(), 1, isoG);
+//        
+//      K_FLD::IntArray cn(2,1,0);
+//      cn(1,0)=1;
+//      K_FLD::FloatArray crd;
+//      crd.pushBack(isoG, isoG+3);
+//      crd.pushBack(centroid, centroid+3);
+//
+//      MIO::write("baryTocentroid.mesh", crd, cn, "BAR");    
 #endif
+    }
+    
+    if (has_problems)
+    {
+      std::cout << "Open cells : " << open << std::endl;
+      std::cout << "Showstoppers : " << showstopper << std::endl;
+      std::cout << "NON-star to split : " << to_split << std::endl;
     }
     
     return has_problems;
@@ -1362,7 +1491,7 @@ struct ngon_t
   template <typename TriangulatorType>
   static E_Int detect_uncomputable_pgs(const K_FLD::FloatArray& crd, const ngon_unit& pgs, std::vector<ePathoPG> &flagPG)
   {
-    E_Int errcount=0;
+    E_Int errcount(0), normal_err_hat_count(0), normal_err_spike_count(0), normal_err_unknown_count(0), delaunay_err_count(0);
     flagPG.clear();
     flagPG.resize(pgs.size(), PATHO_PG_NONE);
   
@@ -1376,7 +1505,7 @@ struct ngon_t
     
     
 #ifndef DEBUG_NGON_T
-#pragma omp parallel for private(err, dt, cT3, W) reduction(+:errcount)
+#pragma omp parallel for private(err, dt, cT3, W) reduction(+:normal_err_hat_count, normal_err_spike_count, normal_err_unknown_count, delaunay_err_count)
 #endif
     for (size_t i = 0; i < flagPG.size(); ++i)
     {
@@ -1405,21 +1534,16 @@ struct ngon_t
 
         if (nb_nodes == 3)
         {
-          E_Float a = K_FUNC::sqrDistance(crd.col(*(nodes)-1), crd.col(*(nodes+1)-1), 3);
-          E_Float b = K_FUNC::sqrDistance(crd.col(*(nodes+1)-1), crd.col(*(nodes+2)-1), 3);
-          E_Float c = K_FUNC::sqrDistance(crd.col(*(nodes+2)-1), crd.col(*(nodes)-1), 3);
+          E_Int nspecial;
+          K_MESH::Triangle::eDegenType type = K_MESH::Triangle::degen_type(crd, nodes[0]-1, nodes[1]-1, nodes[2]-1, 1.e-12, 0., nspecial);
           
-          E_Float L02 = std::min(a,std::min(b,c));
-          E_Float L22 = std::max(a,std::max(b,c));
-          E_Float L12 = (L02 == a && L22 == b) ? c : (L02 == a && L22 == c) ? b : a;
-          L02=::sqrt(L02);
-          L12=::sqrt(L12);
-          L22=::sqrt(L22);
-          
-          if (::fabs(L02+L12 - L22) < 0.05*L22 && ::fabs(L02-L12) < 0.05* L22)
+          if (type == K_MESH::Triangle::HAT)
           {
             flagPG[i]=HAT;
+            ++normal_err_hat_count;
+
 #ifdef DEBUG_NGON_T
+            std::cout << "NORMAL FAILURE : HAT: " << i << std::endl;
         /*ngon_unit pg;
         pg.add(pgs.stride(i), pgs.get_facets_ptr(i));
         ngon_t ngo(pg);
@@ -1428,10 +1552,13 @@ struct ngon_t
         MIO::write("hat.plt", crd, cnto, "NGON");*/
 #endif
           }
-          else
+          else if (type == K_MESH::Triangle::SPIKE)
           {
             flagPG[i]=SPIKE;
+            ++normal_err_spike_count;
+
 #ifdef DEBUG_NGON_T
+            std::cout << "NORMAL FAILURE : SPIKE: " << i << std::endl;
         /*ngon_unit pg;
         pg.add(pgs.stride(i), pgs.get_facets_ptr(i));
         ngon_t ngo(pg);
@@ -1440,10 +1567,18 @@ struct ngon_t
         MIO::write("spike.plt", crd, cnto, "NGON");*/
 #endif
           }
+          else if (type == K_MESH::Triangle::SMALL)
+          {
+            flagPG[i]=SPIKE;//fixme
+             ++normal_err_spike_count;
+          }
         }
         else
         {
           //todo
+          ++normal_err_unknown_count;
+          std::cout << "NORMAL FAILURE : UNKNOWN: " << i << std::endl;
+          flagPG[i] = DEGEN_PG;
         }
       }
       
@@ -1451,12 +1586,12 @@ struct ngon_t
       if (flagPG[i] == PATHO_PG_NONE) 
       {
         err = K_MESH::Polygon::triangulate(dt, crd, nodes, nb_nodes, 1, cT3);
-        flagPG[i] = (err != 0) ? DELAUNAY_FAILURE : PATHO_PG_NONE;
+        flagPG[i] = (err != 0) ? PG_DELAUNAY_FAILURE : PATHO_PG_NONE;
+        if (err) ++delaunay_err_count;
       }
       
       if (flagPG[i] != PATHO_PG_NONE)
       {
-        ++errcount;
 #ifdef DEBUG_NGON_T
         ngon_unit pg;
         pg.add(pgs.stride(i), pgs.get_facets_ptr(i));
@@ -1467,8 +1602,18 @@ struct ngon_t
 #endif
       }
     }
-    if (errcount)
-      std::cout << errcount << " uncomputable surfaces were detected." << std::endl;
+    
+    errcount = normal_err_hat_count + normal_err_spike_count + normal_err_unknown_count + delaunay_err_count;
+    if (errcount){
+      std::cout << errcount << " uncomputable surfaces were detected : " << std::endl;
+      std::cout << "  -- Normal failure    : " << normal_err_hat_count + normal_err_spike_count + normal_err_unknown_count << std::endl;
+      std::cout << "  ----- hat       : " << normal_err_hat_count << std::endl;
+      std::cout << "  ----- spike     : " << normal_err_spike_count << std::endl;
+      std::cout << "  ----- degen PG  : " << normal_err_unknown_count << std::endl;
+      std::cout << "  -- Delaunay failure  : " << delaunay_err_count << std::endl;
+    }
+    else
+      std::cout << "OK : all polygons are computables." << std::endl;
 
   return errcount;
 }
@@ -1511,8 +1656,7 @@ static E_Int detect_bad_volumes(const K_FLD::FloatArray& crd, const ngon_t& ngi,
  
   std::vector<E_Float> vols;
   ngon_t::volumes<TriangulatorType>(crd, ngi, vols);
-     
-  E_Int ratiocount(0);
+
   E_Float vi, vj;
   
   for (E_Int i=0; i < nb_phs; ++i)
@@ -1606,7 +1750,7 @@ static E_Int extract_uncomputables
   }
 
   // extend with second neighborhood and separate from non-involved polyhedra
-  for (size_t j=0; j< neigh_level; ++j)
+  for (E_Int j=0; j< neigh_level; ++j)
     flag_neighbors(ngi, keep);
     
   split_phs(ngi, keep, uphs_wv1, remaining);
@@ -1617,7 +1761,7 @@ static E_Int extract_uncomputables
 ///
 template <typename TriangulatorType>
 static E_Int extract_pathological_PHs
-(const K_FLD::FloatArray& crd, ngon_t& ngi, E_Float concave_threshold, E_Int neigh_level, std::vector<ngon_t>& phsv, ngon_t& neigh_phs, ngon_t& remaining_phs)
+(const K_FLD::FloatArray& crd, ngon_t& ngi, E_Int neigh_level, std::vector<ngon_t>& phsv, ngon_t& neigh_phs, ngon_t& remaining_phs)
 {
   //detect non-centroid-star-shaped cells
   
@@ -1627,12 +1771,23 @@ static E_Int extract_pathological_PHs
   phsv.clear();
   neigh_phs.clear();
   remaining_phs.clear();
+
+  //std::cout << "extract patho : build orient..." << std::endl;
+  ngon_unit orienti;
+  E_Int err = build_orientation_ngu<TriangulatorType>(crd, ngi, orienti);
+  if (err)
+    return err;
+
+  Vector_t<ePathoPH> PHtypes;
+  //std::cout << "extract patho : detect_pathological_PHs..." << std::endl;
+  /*bool has_non_star = */detect_pathological_PHs<TriangulatorType>(crd, ngi, orienti, PHtypes);
   
-  // UNCOMPUTABLES PGS (and therefore PHs)
-  Vector_t<E_Int> uncompPHs;
+  // OVERRIDE WITH UNCOMPUTABLES PGS (and therefore PHs) missed in detect_pathological_PHs (because some test have suceed before getting to the delaunay)
+  //std::cout << "extract patho : detect_uncomputable_pgs..." << std::endl;
+  E_Int nb_bad_pgs = 0;
   {
     Vector_t<ePathoPG> flagPGs;
-    E_Int nb_bad_pgs = detect_uncomputable_pgs<TriangulatorType>(crd, ngi.PGs, flagPGs);
+    nb_bad_pgs = detect_uncomputable_pgs<TriangulatorType>(crd, ngi.PGs, flagPGs);
     // get uncomputable phs
     //std::cout << "nb uncomp pgs : " << nb_bad_pgs << std::endl;
     if (nb_bad_pgs)
@@ -1643,30 +1798,22 @@ static E_Int extract_pathological_PHs
        const E_Int* pgs = ngi.PHs.get_facets_ptr(i);
        E_Int nb_pgs = ngi.PHs.stride(i);
     
-       bool caught=false;
-       for (E_Int n=0; (n<nb_pgs) && !caught; ++n)
-         caught = (flagPGs[*(pgs+n)-1] != PATHO_PG_NONE);
-    
-       if (caught) uncompPHs.push_back(i);
+       for (E_Int n=0; (n<nb_pgs); ++n){
+         E_Int flag = flagPGs[*(pgs+n)-1];
+         
+         if (flag == PATHO_PG_NONE) continue;
+         else if (flag == PG_DELAUNAY_FAILURE) { 
+           if (PHtypes[i] != PATHO_PH_NONE) std::cout << "PH : " << i << " pathology switched from " << PHtypes[i] << " to " << PH_DELAUNAY_FAILURE << std::endl;
+           PHtypes[i] = PH_DELAUNAY_FAILURE; break;
+         }
+         else /*SPIKE HAT DEGEN_PG*/ { 
+           if (PHtypes[i] != PATHO_PH_NONE) std::cout << "PH : " << i << " pathology switched from " << PHtypes[i] << " to " << PH_DEGEN << " (PG patho : " << flag << ")" << std::endl;
+           PHtypes[i] = PH_DEGEN; break;
+         }
+       }
       }
     }
   }
-
-  ngon_unit orienti;
-  E_Int err = build_orientation_ngu<TriangulatorType>(crd, ngi, orienti);
-  if (err)
-    return err;
-
-  Vector_t<ePathoPH> PHtypes;
-  bool has_non_star = detect_pathological_PHs<TriangulatorType>(crd, ngi, orienti, PHtypes, concave_threshold);
-  
-  if (!has_non_star && uncompPHs.empty())
-    return 0;
-  
-  assert (PHtypes.size() == ngi.PHs.size());
-  //overwrite with uncomputables;
-  size_t nb_uncomp = uncompPHs.size();
-  for (size_t i=0; i < nb_uncomp; ++i) PHtypes[uncompPHs[i]] = ngon_t::UNCOMPUTABLES;
   
   phsv.resize(4); //currently four type
   
@@ -1678,23 +1825,23 @@ static E_Int extract_pathological_PHs
   //OPEN CELL
   {
     std::vector<bool> keep(nb_phs, false);
-    for (size_t i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == OPEN_PHS);
+    for (E_Int i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == OPEN_PHS);
     Vector_t<E_Int> ngpids;
     select_phs(ngi, keep, ngpids, phsv[0]);
   }
-  
-  //SHOWSTOPPER : uncomputable cell (first prism layer' prisms with a split PG...)
+    
+  //DEGEN CELLS ( containing degen PGs : might be fixable by PG collapse)
   {
     std::vector<bool> keep(nb_phs, false);
-    for (size_t i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == SHOWSTOPPER);
+    for (E_Int i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == PH_DEGEN);
     Vector_t<E_Int> ngpids;
     select_phs(ngi, keep, ngpids, phsv[1]);
   }
   
-  //UNCOMPUTABLE CELLS ( fixable by PG collapse)
+  //DELAUNAY_FAILURE ( containing degen PGs : might be fixable by PG collapse)
   {
     std::vector<bool> keep(nb_phs, false);
-    for (size_t i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == UNCOMPUTABLES);
+    for (E_Int i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == PH_DELAUNAY_FAILURE);
     Vector_t<E_Int> ngpids;
     select_phs(ngi, keep, ngpids, phsv[2]);
   }
@@ -1702,46 +1849,318 @@ static E_Int extract_pathological_PHs
   //CONCAVITY_TO_SPLIT (might be fixable by split)
   {
     std::vector<bool> keep(nb_phs, false);
-    for (size_t i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == CONCAVITY_TO_SPLIT);
+    for (E_Int i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == CONCAVITY_TO_SPLIT);
     Vector_t<E_Int> ngpids;
     select_phs(ngi, keep, ngpids, phsv[3]);
   }
   
   // GOOD CELLS
-  Vector_t<bool> keep(nb_phs, false);
-  for (size_t i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == PATHO_PH_NONE);
-  Vector_t<E_Int> ngpids;
-  select_phs(ngi, keep, ngpids, remaining_phs);
-  
-  if (neigh_level)
-  {
-    Vector_t<bool> keep(nb_phs, false);
-    for (size_t i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] != PATHO_PH_NONE);
-    for (size_t j=1; j< neigh_level; ++j)
-      flag_neighbors(ngi, keep, false/*append*/);
-    Vector_t<E_Int> ngpids;
-    select_phs(ngi, keep, ngpids, neigh_phs);
-  }
+//  Vector_t<bool> keep(nb_phs, false);
+//  for (E_Int i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] == PATHO_PH_NONE);
+//  Vector_t<E_Int> ngpids;
+//  select_phs(ngi, keep, ngpids, remaining_phs);
+//  
+//  if (neigh_level)
+//  {
+//    Vector_t<bool> keep(nb_phs, false);
+//    for (E_Int i=0; i < nb_phs; ++i) keep[i] = (PHtypes[i] != PATHO_PH_NONE);
+//    for (E_Int j=1; j< neigh_level; ++j)
+//      flag_neighbors(ngi, keep, false/*append*/);
+//    Vector_t<E_Int> ngpids;
+//    select_phs(ngi, keep, ngpids, neigh_phs);
+//  }
 
   return 0;
 }
 
 ///
-static E_Int extract_outer_layers (ngon_t& ngi, ngon_t& outer, ngon_t& remaining)
+static E_Int extract_n_outer_layers (const K_FLD::FloatArray& crd, ngon_t& ngi, E_Int N, ngon_t& outers, ngon_t& remaining, bool discard_external)
 {
-  ngi.flag_externals(1);
-  
-  outer.PGs = ngi.PGs;
-  
-  std::vector<bool> keep(ngi.PHs.size(), false);
-  for (size_t i=0; i < keep.size(); ++i) keep[i] = (ngi.PHs._type[i] == 1);
-  
-  flag_neighbors(ngi, keep);
-  
-  split_phs(ngi, keep, outer, remaining);
+  //
+  E_Int nb_phs = ngi.PHs.size();
+  std::vector<bool> keep(nb_phs, false);
+  // detect external PGs.
+  ngi.flag_external_pgs(INITIAL_SKIN);
+  if (discard_external) discard_by_box(crd, ngi, false/*i.e we want to discard external*/);
+  //
+  std::set<E_Int> attaching_nodes;
+  {
+    std::vector<E_Int> anodes;
+    // initialize attaching nodes with external PGs nodes
+    E_Int nb_pgs = ngi.PGs.size();
+    for (E_Int i = 0; i < nb_pgs; ++i)
+    {
+      if (ngi.PGs._type[i] != 1) continue;
+      const E_Int* nodes = ngi.PGs.get_facets_ptr(i);
+      E_Int nb_nodes = ngi.PGs.stride(i);
+      anodes.insert(anodes.end(), nodes, nodes + nb_nodes);
+    }
+    //K_CONNECT::IdTool::shift(anodes, -1);
+    attaching_nodes.insert(ALL(anodes));
+  }
+
+  E_Int n = 1;
+  std::vector<bool> kp;
+  std::vector<E_Int> vtmp1, vtmp1bis, vtmp2, vtmp3;
+  E_Int noutercell(0);
+
+  //
+  do
+  {
+  	//std::cout << "nb of attaching_nodes : " << attaching_nodes.size() << std::endl;
+    // flag attached elements to current nodes set
+    E_Int nb_elts = get_elements_having_nodes(ngi, attaching_nodes, keep/*to skip already in*/, kp);
+    if (nb_elts == 0) break;
+    //std::cout << "nb of attached element : "  << nb_elts << std::endl;
+
+    // append flags
+    for (E_Int i = 0; i < nb_phs; ++i) keep[i] = keep[i] || kp[i];
+
+    // get new nodes set
+    vtmp1.clear();
+    
+    for (E_Int i = 0; i < nb_phs; ++i)
+    {
+      if (!kp[i]) continue;
+      ++noutercell;
+
+      ngi.nodes_ph(i, vtmp1bis, false);
+      //E_Int sz0 = vtmp1.size();
+      vtmp1.insert(vtmp1.end(), ALL(vtmp1bis));
+      //std::cout << "added nodes : " << toto.size()-sz0 << std::endl;
+    }
+    vtmp2.clear();
+    vtmp3.clear();
+
+    vtmp2.insert(vtmp2.end(), ALL(attaching_nodes));
+    std::sort(ALL(vtmp1));
+
+    std::set_difference(ALL(vtmp1), ALL(vtmp2), std::back_inserter(vtmp3)); // new set = all PH attached nodes minus current set
+    //std::cout << "number of nodes in the new front : " << vtmp3.size() << std::endl;
+
+    if (vtmp3.empty()) break;
+    
+    attaching_nodes.clear();
+    attaching_nodes.insert(ALL(vtmp3));
+
+  } while (n++ < N);
+
+  if (noutercell == nb_phs)
+  	std::cout << "N is too big : everything is in the outer zone." << std::endl;
+
+  //
+  split_phs(ngi, keep, outers, remaining);
   return 0;
 }
 
+///
+static E_Int get_elements_having_nodes(const ngon_t& ngi, const std::set<E_Int>& tnodes/*starting at 1*/, const std::vector<bool>& skip, std::vector<bool>& flag)
+{
+  E_Int nb_phs = ngi.PHs.size();
+  //
+  flag.clear();
+  flag.resize(nb_phs, false);
+
+  E_Int count(0);
+  
+  for (E_Int i = 0; i < nb_phs; ++i)
+  {
+    if (skip[i]) continue;
+
+    const E_Int* pgs = ngi.PHs.get_facets_ptr(i);
+    E_Int nb_pgs = ngi.PHs.stride(i);
+
+    bool is_attached = false;
+
+    for (E_Int p = 0; p < nb_pgs; ++p)
+    {
+      E_Int PGi = *(pgs + p) - 1;
+
+      const E_Int* nodes = ngi.PGs.get_facets_ptr(PGi);
+      E_Int stride = ngi.PGs.stride(PGi);
+      //
+      for (E_Int j = 0; j < stride; ++j)
+      {
+        E_Int Ni = *(nodes + j);
+        if (tnodes.find(Ni) != tnodes.end())
+        {
+          is_attached = true;
+          break;
+        }
+      }
+
+      if (is_attached) break;
+    }
+
+    flag[i] = is_attached;
+    if (is_attached)++count;
+  }
+  return count;
+}
+
+/// 
+static E_Int discard_by_box(const K_FLD::FloatArray& coord, ngon_t& ngi, bool holes)
+{
+  assert (ngi.PHs.size() < ngi.PGs.size()); //i.e. not one ph per pg beacuse we need at least a closed PH
+
+#ifdef FLAG_STEP
+  chrono c;
+  c.start();
+#endif
+  
+  // 1. Get the skin PGs
+  Vector_t<E_Int> oids;
+  ngon_unit pg_ext;
+  ngi.PGs.extract_of_type (INITIAL_SKIN, pg_ext, oids);
+  if (pg_ext.size() == 0)
+    return 0; //should be only the case where One of the mesh contains completely the other
+
+#ifdef FLAG_STEP
+  if (chrono::verbose >1) std::cout << "__discard_holes : extract_of_type : " << c.elapsed() << std::endl;
+  c.start();
+#endif
+    
+  // 2. Build the neighbourhood for skin PGs
+  ngon_unit neighbors;
+  K_MESH::Polygon::build_pg_neighborhood(pg_ext, neighbors);
+
+#ifdef FLAG_STEP
+  if (chrono::verbose >1) std::cout << "__discard_holes : build_pg_neighborhood : " << c.elapsed() << std::endl;
+  c.start();
+#endif
+  
+  // Color to get connex parts
+  E_Int nb_connex = 1;
+  Vector_t<E_Int> colors;
+  if (ngi.PHs.size() > 1)
+  {
+    K_CONNECT::EltAlgo<K_MESH::Polygon>::coloring (neighbors, colors);
+    nb_connex = 1+*std::max_element(colors.begin(), colors.end());
+  }
+
+#ifdef FLAG_STEP
+  if (chrono::verbose >1) std::cout << "__discard_holes : coloring : " << c.elapsed() << std::endl;
+  c.start();
+#endif
+  
+  if (nb_connex == 1) //no holes
+    return 0;
+  
+  // Find out which is the external (the one with the biggest bbox)
+  Vector_t<K_SEARCH::BBox3D> bbox_per_color(nb_connex);
+  //init boxes
+  for (E_Int i=0; i < nb_connex; ++i)
+  {
+    bbox_per_color[i].maxB[0]=bbox_per_color[i].maxB[1]=bbox_per_color[i].maxB[2]=-K_CONST::E_MAX_FLOAT;
+    bbox_per_color[i].minB[0]=bbox_per_color[i].minB[1]=bbox_per_color[i].minB[2]=K_CONST::E_MAX_FLOAT;
+  }
+  
+  Vector_t<E_Int> nodes;
+  
+  E_Int nb_pgex=colors.size();
+  K_SEARCH::BBox3D box;
+  for (E_Int i=0; i < nb_pgex; ++i)
+  {
+    const E_Int& s = pg_ext.stride(i);
+    const E_Int* pN = pg_ext.get_facets_ptr(i);
+    
+    nodes.clear();
+    for (E_Int j = 0; j < s; ++j, ++pN)
+      nodes.push_back((*pN)-1);//indices convention : start at 1 
+
+    box.compute(coord, nodes);
+    
+    K_SEARCH::BBox3D& b = bbox_per_color[colors[i]];
+    
+    for (size_t j = 0; j < 3; ++j) 
+    {
+      b.minB[j] = (b.minB[j] > box.minB[j]) ? box.minB[j] : b.minB[j];
+      b.maxB[j] = (b.maxB[j] < box.maxB[j]) ? box.maxB[j] : b.maxB[j];
+    }
+  }
+  // And the hole color are..
+  std::set<E_Int> hole_colors;
+  for (E_Int i = 0; i < nb_connex; ++i)
+  {
+    for (E_Int j = i + 1; j < nb_connex; ++j)
+    {
+      E_Int I=i;
+      E_Int J=j;
+      if (!holes) std::swap(I,J); //i.e. discard external
+      
+      if (K_SEARCH::BbTree3D::box1IsIncludedinbox2(&bbox_per_color[i], &bbox_per_color[j], E_EPSILON))
+        hole_colors.insert(I);
+      else if (K_SEARCH::BbTree3D::box1IsIncludedinbox2(&bbox_per_color[j], &bbox_per_color[i], E_EPSILON))
+        hole_colors.insert(J);
+    }
+  }
+
+  // Reset flag for holes
+  for (E_Int i=0; i < nb_pgex; ++i)
+  {
+    if (hole_colors.find(colors[i]) != hole_colors.end())
+      ngi.PGs._type[oids[i]]=INNER;
+  }
+  ngi.flag_external_phs(INITIAL_SKIN);//update consistently PHs flags
+  
+  return 0;
+} 
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////:: FOR VISU /////////////////////////////////////////////////////////////////////
+
+///
+template <typename TriangulatorType>
+static E_Int stats_bad_volumes(const K_FLD::FloatArray& crd, const ngon_t& ngi, const ngon_unit& neighborsi, E_Float vmin, Vector_t<E_Float>& aspect_ratio)
+{
+  ngi.PGs.updateFacets();
+  ngi.PHs.updateFacets();
+  
+  E_Int nb_phs = ngi.PHs.size();
+  
+  aspect_ratio.clear();
+  aspect_ratio.resize(nb_phs, 0.);
+ 
+  std::vector<E_Float> vols;
+  ngon_t::volumes<TriangulatorType>(crd, ngi, vols);
+
+  E_Float vi, vj;
+  
+  for (E_Int i=0; i < nb_phs; ++i)
+  {
+    vi = vols[i];
+    if (vi < E_EPSILON) continue;
+    if (vi < vmin) continue;  
+    
+    E_Int nb_neighs = neighborsi.stride(i);
+    
+    E_Float ar = K_CONST::E_MAX_FLOAT;
+    
+    for (E_Int n=0; n < nb_neighs; ++n)
+    {
+      E_Int j = neighborsi.get_facet(i,n);
+      if (j == E_IDX_NONE)
+        continue;
+      
+      vj = vols[j];
+      if (vj < E_EPSILON)
+      {
+        ar = 0.;
+        break;
+      }
+      
+      if (vj < vi) std::swap(vi, vj); //cast to [0; 1] : apply the same ratio to 2 adjacent neighbors : 0 is the worst, 1 is the best
+      
+      ar = std::min(vi/vj, ar);    
+    }
+    
+    aspect_ratio[i] = ar;
+  }
+  
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///
 E_Int remove_degenerated_pgs(Vector_t<E_Int>& pgnids, Vector_t<E_Int>& phnids)
 {
@@ -1759,7 +2178,7 @@ E_Int remove_unreferenced_pgs(Vector_t<E_Int>& pgnids, Vector_t<E_Int>& phnids)
   PGs.updateFacets();
 
 #ifdef DEBUG_NGON_T
-  assert(is_consistent());
+  assert(attributes_are_consistent());
 #endif
   
   Vector_t<E_Int> visited(PGs.size(),0);
@@ -1778,6 +2197,8 @@ E_Int remove_unreferenced_pgs(Vector_t<E_Int>& pgnids, Vector_t<E_Int>& phnids)
   static void __get_selected_ids(const ngon_unit& ngon_in, const Vector_t<bool>& keep,
                                  Vector_t<E_Int>& new_ids, Vector_t<E_Int>& stack_ids)
  {
+    //WARNING : change the numerotation
+    
     size_t sz0 = ngon_in.size();
     assert(sz0 == keep.size());
   
@@ -1958,21 +2379,115 @@ E_Int remove_unreferenced_pgs(Vector_t<E_Int>& pgnids, Vector_t<E_Int>& phnids)
   }
   
   ///
-  E_Int remove_degenerated_phs(Vector_t<E_Int>& toremove)
+  void get_PHs_having_PGs(const std::set<E_Int>& pgids, E_Int idx_start, std::set<E_Int>& PHlist) const 
   {
-    toremove.clear();
-    return 0;
+    E_Int sz(PHs.size());
     
+    PHlist.clear();
+        
+    for (E_Int i = 0; i < sz; ++i)
+    {
+      E_Int nb_pgs = PHs.stride(i);
+      const E_Int* faces = PHs.get_facets_ptr(i);
+ 
+      for (E_Int j = 0; (j < nb_pgs); ++j)
+      {
+        E_Int PGi = *(faces + j);
+        PGi = (idx_start == 0) ? PGi - 1 : PGi;
+        if (pgids.find(PGi) != pgids.end()) PHlist.insert(i);
+      }
+    }
+  }
+  
+  ///
+  E_Int get_degenerated_phs(Vector_t<E_Int>& toremove)
+  {    
     PHs.updateFacets();
 
     E_Int nb_phs = PHs.size();
+#ifdef DEBUG_NGON_T
+    E_Int mins=1000, imin;
+    E_Int maxs=0, imax;
+#endif
+    //
     for (E_Int i=0; i < nb_phs; ++i)
     {
-      if (PHs.stride(i) < 4)
+      const E_Int& s = PHs.stride(i);
+#ifdef DEBUG_NGON_T
+      if (s < mins)
+      {
+        mins = s;
+        imin=i;
+      }
+      if (s > maxs)
+      {
+        maxs = s;
+        imax=i;
+      }
+#endif
+      if (s < 4)
         toremove.push_back(i);
     }
     
+#ifdef DEBUG_NGON_T
+    std::cout << "min stride : " << mins << " reached at : " << imin << std::endl;
+    std::cout << "max stride : " << maxs << " reached at : " << imax << std::endl;
+    std::cout << "nb of degen : " << toremove.size() << std::endl;
+#endif
+    
+    
     return 0;
+  }
+  
+  E_Int remove_baffles()
+  {
+    PHs.updateFacets();
+    
+    //std::cout << "baffle 1" << std::endl;
+    PHs.updateFacets();
+    //std::cout << "baffle 2" << std::endl;
+    std::map<K_MESH::NO_Edge, E_Int> w_map;
+    E_Int max_stride = PHs.get_facets_max_id();
+    //std::cout << "baffle 3" << std::endl;
+    //std::cout << "max_stride : " << max_stride << std::endl;
+    std::vector<E_Int> buffer_flag_pgs(max_stride), molecule(max_stride);
+    //std::cout << "asking for size" << std::endl;
+    //std::cout << "size : " << PHs.size() << std::endl;
+    E_Int nb_phs(PHs.size());
+    //std::cout << "baffle 4" << std::endl;
+    ngon_unit new_phs;
+
+    for (E_Int i=0; i < nb_phs; ++i)
+    {
+      const E_Int* first_pg = PHs.get_facets_ptr(i);
+      E_Int nb_pgs = PHs.stride(i);
+      
+      if (max_stride < nb_pgs) std::cout << "max stride error for PH : " << i << " . nb_pgs/max_stride : " << nb_pgs << "/" << max_stride << std::endl;
+      //std::cout << i << std::endl;
+      bool has_baff = K_MESH::Polyhedron<UNKNOWN>::has_baffles(PGs, first_pg, nb_pgs, w_map, &buffer_flag_pgs[0]);
+      
+      if (!has_baff)
+        new_phs.add(nb_pgs, first_pg);
+      else
+      {
+        E_Int new_nb_pgs=0;
+        for (E_Int j = 0; j < nb_pgs; ++j)
+        {
+          if (buffer_flag_pgs[j] == E_IDX_NONE) continue;
+          molecule[new_nb_pgs++] = *(first_pg + j);
+        }
+        if (new_nb_pgs) new_phs.add(new_nb_pgs, &molecule[0]);
+      }
+    }
+    
+    //std::cout << "baffle 5" << std::endl;
+    
+    PHs=new_phs;
+    PHs.updateFacets();
+    
+    //std::cout << "baffle 6" << std::endl;
+    
+    return nb_phs - PHs.size();
   }
   
   /// Warning : The coordinates are not cleaned, only the connectivity.
@@ -2001,25 +2516,28 @@ E_Int remove_unreferenced_pgs(Vector_t<E_Int>& pgnids, Vector_t<E_Int>& phnids)
     }
 
     // 1- Referencement unique pour les noeuds confondus par kdtree (les doublons seront supprimes a la fin)
-    E_Int nb_merges = NG.join_phs(f, tolerance);
+    // si la tolerance est négative => pas de merge
+    E_Int nb_merges = 0;
+    if (tolerance >= 0.) nb_merges = NG.join_phs(f, tolerance);
   
     // 2- Elimination des faces degenerees
     Vector_t<E_Int> pgnids, phnids; // required to update the history (PG/PH)
-    E_Int nb_degen_faces(0), nb_consec_changes(0);
     if (ngon_dim != 1)
     {
-      nb_degen_faces = NG.remove_degenerated_pgs(pgnids, phnids);
-      nb_consec_changes = NG.PGs.remove_consecutive_duplicated(); //removing duplicated nodes : compact representation
+      //E_Int nb_degen_faces = 
+      NG.remove_degenerated_pgs(pgnids, phnids);
+      //E_Int nb_consec_changes = 
+      NG.PGs.remove_consecutive_duplicated(); //removing duplicated nodes : compact representation
     }
-   
+
     // 3- Faces confondues : identification et suppression des références.
-    bool has_dups = false;
-    if (ngon_dim ==3) //volumic
-      has_dups = NG.remove_duplicated_pgs(fcA);
+    /*bool has_dups = false;*/
+    if (ngon_dim == 3) //volumic
+      /*has_dups = */NG.remove_duplicated_pgs(fcA);
     else if (ngon_dim == 2) //surfacic
-      has_dups = NG.remove_duplicated_edges();
+      /*has_dups = */NG.remove_duplicated_edges();
     else // lineic
-      has_dups = NG.remove_duplicated_nodes();
+      /*has_dups = */NG.remove_duplicated_nodes();
 
     // remove duplicated references to PGs within each elements
     /*E_Int nb_phs_dups = */NG.PHs.remove_duplicated();
@@ -2027,34 +2545,205 @@ E_Int remove_unreferenced_pgs(Vector_t<E_Int>& pgnids, Vector_t<E_Int>& phnids)
     // 4- Elimination des elts degeneres
     Vector_t<E_Int> toremove;
     if (ngon_dim ==3) //volumic
-      NG.remove_degenerated_phs(toremove);
+      NG.get_degenerated_phs(toremove);
     else
       NG.PHs.get_degenerated(toremove);
 
     /*E_Int nb_degen_phs = */NG.PHs.remove_entities(toremove, phnids);
-    
+
     // 5- Elimination des elts doubles
-    //
   
     // 6- Suppression des faces non referencees
     /*E_Int nb_unrefs = */NG.remove_unreferenced_pgs(pgnids, phnids); //Important, sinon tecplot en ASCII (.tp) n'aime pas.
-    
+
     // 7- Compression du ngon aux seuls noeuds utilises
     //ngon_t::compact_to_used_nodes(NG.PGs, f);
 
-
     E_Int nb_phs1 = NG.PHs.size();
     E_Int nb_pgs1 = NG.PGs.size();
-    
+
 #ifdef DEBUG_NGON_T
-  assert (NG.is_consistent());
+  assert (NG.is_consistent(f.cols()));
 #endif
 
-    
     return nb_merges + (nb_phs0-nb_phs1) + (nb_pgs0-nb_pgs1);
   }
+  
+  static void surface_extrema(const ngon_unit& PGs, const K_FLD::FloatArray& crd, E_Float& smin, E_Int& imin, E_Float& smax, E_Int& imax)
+  {
+    //
+    E_Int nb_pgs = PGs.size();
+    E_Int i, id;
+    E_Float s;
+    
+    smin = K_CONST::E_MAX_FLOAT;
+    imin = E_IDX_NONE;
+    smax = -1.;
+    imax = E_IDX_NONE;
+    
+    E_Int nb_max_threads = __NUMTHREADS__;
+    
+    std::vector<E_Int> im(nb_max_threads, E_IDX_NONE);
+    std::vector<E_Float> sm(nb_max_threads, K_CONST::E_MAX_FLOAT);
+    std::vector<E_Int> iM(nb_max_threads, E_IDX_NONE);
+    std::vector<E_Float> sM(nb_max_threads, -1.);
 
-  static void edge_length_maxima(ngon_unit& PGs, const K_FLD::FloatArray& crd, E_Float& Lmin, E_Int& imin, E_Float& Lmax, E_Int& imax)
+#pragma omp parallel shared(sm, im, PGs, crd, nb_pgs) private (i, s, id)
+    {
+      id = __CURRENT_THREAD__;
+    
+#pragma omp for 
+      for (i=0; i < nb_pgs; ++i)
+      {
+        s = K_MESH::Polygon::surface<K_FLD::FloatArray, 3>(crd, PGs.get_facets_ptr(i), PGs.stride(i), 1);
+        //std::cout << "s : " << s << std::endl;
+        if (s < sm[id])
+        {
+          sm[id]=s;
+          im[id]=i;
+        }
+        if (s > sM[id])
+        {
+          sM[id]=s;
+          iM[id]=i;
+        }
+      }
+    }
+    
+    for (E_Int i=0; i < nb_max_threads; ++i)
+    {
+      if (sm[i] < smin)
+      {
+        imin = im[i];
+        smin = sm[i];
+      }
+      if (sM[i] > smax)
+      {
+        imax = iM[i];
+        smax = sM[i];
+      }
+    }
+  }
+  
+  ///
+  template <typename Triangulator_t>
+  static void volume_extrema(ngon_t& ngi, const K_FLD::FloatArray& crd, E_Float& vmin, E_Int& imin, E_Float& vmax, E_Int& imax)
+  {
+    vmin = K_CONST::E_MAX_FLOAT;
+    imin = imax = E_IDX_NONE;
+    vmax = -1.;
+
+    //
+    E_Int nb_phs = ngi.PHs.size();
+    E_Int nb_pgs = ngi.PGs.size(); 
+    
+    //std::cout << "build orient..." << std::endl;
+    
+    // give orient for each PG within each PH
+    ngon_unit orienti;
+    E_Int err = build_orientation_ngu<Triangulator_t>(crd, ngi, orienti);
+    if (err)
+      return;
+    
+    //std::cout << "Triangulate..." << std::endl;
+    
+    // Triangulate
+    
+    std::vector<E_Int> xT3(nb_pgs+1);
+    // find out size and xranges
+    E_Int szT3(0);
+     xT3[0] = 0;
+    for (E_Int i=0; i < nb_pgs; ++i)
+    {
+      szT3 += (ngi.PGs.stride(i)-2) ;
+      xT3[i+1] = szT3;
+    }
+    
+    K_FLD::IntArray connectT3(3, szT3);
+    Triangulator_t t;
+    
+#ifndef DEBUG_NGON_T
+#pragma omp parallel for private (t) shared(connectT3, xT3)
+#endif
+    for (E_Int i=0; i < nb_pgs; ++i)
+    {
+      const E_Int* nodes = ngi.PGs.get_facets_ptr(i);
+      E_Int nb_nodes = ngi.PGs.stride(i);
+      K_MESH::Polygon::triangulate_inplace(t, crd, nodes, nb_nodes, 1, connectT3.col(xT3[i]));//WARNING : connectT3 is filled IN PLACE (not cleared upon entry)
+    }
+  
+    //
+    E_Float G[3], v;
+    K_FLD::IntArray cT3;
+    E_Int T[3], id, i, f;
+    
+    E_Int nb_max_threads = __NUMTHREADS__;
+    
+    std::vector<E_Int> im(nb_max_threads, E_IDX_NONE);
+    std::vector<E_Float> vm(nb_max_threads, K_CONST::E_MAX_FLOAT);
+    std::vector<E_Int> iM(nb_max_threads, E_IDX_NONE);
+    std::vector<E_Float> vM(nb_max_threads, -1.);
+    
+    //std::cout << "Volumes..." << std::endl;
+    
+#pragma omp parallel shared(vm, im, crd, ngi, orienti, connectT3) private(G, v, cT3, T, id, i, f)
+   {
+      id = __CURRENT_THREAD__;
+    
+#pragma omp for 
+      for (i=0; i < nb_phs; ++i)
+      {
+        // Gather tha appropriate T3s with the correct orientation
+        cT3.clear();
+        E_Int nb_f = ngi.PHs.stride(i);
+        const E_Int* fs = ngi.PHs.get_facets_ptr(i);
+        const E_Int* ori = orienti.get_facets_ptr(i);
+      
+        for (f=0; f < nb_f; ++f)
+        {
+          E_Int PGi = *(fs + f) -1;
+          E_Int o = *(ori+f);
+          for (E_Int k=xT3[PGi]; k < xT3[PGi+1]; ++k)
+          {
+            T[0] = connectT3(0,k);
+            T[1] = connectT3(1,k);
+            T[2] = connectT3(2,k);
+            if (o == -1) std::swap(T[1], T[2]);
+            cT3.pushBack(T, T+3);
+          }
+        }
+      
+        K_MESH::Polyhedron<UNKNOWN>::metrics(crd, cT3, v, G);
+        v = ::fabs(v);
+        if (v < vm[id])
+        {
+          vm[id]=v;
+          im[id]=i;
+        }
+        if (v > vM[id])
+        {
+          vM[id]=v;
+          iM[id]=i;
+        }
+      }
+   }
+
+   for (E_Int i=0; i < nb_max_threads; ++i)
+   {
+     if (vm[i] < vmin)
+     {
+       imin = im[i];
+       vmin = vm[i];
+     }
+     if (vm[i] > vmax)
+     {
+       imax = im[i];
+       vmax = vm[i];
+     }
+   }
+  }
+
+  static void edge_length_extrema(ngon_unit& PGs, const K_FLD::FloatArray& crd, E_Float& Lmin, E_Int& imin, E_Float& Lmax, E_Int& imax)
   {
     Lmin = K_CONST::E_MAX_FLOAT;
     Lmax = -1.;
@@ -2141,10 +2830,21 @@ E_Int remove_unreferenced_pgs(Vector_t<E_Int>& pgnids, Vector_t<E_Int>& phnids)
 
     flag_manifold_nodes(ng, crd, man_nodes);
 
-    Vector_t<E_Int> nids, node_ids(crd.cols());//0-based ids
-    for (E_Int i = 0; i < crd.cols(); ++i) node_ids[i] = (man_nodes[i]) ? E_IDX_NONE : i;
+    Vector_t<E_Int> pgnids, node_ids(crd.cols());//0-based ids
+    for (E_Int i = 0; i < crd.cols(); ++i)
+    {
+      node_ids[i] = (man_nodes[i]) ? E_IDX_NONE : i;
+      //std::cout << "manifold ? : " << man_nodes[i] << " . so new va lis : " << node_ids[i] << std::endl;
+    }
 
-    ng.PGs.remove_facets(node_ids, nids, 2);//a surface must have ate least 3 nodes
+    E_Int nb_remove = ng.PGs.remove_facets(node_ids, pgnids, 2);//a surface must have at least 3 nodes
+    if (nb_remove) //update PHs accordingly
+    {
+      Vector_t<E_Int> phnids;
+      //E_Int nb_remove = 
+      ng.PHs.remove_facets(pgnids, phnids);
+      //std::cout << "nb PH removed : " << nb_remove << std::endl;
+    }
   }
   
   ///
@@ -2233,7 +2933,7 @@ static E_Int __set_ref_PGs_for_orient(const K_FLD::FloatArray& coord, ngon_t& ng
   PGref=E_IDX_NONE;
   
 #ifdef DEBUG_NGON_T
-  assert(ng.is_consistent());
+  assert(ng.is_consistent(coord.cols()));
 #endif
   
   for (E_Int PHi = 0; (PHi < ng.PHs.size()) && (PGref == E_IDX_NONE) && !err; ++PHi)
@@ -2380,18 +3080,28 @@ static E_Int reorient_skins(const TriangulatorType& t, const K_FLD::FloatArray& 
 #endif
 
 #ifdef DEBUG_NGON_T
-  /*{
-    //NGON_DBG::write("pgski1.plt", ACoordinate_t(coord), pg_ext);
+  {
+    ngon_t ng(pg_ext, true);
+    K_FLD::IntArray cnto;
+    ng.export_to_array(cnto);
+    MIO::write("pgski1.plt", coord, cnto, "NGON");
+    
     K_FLD::IntArray connectT3;
     Vector_t<E_Int> T3_to_nPG;
-    E_Int err = ngon_t::triangulate_pgs<DELAUNAY::Triangulator>(pg_ext, coord, connectT3, T3_to_nPG);
+    E_Int err = ngon_t::triangulate_pgs<DELAUNAY::Triangulator>(pg_ext, coord, connectT3, T3_to_nPG, true, false);
     TRI_debug::write_wired("before_orient.mesh", coord, connectT3, true);
-  }*/
+  }
 #endif
 
   // 2. Build the neighbourhood for skin PGs
   ngon_unit neighbors;
   K_MESH::Polygon::build_pg_neighborhood(pg_ext, neighbors);
+  
+#ifdef FLAG_STEP
+  if (chrono::verbose >1) std::cout << "__reorient_skins : build_pg_neighborhood : " << c.elapsed() << std::endl;
+  std::cout << "reorient_skins : cut non-manifolds in graph..." << std::endl;
+  c.start();
+#endif
 
   // update it to treat non-manifoldness as void neighbor.
   {
@@ -2437,7 +3147,8 @@ static E_Int reorient_skins(const TriangulatorType& t, const K_FLD::FloatArray& 
   }
 
 #ifdef FLAG_STEP
-  if (chrono::verbose >1) std::cout << "__reorient_skins : build_pg_neighborhood : " << c.elapsed() << std::endl;
+  if (chrono::verbose >1) std::cout << "__reorient_skins : cut non-manifolds in graph : " << c.elapsed() << std::endl;
+  std::cout << "reorient_skins : coloring..." << std::endl;
   c.start();
 #endif
 
@@ -2452,6 +3163,7 @@ static E_Int reorient_skins(const TriangulatorType& t, const K_FLD::FloatArray& 
 
 #ifdef FLAG_STEP
   if (chrono::verbose >1) std::cout << "__reorient_skins : coloring : " << c.elapsed() << std::endl;
+  std::cout << "NB CONNEX FOUND : " << nb_connex << std::endl;
   c.start();
 #endif
 
@@ -2505,6 +3217,20 @@ static E_Int reorient_skins(const TriangulatorType& t, const K_FLD::FloatArray& 
   {
     err = __reorient_skin<TriangulatorType>(coord, wNG, pg_ext, oids, neighbors, orient); //reorient a connex part NGZ of wNG. pg_ext are related to wNG
 
+    if (err)
+    {
+      std::cout << "could not orient properly zone 0" << std::endl;
+
+#ifdef DEBUG_NGON_T
+      std::ostringstream o;
+      o << "reorient_error_zone_0.tp";
+      K_FLD::IntArray cnto;
+      wNG.export_to_array(cnto);
+      MIO::write(o.str().c_str(), coord, cnto, "NGON");
+#endif
+      return err;
+    }
+
 #ifdef FLAG_STEP
     if (chrono::verbose >1) std::cout << "__reorient_skins : __reorient_skin : " << c.elapsed() << std::endl;
     c.start();
@@ -2529,21 +3255,21 @@ static E_Int reorient_skins(const TriangulatorType& t, const K_FLD::FloatArray& 
 #endif
 
 #ifdef DEBUG_NGON_T
-  /*{
-    K_FLD::IntArray connectT3;
-    Vector_t<E_Int> T3_to_nPG;
-        
-    Vector_t<E_Int> oids, oids_cnx;
-    ngon_unit pg_ext, pg_cnx;
-    wNG.PGs.extract_of_type(INITIAL_SKIN, pg_ext, oids);
-    wNG.PGs.extract_of_type(CONNEXION_SKIN, pg_cnx, oids_cnx);
-
-    oids.insert(oids.end(), oids_cnx.begin(), oids_cnx.end());
-    pg_ext.append(pg_cnx);
-    
-    E_Int err = ngon_t::triangulate_pgs<DELAUNAY::Triangulator>(pg_ext, coord, connectT3, T3_to_nPG);
-    TRI_debug::write_wired("oriented.mesh", coord, connectT3, true);
-  }*/
+//  {
+//    K_FLD::IntArray connectT3;
+//    Vector_t<E_Int> T3_to_nPG;
+//        
+//    Vector_t<E_Int> oids, oids_cnx;
+//    ngon_unit pg_ext, pg_cnx;
+//    wNG.PGs.extract_of_type(INITIAL_SKIN, pg_ext, oids);
+//    wNG.PGs.extract_of_type(CONNEXION_SKIN, pg_cnx, oids_cnx);
+//
+//    oids.insert(oids.end(), oids_cnx.begin(), oids_cnx.end());
+//    pg_ext.append(pg_cnx);
+//    
+//    E_Int err = ngon_t::triangulate_pgs<DELAUNAY::Triangulator>(pg_ext, coord, connectT3, T3_to_nPG, true, false);
+//    TRI_debug::write_wired("oriented.mesh", coord, connectT3, true);
+//  }
 #endif
 
   return 0;
@@ -2687,9 +3413,72 @@ build_F2E(const ngon_unit& neighbors, K_FLD::IntArray& F2E) const
   }
 }
 
+// non-oriented F2E is formatted as cassiopee : non-interleaved, 0 for none, start index at 1
+void
+build_noF2E(K_FLD::FldArrayI& F2E) const
+{
+  // rule : first fill the left, then the right => upon exit, at least F2E is oriented for exterior PGs
+  PGs.updateFacets();
+  PHs.updateFacets();
+
+  E_Int NB_PHS(PHs.size());
+  E_Int NB_PGS(PGs.size());
+  
+  //std::cout << "build_noF2E : phs/pgs : " << NB_PHS << "/" << NB_PGS << std::endl;
+
+  F2E.clear();
+  F2E.resize(2, NB_PGS, 0);
+    
+  for (E_Int i = 0; i < NB_PHS; ++i)
+  {
+    E_Int stride = PHs.stride(i);
+    const E_Int* pPGi = PHs.get_facets_ptr(i);
+    
+    for (E_Int n = 0; n < stride; ++n)
+    {
+      E_Int PGi = *(pPGi + n) - 1;
+      E_Int k= (F2E(PGi, 1) == 0) ? 1 : 2;
+      
+      F2E(PGi, k) = i+1;
+    }
+  }
+}
+
+void
+build_noF2E(K_FLD::IntArray& F2E) const
+{
+  // rule : first fill the left, then the right => upon exit, at least F2E is oriented for exterior PGs
+  PGs.updateFacets();
+  PHs.updateFacets();
+
+  E_Int NB_PHS(PHs.size());
+  E_Int NB_PGS(PGs.size());
+  
+  //std::cout << "build_noF2E : phs/pgs : " << NB_PHS << "/" << NB_PGS << std::endl;
+
+  F2E.clear();
+  F2E.resize(2, NB_PGS, E_IDX_NONE);
+    
+  for (E_Int i = 0; i < NB_PHS; ++i)
+  {
+    E_Int stride = PHs.stride(i);
+    const E_Int* pPGi = PHs.get_facets_ptr(i);
+    
+    for (E_Int n = 0; n < stride; ++n)
+    {
+      E_Int PGi = *(pPGi + n) - 1;
+      E_Int k= (F2E(0, PGi) == E_IDX_NONE) ? 0 : 1;
+      
+      F2E(k, PGi) = i;
+    }
+  }
+}
+
 template <typename TriangulatorType>
 static E_Int build_orientation_ngu(const K_FLD::FloatArray& crd, ngon_t& ng, ngon_unit& orient)
 {
+  // WARNING : type are lost (UNUSED...) fixme
+  
   ng.flag_externals(1);
   TriangulatorType dt;
   bool has_been_reversed;
@@ -2737,7 +3526,7 @@ static E_Int flag_neighbors(const ngon_t& ng, Vector_t<bool>& flag, bool overwri
   std::cout << "number of phs : " << nb_phs << std::endl;
   std::cout << "flag size : " << flag.size() << std::endl;
 #endif 
-  if (flag.size() != nb_phs)
+  if (flag.size() != (size_t)nb_phs)
     return 1;
   
   Vector_t<bool> new_flags(nb_phs, false);
@@ -2769,7 +3558,7 @@ static E_Int flag_neighbors(const ngon_t& ng, Vector_t<bool>& flag, bool overwri
 
 ///
 template<typename TriangulatorType>
-static E_Int volumes (const K_FLD::FloatArray& crd, const ngon_t& ng, std::vector<E_Float>& vols)
+static E_Int volumes (const K_FLD::FloatArray& crd, const ngon_t& ng, std::vector<E_Float>& vols, bool new_algo=false)
 {
   ng.PGs.updateFacets();
   ng.PHs.updateFacets();
@@ -2784,22 +3573,69 @@ static E_Int volumes (const K_FLD::FloatArray& crd, const ngon_t& ng, std::vecto
 
   E_Float v;
   E_Int err, errcount(0);
-  for (E_Int i = 0; i < nb_phs; ++i)
-  {
-    err = K_MESH::Polyhedron<UNKNOWN>::metrics<TriangulatorType>(dt, crd, ng.PGs, ng.PHs.get_facets_ptr(i), ng.PHs.stride(i), v, Gdum);
-    if (!err) vols[i] = v;
-    else ++errcount;
-  }
 
-  if (errcount)
-    std::cout << "nb of volume error : " << errcount << std::endl;
+  
+  if (!new_algo)
+  {
+#ifndef DEBUG_NGON_T
+#pragma omp parallel for private(err, dt, v, Gdum) reduction(+:errcount)
+#endif
+    for (E_Int i = 0; i < nb_phs; ++i){
+      err = K_MESH::Polyhedron<UNKNOWN>::metrics<TriangulatorType>(dt, crd, ng.PGs, ng.PHs.get_facets_ptr(i), ng.PHs.stride(i), v, Gdum);
+      if (!err) vols[i] = v;
+      else ++errcount;
+    }
+  }
+  else
+  {
+#ifndef DEBUG_NGON_T
+#pragma omp parallel for private(err, dt, v, Gdum) reduction(+:errcount)
+#endif
+    for (E_Int i = 0; i < nb_phs; ++i){
+      err = K_MESH::Polyhedron<UNKNOWN>::metrics2<TriangulatorType>(dt, crd, ng.PGs, ng.PHs.get_facets_ptr(i), ng.PHs.stride(i), v, Gdum, false/*not all cvx*/);
+      v = ::fabs(v);
+      if (!err) vols[i] = v;
+      else ++errcount;
+    }
+  }
+ 
+  if (errcount) std::cout << "nb of volume error : " << errcount << std::endl;
 
   return 0;
-  }
+}
 
 ///
 template<typename TriangulatorType>
-static E_Int centroids(const ngon_t& ng, const K_FLD::FloatArray& crd, K_FLD::FloatArray& centroids)
+static E_Int volume (const K_FLD::FloatArray& crd, const ngon_t& ng, E_Float& total_vol, std::vector<E_Float>* coefs = 0, bool new_algo=true)
+{
+  total_vol = 0.;
+  std::vector<E_Float> vols;
+
+  E_Int err = volumes<TriangulatorType>(crd, ng, vols, new_algo);
+  
+  if (err){
+    std::cout << "total volume compuattion failed" << std::endl;
+    return err;
+  }
+  
+  if (coefs && coefs->size() != vols.size())
+  {
+    std::cout << "total volume computation failed : mismatch between nb of entities and coefs size" << std::endl;
+    return 1;
+  }
+  
+  if (!coefs)
+    for (E_Int i = 0; i < vols.size(); ++i)total_vol += vols[i];
+  else
+    for (E_Int i = 0; i < vols.size(); ++i)total_vol += (*coefs)[i]*vols[i];
+    
+  
+  return 0;
+}
+
+///
+template<typename TriangulatorType>
+static E_Int centroids(const ngon_t& ng, const K_FLD::FloatArray& crd, K_FLD::FloatArray& centroids, bool new_algo=true)
 {
   ng.PGs.updateFacets();
   ng.PHs.updateFacets();
@@ -2811,10 +3647,33 @@ static E_Int centroids(const ngon_t& ng, const K_FLD::FloatArray& crd, K_FLD::Fl
   centroids.resize(3, nb_phs, 0.);
 
   E_Float v;
+  E_Int err, errcount=0;
+  std::vector<E_Float> vols(nb_phs);
   TriangulatorType dt;
 
-  for (E_Int i = 0; i < nb_phs; ++i)
-    K_MESH::Polyhedron<UNKNOWN>::metrics<TriangulatorType>(dt, crd, ng, i, v, centroids.col(i));
+  if (!new_algo)
+  {
+#ifndef DEBUG_NGON_T
+#pragma omp parallel for private(err, dt, v) reduction(+:errcount)
+#endif
+    for (E_Int i = 0; i < nb_phs; ++i){
+      err = K_MESH::Polyhedron<UNKNOWN>::metrics<TriangulatorType>(dt, crd, ng.PGs, ng.PHs.get_facets_ptr(i), ng.PHs.stride(i), v, centroids.col(i));
+      if (!err) vols[i] = v;
+      else ++errcount;
+    }
+  }
+  else
+  {
+#ifndef DEBUG_NGON_T
+#pragma omp parallel for private(err, dt, v) reduction(+:errcount)
+#endif
+    for (E_Int i = 0; i < nb_phs; ++i){
+      err = K_MESH::Polyhedron<UNKNOWN>::metrics2<TriangulatorType>(dt, crd, ng.PGs, ng.PHs.get_facets_ptr(i), ng.PHs.stride(i), v, centroids.col(i), false);
+      v = ::fabs(v);
+      if (!err) vols[i] = v;
+      else ++errcount;
+    }
+  }
 
   return 0;
 }
@@ -2859,31 +3718,33 @@ static E_Int write
   PHs.updateFacets();
 
   return 0;
-}
+}*/
   
 ///
-E_Int remove_PHs(const Vector_t<E_Int>& PHs_toremove)
+E_Int remove_phs(const std::set<E_Int>& PHslist)
 {
-  std::set<E_Int> toremset(PHs_toremove.begin(), PHs_toremove.end());
+  if (PHslist.empty()) return 0;
+  
   ngon_unit keptPHs;
  
-  E_Int sz = PHs.size();
+  size_t sz = PHs.size();
   for (size_t i = 0; i < sz; ++i)
   {
-    if (toremset.empty() || (toremset.find(i) == toremset.end()))
+    if (PHslist.find(i) == PHslist.end())
       keptPHs.__add(PHs, i);
-    else
-      toremset.erase(i);
   }
       
   PHs=keptPHs;
   PHs.updateFacets();
+  
+  Vector_t<E_Int> pgnids, phnids;
+  remove_unreferenced_pgs(pgnids, phnids);
     
   return 0;
 }
   
 ///
-E_Int reorient_PGs(const Vector_t<E_Int>& PGs_toreverse)
+/*E_Int reorient_PGs(const Vector_t<E_Int>& PGs_toreverse)
 {
   E_Int sz1(PGs_toreverse.size()), sz2;
   for (size_t i = 0; i < sz1; ++i)
@@ -3136,12 +3997,11 @@ E_Int reorient_PGs(const Vector_t<E_Int>& PGs_toreverse)
   {
     shared_pgs.clear();
     std::set<E_Int> tmp;
-    E_Int PGi;
     const E_Int* begin = ng.PHs.get_facets_ptr(PHi); 
     tmp.insert(begin, begin+ng.PHs.stride(PHi));
   
     const E_Int* ptr = ng.PHs.get_facets_ptr(PHj); 
-    for (size_t i=0; i < ng.PHs.stride(PHj); ++i)
+    for (E_Int i=0; i < ng.PHs.stride(PHj); ++i)
     {
       if (!tmp.insert(*(ptr+i)).second)//already in
         shared_pgs.push_back(*(ptr+i));
@@ -3204,16 +4064,32 @@ E_Int reorient_PGs(const Vector_t<E_Int>& PGs_toreverse)
     }
   }
   
-  //
-static E_Int append_with_ghost_cells(K_FLD::FloatArray& coord, ngon_t& wNG, const Vector_t<E_Int>& PGlist)
+//
+static E_Int extrude_faces
+(K_FLD::FloatArray& coord, ngon_t& wNG, const Vector_t<E_Int>& PGlist, E_Float height_factor, bool build_cells, 
+ eExtrudeStrategy strategy = CST_ABS, E_Int smooth_iters = 0, Vector_t<E_Int>* topPGlist = 0)
 {
+  
+  if (PGlist.empty()) return 0;
+  
 #ifdef DEBUG_NGON_T
   E_Int minid = *std::min_element(PGlist.begin(), PGlist.end());
   E_Int maxid = *std::max_element(PGlist.begin(), PGlist.end());
   E_Int nb_pgs = wNG.PGs.size();
   assert (minid >= 0);
   assert (maxid < nb_pgs);
+
+  if (strategy == CST_REL_MEAN) std::cout      << "CST_REL_MEAN" << std::endl;
+  else if (strategy == CST_REL_MIN) std::cout  << "CST_REL_MIN" << std::endl; 
+  else if (strategy == VAR_REL_MEAN) std::cout << "VAR_REL_MEAN" << std::endl; 
+  else if (strategy == VAR_REL_MIN)  std::cout << "VAR_REL_MIN" << std::endl;
+
+  std::cout << "input factor : " << height_factor << std::endl;
+
+
 #endif
+  
+  if (height_factor <= 0.) return 1;
   
   // 1. compute nodal normals and sizes
 
@@ -3222,27 +4098,55 @@ static E_Int append_with_ghost_cells(K_FLD::FloatArray& coord, ngon_t& wNG, cons
   wNG.PGs.extract(PGlist, ghost_pgs, obids);
 
   K_FLD::FloatArray normals;
-  E_Int nb_new_points = K_CONNECT::MeshTool::computeNodeNormals(coord, ghost_pgs, normals);
+  E_Int nb_new_points = K_CONNECT::MeshTool::computeNodeNormals(coord, ghost_pgs, normals, smooth_iters);
   
   // Fix uncomputed normals by averaging
-  
-  K_FLD::FloatArray L;
-  K_CONNECT::MeshTool::computeIncidentEdgesSqrLengths(coord, ghost_pgs, L);
-  
-  E_Float Lmean(0.);
-  E_Int count(0);
-  for (E_Int i=0; i < L.cols(); ++i)
-  {
-    if (L(0,i) == K_CONST::E_MAX_FLOAT) continue;
-    if (L(1,i) == -K_CONST::E_MAX_FLOAT) continue;
-    ++count;
-    Lmean += L(0,i) + L(1,i);
-  }
-  if (count) Lmean /=count;
-  else Lmean = 1.;
-  //std::cout << "LMEAN IS : " << Lmean << std::endl;
 
-  // 2. create and append smoothly the ghost cell without requiring a clean_conenctivity
+  // Compute layer's height
+  std::vector<E_Float> heightv(coord.cols(), height_factor);
+  if (strategy != CST_ABS)
+  {
+    E_Float Lcomp(0.);
+    height_factor =  std::min(1., height_factor); // 100% max
+    K_FLD::FloatArray L;
+    K_CONNECT::MeshTool::computeIncidentEdgesSqrLengths(coord, ghost_pgs, L);
+
+    E_Int count(0);
+    for (E_Int i=0; i < L.cols(); ++i)
+    {
+      if (L(0,i) == K_CONST::E_MAX_FLOAT) continue;
+      if (L(1,i) == -K_CONST::E_MAX_FLOAT) continue;
+      ++count;
+      if (strategy == CST_REL_MEAN) Lcomp += 0.5 *(::sqrt(L(0,i)) + ::sqrt(L(1,i)));           // GLOBAL MEAN
+      else if (strategy == CST_REL_MIN) Lcomp += ::sqrt(L(0,i));                               // GLOBAL MEAN OF MINS
+      else if (strategy == VAR_REL_MEAN) heightv[i] *= 0.5 *(::sqrt(L(0,i)) + ::sqrt(L(1,i))); // LOCAL MEAN
+      else if (strategy == VAR_REL_MIN) heightv[i] *= ::sqrt(L(0,i));                          // LOCAL MIN
+    }
+    if (count) Lcomp /= count;
+
+    if (strategy == CST_REL_MEAN || strategy == CST_REL_MIN)
+      for (size_t i=0; i < heightv.size(); ++i)heightv[i] *= Lcomp;
+
+  }
+  
+  E_Int nb_points = coord.cols();
+  E_Int nb_normals(normals.cols());
+  assert (nb_normals <= nb_points);
+  
+  // 2. extrude or create and append smoothly the ghost cell without requiring a clean_conenctivity
+  
+  if (!build_cells)
+  {
+    for (E_Int i = 0; i < nb_normals; ++i)
+    {
+      const E_Float* norm = normals.col(i);
+      if (norm[0] == K_CONST::E_MAX_FLOAT) continue;
+      E_Float* p = coord.col(i);
+      K_FUNC::sum<3>(1., p, heightv[i], norm, p); // move point
+    }
+    return 0;
+  }
+  
 
   // a. conversion NGON3D -> NGON2D
   ngon_t ng2D;
@@ -3251,12 +4155,10 @@ static E_Int append_with_ghost_cells(K_FLD::FloatArray& coord, ngon_t& wNG, cons
   E_Int shft = wNG.PGs.size();
   ng2D.PHs.shift(shft);
   // b. image points
-  E_Int nb_points = coord.cols();
   coord.resize(3, nb_points + nb_new_points);
   Vector_t<E_Int> img(coord.cols(), E_IDX_NONE);
   E_Int nid(nb_points);
-  E_Int nb_normals(normals.cols());
-  assert (nb_normals <= nb_points);
+  
   for (E_Int i = 0; i < nb_normals; ++i)
   {
     const E_Float* norm = normals.col(i);
@@ -3264,9 +4166,8 @@ static E_Int append_with_ghost_cells(K_FLD::FloatArray& coord, ngon_t& wNG, cons
     const E_Float* p = coord.col(i);
     //E_Float Lmax = ::sqrt(L(1, i));
     //E_Float Lmin = ::sqrt(L(0, i));
-    //E_Float FACTOR = 2.;
-    E_Float Lref = Lmean;//std::min(FACTOR*Lmin, Lmax);
-    K_FUNC::sum<3>(1., p, Lref, norm, coord.col(nid)); // creating image point
+    //E_Float Lref = FACTOR*Lmean;//std::min(FACTOR*Lmin, Lmax);
+    K_FUNC::sum<3>(1., p, heightv[i], norm, coord.col(nid)); // creating image point
     img[i] = nid++;
   }
   
@@ -3313,9 +4214,16 @@ static E_Int append_with_ghost_cells(K_FLD::FloatArray& coord, ngon_t& wNG, cons
   tops._type.resize(ghost_pgs.size(), INITIAL_SKIN);
   tops._ancEs.resize(2, ghost_pgs.size(), E_IDX_NONE);
   
+  if (topPGlist)
+  {
+    E_Int PGb = wNG.PGs.size();    
+    for (E_Int k=0; k < tops.size(); ++k)
+      topPGlist->push_back(PGb+k);
+  }
+  
   wNG.PGs.append(tops);
 #ifdef DEBUG_NGON_T
-  assert(wNG.PGs.is_consistent());
+  assert(wNG.PGs.attributes_are_consistent());
 #endif
   // e. ghost PHs
   E_Int nb_cells = ghost_pgs.size();
@@ -3366,6 +4274,57 @@ static E_Int append_with_ghost_cells(K_FLD::FloatArray& coord, ngon_t& wNG, cons
   
 
   return 0;
+}
+
+static void get_pgs_with_non_manifold_edges(const ngon_unit& PGs, std::set<E_Int>& pgsid)
+{
+  pgsid.clear();
+  
+  E_Int nb_pgs = PGs.size();
+  
+  //get non-manifold egdes
+  std::set<K_MESH::NO_Edge> edges;
+  {
+    std::map<K_MESH::NO_Edge, E_Int> edge_to_fcount;
+    K_MESH::NO_Edge noE;
+    //
+    for (E_Int i=0; i < nb_pgs; ++i)
+    {
+      const E_Int* nodes = PGs.get_facets_ptr(i);
+      E_Int nb_nodes = PGs.stride(i);
+
+      for (E_Int n=0; n < nb_nodes; ++n)
+      {
+        noE.setNodes(*(nodes+n), *(nodes+(n+1)%nb_nodes));
+
+        auto it = edge_to_fcount.find(noE);
+        if (it == edge_to_fcount.end())
+          edge_to_fcount[noE] = 1;
+        else ++it->second;
+      }
+    }
+
+    for (auto &i : edge_to_fcount)
+      if (i.second > 2)edges.insert(i.first);   
+  }
+  
+  // get pg ids having these edges
+  K_MESH::NO_Edge noE;
+  for (E_Int i=0; i < nb_pgs; ++i)
+  {
+    const E_Int* nodes = PGs.get_facets_ptr(i);
+    E_Int nb_nodes = PGs.stride(i);
+
+    for (E_Int n=0; n < nb_nodes; ++n)
+    {
+      noE.setNodes(*(nodes+n), *(nodes+(n+1)%nb_nodes));
+      if (edges.find(noE) != edges.end())
+      {
+        pgsid.insert(i+1); break;
+      }
+    }
+  }
+  
 }
     
   ngon_unit PGs;

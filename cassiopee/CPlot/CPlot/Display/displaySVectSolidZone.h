@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -16,30 +16,74 @@
     You should have received a copy of the GNU General Public License
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
-#define PLOT r = (f1[n1]-fmin1)*deltai;                                \
-  g = (f2[n1]-fmin2)*deltai;                                           \
-  b = (f3[n1]-fmin3)*deltai;                                           \
+// Change this to draw two triangles instead of one quad
+//#define GL_QUADS_ARE GL_QUADS/GL_TRIANGLES
+//#define PLOT PLOTQ/PLOTT
+
+// Plot as quads
+#define PLOTQ \
+  r = f1[n1]*deltai+0.5;                                \
+  g = f2[n1]*deltai+0.5;                                           \
+  b = f3[n1]*deltai+0.5;                                           \
   glColor3f(r, g, b);                                                   \
   glNormal3f(surfx[n1s], surfy[n1s], surfz[n1s]);                       \
   glVertex3d(x[n1], y[n1], z[n1]);                                      \
-  r = (f1[n2]-fmin1)*deltai;                                           \
-  g = (f2[n2]-fmin2)*deltai;                                           \
-  b = (f3[n2]-fmin3)*deltai;                                            \
+  r = f1[n2]*deltai+0.5;                                           \
+  g = f2[n2]*deltai+0.5;                                           \
+  b = f3[n2]*deltai+0.5;                                            \
   glColor3f(r, g, b);                                                   \
   glNormal3f(surfx[n2s], surfy[n2s], surfz[n2s]);                       \
   glVertex3d(x[n2], y[n2], z[n2]);                                      \
-  r = (f1[n4]-fmin1)*deltai;                                           \
-  g = (f2[n4]-fmin2)*deltai;                                           \
-  b = (f3[n4]-fmin3)*deltai;                                           \
+  r = f1[n4]*deltai+0.5;                                           \
+  g = f2[n4]*deltai+0.5;                                           \
+  b = f3[n4]*deltai+0.5;                                           \
   glColor3f(r, g, b);                                                   \
   glNormal3f(surfx[n4s], surfy[n4s], surfz[n4s]);                       \
   glVertex3d(x[n4], y[n4], z[n4]);                                      \
-  r = (f1[n3]-fmin1)*deltai;                                           \
-  g = (f2[n3]-fmin2)*deltai;                                           \
-  b = (f3[n3]-fmin3)*deltai;                                            \
+  r = f1[n3]*deltai+0.5;                                           \
+  g = f2[n3]*deltai+0.5;                                           \
+  b = f3[n3]*deltai+0.5;                                            \
   glColor3f(r, g, b);                                                   \
   glNormal3f(surfx[n3s], surfy[n3s], surfz[n3s]);                       \
   glVertex3d(x[n3], y[n3], z[n3]);                                      
+
+// Plot QUAD as 2 triangles
+#define PLOTT r = f1[n1]*deltai+0.5;                                \
+  g = f2[n1]*deltai+0.5;                                           \
+  b = f3[n1]*deltai+0.5;                                           \
+  glColor3f(r, g, b);                                                   \
+  glNormal3f(surfx[n1s], surfy[n1s], surfz[n1s]);                       \
+  glVertex3d(x[n1], y[n1], z[n1]);                                      \
+  r = f1[n2]*deltai+0.5;                                           \
+  g = f2[n2]*deltai+0.5;                                           \
+  b = f3[n2]*deltai+0.5;                                            \
+  glColor3f(r, g, b);                                                   \
+  glNormal3f(surfx[n2s], surfy[n2s], surfz[n2s]);                       \
+  glVertex3d(x[n2], y[n2], z[n2]);                                      \
+  r = f1[n4]*deltai+0.5;                                           \
+  g = f2[n4]*deltai+0.5;                                           \
+  b = f3[n4]*deltai+0.5;                                           \
+  glColor3f(r, g, b);                                                   \
+  glNormal3f(surfx[n4s], surfy[n4s], surfz[n4s]);                       \
+  glVertex3d(x[n4], y[n4], z[n4]);                                      \
+  r = f1[n1]*deltai+0.5;                                \
+  g = f2[n1]*deltai+0.5;                                           \
+  b = f3[n1]*deltai+0.5;                                           \
+  glColor3f(r, g, b);                                                   \
+  glNormal3f(surfx[n1s], surfy[n1s], surfz[n1s]);                       \
+  glVertex3d(x[n1], y[n1], z[n1]);                                      \
+  r = f1[n4]*deltai+0.5;                                           \
+  g = f2[n4]*deltai+0.5;                                           \
+  b = f3[n4]*deltai+0.5;                                            \
+  glColor3f(r, g, b);                                                   \
+  glNormal3f(surfx[n4s], surfy[n4s], surfz[n4s]);                       \
+  glVertex3d(x[n4], y[n4], z[n4]);                                      \
+  r = f1[n3]*deltai+0.5;                                           \
+  g = f2[n3]*deltai+0.5;                                           \
+  b = f3[n3]*deltai+0.5;                                           \
+  glColor3f(r, g, b);                                                   \
+  glNormal3f(surfx[n3s], surfy[n3s], surfz[n3s]);                       \
+  glVertex3d(x[n3], y[n3], z[n3]);
 
 #define PLOTB ret1 = _pref.blanking->f(this, n1, zonep->blank, zone);   \
   ret2 = _pref.blanking->f(this, n2, zonep->blank, zone);               \
@@ -52,25 +96,18 @@
   int ret1, ret2, ret3, ret4;
 
   // vector field
-  double* f1 = zonep->f[nofield1];
-  double* f2 = zonep->f[nofield2];
-  double* f3 = zonep->f[nofield3];
-  double fmin1, fmax1, fmin2, fmax2, fmin3, fmax3;
-  fmax1 = maxf[nofield1]; fmin1 = minf[nofield1];
-  fmax2 = maxf[nofield2]; fmin2 = minf[nofield2];
-  fmax3 = maxf[nofield3]; fmin3 = minf[nofield3];
-  double deltai1 = MAX(fmax1-fmin1, 1.e-6);
-  double deltai2 = MAX(fmax2-fmin2, 1.e-6);
-  double deltai3 = MAX(fmax3-fmin3, 1.e-6);
+  double deltai1 = MAX(ABS(fmax1), 1.e-6);
+  deltai1 = MAX(deltai1, ABS(fmin1));
+  double deltai2 = MAX(ABS(fmax2), 1.e-6);
+  deltai2 = MAX(deltai2, ABS(fmin2));
+  double deltai3 = MAX(ABS(fmax3), 1.e-6);
+  deltai2 = MAX(deltai3, ABS(fmin3));
+
   double deltai = deltai1;
   deltai = MAX(deltai, deltai2);
   deltai = MAX(deltai, deltai3);
-  deltai = 1./deltai;
-
-  // Colormap
-  void (*getrgb)(Data* data, double, float*, float*, float*);
-  getrgb = _pref.colorMap->f;
-
+  deltai = 0.5/deltai;
+  
   // Grid dimensions
   int ni = zonep->ni;
   int nj = zonep->nj;
@@ -98,7 +135,7 @@
   float* surfy = surfx + nbElti;
   float* surfz = surfy + nbElti;
 
-  glBegin(GL_QUADS);  
+  glBegin(GL_QUADS_ARE);
 
   // I Plane
   i = zonep->iPlane;

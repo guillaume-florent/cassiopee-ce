@@ -1,5 +1,6 @@
 # - Draw isolines -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -9,15 +10,17 @@ import Converter.Internal as Internal
 import Post.PyTree as P
 import Transform.PyTree as T
 
+try: range = xrange
+except: pass
+
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def updateVarNameList(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         vars = C.getVarNames(CTK.t)
     else:
         nob = CTK.Nb[0]+1
@@ -33,20 +36,20 @@ def updateVarNameList(event=None):
 def updateVarNameList2(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         vars = C.getVarNames(CTK.t)
     else:
         nob = CTK.Nb[0]+1
         noz = CTK.Nz[0]
         vars = C.getVarNames(CTK.t[2][nob][2][noz])
     if len(vars) == 0: return
-    if WIDGETS.has_key('field'):
+    if 'field' in WIDGETS:
         WIDGETS['field']['values'] = vars[0]
 
 #==============================================================================
 def drawIsoLines():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
@@ -55,18 +58,18 @@ def drawIsoLines():
 
     try: nlevels = int(nlevels)
     except: levels = 30
-    if (nlevels < 2): nlevels = 2
+    if nlevels < 2: nlevels = 2
     
     nzs = CPlot.getSelectedZones()
     CTK.saveTree()
 
     fmin = CTK.varsFromWidget(VARS[3].get(), type=1)
-    if (fmin == []): fmin = C.getMinValue(CTK.t, field)
+    if fmin == []: fmin = C.getMinValue(CTK.t, field)
     else: fmin = fmin[0]
     fmax = CTK.varsFromWidget(VARS[4].get(), type=1)
-    if (fmax == []): fmax = C.getMaxValue(CTK.t, field)
+    if fmax == []: fmax = C.getMaxValue(CTK.t, field)
     else: fmax = fmax[0]
-    if (nzs == []):
+    if nzs == []:
         z = Internal.getZones(CTK.t)
     else:
         z = []
@@ -78,19 +81,19 @@ def drawIsoLines():
     isos = []
     nlevels += 1 # pour etre coeherent avec les niveaux d'iso solides
     fail = False; errors = []
-    for v in xrange(nlevels):
+    for v in range(nlevels):
         value = fmin + (fmax-fmin)/(nlevels-1)*v
         for zone in z:
             try:
                 i = P.isoLine(zone, field, value)
                 isos.append(i)
-            except Exception, e:
+            except Exception as e:
                 fail = True; errors += [0,str(e)]
                 
     CTK.t = C.addBase2PyTree(CTK.t, 'CONTOURS', 1)
     bases = Internal.getNodesFromName1(CTK.t, 'CONTOURS')
     nob = C.getNobOfBase(bases[0], CTK.t)
-    if (isos != []):
+    if isos != []:
         isos = T.join(isos)
         CTK.add(CTK.t, nob, -1, isos)
     if (fail == False):
@@ -134,7 +137,7 @@ def extractIsoLine():
         try:
             i = P.isoLine(zone, field, value)
             isos.append(i)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
             
     CTK.t = C.addBase2PyTree(CTK.t, 'CONTOURS', 1)
@@ -162,7 +165,7 @@ def createApp(win):
                            text='tkIsoLine', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Compute isolines.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -182,20 +185,20 @@ def createApp(win):
     V = TK.StringVar(win); V.set('CoordinateX'); VARS.append(V)
     # -1- nlevels -
     V = TK.StringVar(win); V.set('25'); VARS.append(V)
-    if CTK.PREFS.has_key('tkIsoLineLevels'): 
+    if 'tkIsoLineLevels' in CTK.PREFS: 
         V.set(CTK.PREFS['tkIsoLineLevels'])
     # -2- value -
     V = TK.StringVar(win); V.set('1.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkIsoLineValue'): 
+    if 'tkIsoLineValue' in CTK.PREFS: 
         V.set(CTK.PREFS['tkIsoLineValue'])
     # -3- min iso
     V = TK.StringVar(win); V.set('MIN'); VARS.append(V)
-    if CTK.PREFS.has_key('tkIsoLineMin'): 
+    if 'tkIsoLineMin' in CTK.PREFS: 
         V.set(CTK.PREFS['tkIsoLineMin'])
     # -4- max iso
     V = TK.StringVar(win); V.set('MAX'); VARS.append(V)
     V = TK.StringVar(win); V.set('MIN'); VARS.append(V)
-    if CTK.PREFS.has_key('tkIsoLineMax'): 
+    if 'tkIsoLineMax' in CTK.PREFS: 
         V.set(CTK.PREFS['tkIsoLineMax'])
 
     # - field name -
@@ -294,11 +297,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

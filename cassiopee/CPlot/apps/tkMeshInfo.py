@@ -1,5 +1,6 @@
 # - display mesh info -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -62,6 +63,9 @@ def computeMeshInfo(z, dim):
                 if Internal.getValue(e)[0] == 22:
                     erange = Internal.getNodeFromName1(e, 'ElementRange')
                     nfaces += erange[1][1]-erange[1][0]+1
+        elif dim[3] == 'NODE':
+            ncells = 0
+            nfaces = 0
         else: # BE, very expensive!!
             if dim[1] < 100000: # Trouver un autre moyen
                 zp = C.convertArray2NGon(z)
@@ -105,7 +109,7 @@ def updateVarNameList2(event=None):
         noz = CTK.Nz[0]
         vars = C.getVarNames(CTK.t[2][nob][2][noz])
 
-    if WIDGETS.has_key('variable'):
+    if 'variable' in WIDGETS:
         WIDGETS['variable']['values'] = vars[0]
 
 #==============================================================================
@@ -192,7 +196,7 @@ def createApp(win):
                            text='tkMeshInfo', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Display mesh informations.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=2)
@@ -261,7 +265,7 @@ def createApp(win):
     BB = CTK.infoBulle(parent=B, text='Number of faces in selection.')
 
     # - Variable -
-    B = TTK.Label(Frame, text="Variable : ")
+    B = TTK.Label(Frame, text="Variable: ")
     B.grid(row=4, column=0, columnspan=1, sticky=TK.EW)
     BB = CTK.infoBulle(parent=B, text='Selected var name.')
     F = TTK.Frame(Frame, borderwidth=0)
@@ -284,7 +288,7 @@ def createApp(win):
         WIDGETS['variable'] = B
     
     # - Min de la variable - 
-    B = TTK.Label(Frame, text="Min :")
+    B = TTK.Label(Frame, text="Min:")
     B.grid(row=5, column=0, sticky=TK.EW)
     BB = CTK.infoBulle(parent=B, text='Min of variable.')
     B = TTK.Entry(Frame, textvariable=VARS[1], background='White',
@@ -293,7 +297,7 @@ def createApp(win):
     BB = CTK.infoBulle(parent=B, text='Min of variable.')
     
     # - Max de la variable -    
-    B = TTK.Label(Frame, text="Max :")
+    B = TTK.Label(Frame, text="Max:")
     B.grid(row=6, column=0, sticky=TK.EW)
     BB = CTK.infoBulle(parent=B, text='Max of variable.')
     B = TTK.Entry(Frame, textvariable=VARS[2], background='White',

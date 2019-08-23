@@ -12,26 +12,25 @@ def sphere(x,y,z):
 # Champ cellN en noeud
 a = G.cart((-2.,-1.,-1.),(0.1,0.1,0.1), (21,21,21))
 b = T.translate(a,(2,0,0)); b[0] = 'cart2'
-t = C.newPyTree(['Cart']); t[2][1][2]+=[a,b]
+t = C.newPyTree(['Cart',a,b])
 t = X.connectMatch(t)
 t = C.fillEmptyBCWith(t,'nref','BCFarfield')
-t = C.initVars(t,'Density',1.)
-t = C.initVars(t,'cellN', sphere, ['CoordinateX','CoordinateY','CoordinateZ'])
+C._initVars(t,'Density',1.)
+C._initVars(t,'cellN', sphere, ['CoordinateX','CoordinateY','CoordinateZ'])
 nod = 1
 for d in [-2,-1,0,1,2,5]:
     t2 = X.setHoleInterpolatedPoints(t,depth=d,loc='nodes')
     test.testT(t2,nod); nod+=1
-
 #
 # Champ en centres
 #
 a = G.cart((-2.,-1.,-1.),(0.1,0.1,0.1), (21,21,21))
 b = T.translate(a,(2,0,0)); b[0] = 'cart2'
-t = C.newPyTree(['Cart']); t[2][1][2]+=[a,b]
+t = C.newPyTree(['Cart',a,b])
 t = X.connectMatch(t)
 t = C.fillEmptyBCWith(t,'nref','BCFarfield')
-t = C.initVars(t,'Density',1.)
-t = C.initVars(t,'cellN', sphere, ['CoordinateX','CoordinateY','CoordinateZ'])
+C._initVars(t,'Density',1.)
+C._initVars(t,'cellN', sphere, ['CoordinateX','CoordinateY','CoordinateZ'])
 t = C.node2Center(t,'cellN'); t = C.rmVars(t,'cellN')
 for d in [-2,-1,0,1,2,5]:
     t2 = X.setHoleInterpolatedPoints(t,depth=d,loc='centers')

@@ -1,9 +1,9 @@
 """Initialization of grid solutions.
 """
-__version__ = '2.5'
+__version__ = '2.9'
 __author__ = "Stephanie Peron, Christophe Benoit, Gaelle Jeanfaivre, Pascal Raud"
 
-import initiator
+from . import initiator
 
 def initConst(a, adim='adim1', MInf=None, alphaZ=0., alphaY=0., ReInf=1.e8):
     """Init a by a constant field.

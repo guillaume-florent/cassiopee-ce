@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -254,6 +254,7 @@ E_Int K_GENERATOR::getNeighbourHexas(
   }// fin et1
   } // OMP
   delete bbtree;
+  for (E_Int i = 0; i < nelts; i++) delete boxes[i];
   return 1;
 }
 

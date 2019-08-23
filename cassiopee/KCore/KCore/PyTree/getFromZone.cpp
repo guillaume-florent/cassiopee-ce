@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -274,11 +274,18 @@ E_Int K_PYTREE::getFromZone(PyObject* o, E_Int xyz, E_Int loc,
       {
         l = PyList_GetItem(childrens, i);
         node = PyList_GetItem(l, 3);
-        str = PyString_AsString(node); // type
+        if (PyString_Check(node)) str = PyString_AsString(node); // type
+#if PY_VERSION_HEX >= 0x03000000
+        else if (PyUnicode_Check(node)) str = PyBytes_AsString(PyUnicode_AsUTF8String(node)); 
+#endif
+        else str = NULL;
         if (K_STRING::cmp(str, "DataArray_t") == 0)
         {
           node = PyList_GetItem(l, 0); // var name
-          str = PyString_AsString(node);
+          if (PyString_Check(node)) str = PyString_AsString(node);
+#if PY_VERSION_HEX >= 0x03000000
+        else if (PyUnicode_Check(node)) str = PyBytes_AsString(PyUnicode_AsUTF8String(node)); 
+#endif
           E_Float* f = getValueAF(l, hook);
           fields.push_back(f);
           locs.push_back(0);
@@ -303,11 +310,18 @@ E_Int K_PYTREE::getFromZone(PyObject* o, E_Int xyz, E_Int loc,
       {
         l = PyList_GetItem(childrens, i);
         node = PyList_GetItem(l, 3);
-        str = PyString_AsString(node); // type
+        if (PyString_Check(node)) str = PyString_AsString(node); // type
+#if PY_VERSION_HEX >= 0x03000000
+        else if (PyUnicode_Check(node)) str = PyBytes_AsString(PyUnicode_AsUTF8String(node)); 
+#endif
+        else str = NULL;
         if (K_STRING::cmp(str, "DataArray_t") == 0)
         {
           node = PyList_GetItem(l, 0); // var name
-          str = PyString_AsString(node);
+          if (PyString_Check(node)) str = PyString_AsString(node);
+#if PY_VERSION_HEX >= 0x03000000
+        else if (PyUnicode_Check(node)) str = PyBytes_AsString(PyUnicode_AsUTF8String(node)); 
+#endif
           E_Float* f = getValueAF(l, hook);
           fields.push_back(f);
           locs.push_back(1);

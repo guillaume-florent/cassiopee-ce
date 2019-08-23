@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import os, sys
 from distutils.core import setup, Extension
 
 #=============================================================================
@@ -42,7 +41,7 @@ extensions = [
 # Setup ======================================================================
 setup(
     name="Dist2Walls",
-    version="2.5",
+    version="2.9",
     description="Computation of distance to walls.",
     author="Onera",
     package_dir={"":"."},

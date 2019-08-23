@@ -1,13 +1,16 @@
 # - tkInit -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
 import CPlot.Panels as Panels
-import Initiator.PyTree as I
 import Converter.Internal as Internal
 import Dist2Walls.PyTree as DW
+
+try: range = xrange
+except: pass
 
 # local widgets list
 WIDGETS = {}; VARS = []
@@ -16,15 +19,15 @@ WIDGETS = {}; VARS = []
 def initWallDistance():
     if CTK.t == []: return
     bodies = C.extractBCOfType(CTK.t, 'BCWall')
-    for c in xrange(len(bodies)):
+    for c in range(len(bodies)):
         try: bodies[c] = C.node2ExtCenter(bodies[c])
         except: pass
     tb = C.newPyTree(['Base', 2]); tb[2][1][2] += bodies
-    CTK.saveTree() 
+    CTK.saveTree()
     try:
         CTK.t = DW.distance2Walls(CTK.t, tb, loc='centers', type='ortho')
         CTK.TXT.insert('START', 'Distance to wall computed.\n')
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: wallDistance')
         CTK.TXT.insert('START', 'Wall distance fails.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -33,37 +36,37 @@ def initWallDistance():
     
 #==============================================================================
 def initSolution():
-    if (CTK.t == []): return
+    if CTK.t == []: return
     CTK.saveTree()
     state = Internal.getNodeFromType(CTK.t, 'ReferenceState_t')
-    if (state == None):
+    if state is None:
         CTK.TXT.insert('START', 'state is missing (tkState).\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     
     # Check for GoverningEquations
     eqs = Internal.getNodeFromType(CTK.t, 'GoverningEquations_t')
     Model = 'NSTurbulent'
-    if (eqs != None): Model = Internal.getValue(eqs)
+    if eqs is not None: Model = Internal.getValue(eqs)
 
     vars = ['Density', 'MomentumX', 'MomentumY', 'MomentumZ',
             'EnergyStagnationDensity']
     for v in vars:
         node = Internal.getNodeFromName(state, v)
-        if (node != None):
+        if node is not None:
             val = float(node[1][0])
-            CTK.t = C.initVars(CTK.t, 'centers:'+v, val)
+            C._initVars(CTK.t, 'centers:'+v, val)
         else:
             CTK.TXT.insert('START', v + ' is missing (tkState).\n')
             CTK.TXT.insert('START', 'Error: ', 'Error')
             return
-    if (Model == 'NSTurbulent'):
+    if Model == 'NSTurbulent':
         vars = ['TurbulentSANuTildeDensity', 'TurbulentEnergyKineticDensity',
                 'TurbulentDissipationDensity']
         for v in vars:
             node = Internal.getNodeFromName(state, v)
-            if (node != None):
+            if node is not None:
                 val = float(node[1][0])
-                CTK.t = C.initVars(CTK.t, 'centers:'+v, val)
+                C._initVars(CTK.t, 'centers:'+v, val)
 
     CTK.TXT.insert('START', 'Solution initialized.\n')
     CTK.TKTREE.updateApp()
@@ -78,7 +81,7 @@ def createApp(win):
                            text='tkInit', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Init solution fields.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     WIDGETS['frame'] = Frame
@@ -129,7 +132,7 @@ def displayFrameMenu(event=None):
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

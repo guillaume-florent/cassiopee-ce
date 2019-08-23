@@ -7,7 +7,21 @@
 # Others are strings.
 installDict = {
 ###############################################################################
-'WDSNA81OZ': [ 'Machine de production win32',
+'DESKTOP...': [ 'Windows ubuntu',
+'gfortran', # f77compiler
+'gfortran', # f90compiler
+'gcc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+[], # additionalIncludePaths
+['gfortran', 'gomp', 'pthread'], # additionalLibs
+[] # additionalLibPaths
+],
+###############################################################################
+'WDSNA81OZ': [ 'Machine de production win32 (Onera)',
 'gfortran', # f77compiler
 'gfortran', # f90compiler
 'gcc', # Cppcompiler
@@ -18,10 +32,38 @@ False, # static
 False, # CPlotOffScreen
 ['c:/MinGW/include'], # additionalIncludePaths
 ['gfortran', 'gomp', 'pthread'], # additionalLibs
-['c:/MinGW/lib', 'c:/Python27/libs'] # additionalLibPaths
+['c:/MinGW/lib', 'c:/Python27/libs', 'c:/MinGW/bin'] # additionalLibPaths
 ],
 ###############################################################################
-'node6.cluster': [ 'MacOSX',
+'WDAAA728Z': [ 'Windows win64+msys2 (XJ-Onera)',
+'gfortran', # f77compiler
+'gfortran', # f90compiler
+'gcc', # Cppcompiler
+['-isystem /d/juvigny/msys64/mingw64/include/python2.7', '-isystem /d/juvigny/msys64/mingw64/lib/python2.7/site-packages/numpy/core/include/numpy/'], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+['d:/juvigny/msys64/mingw64/include',"c:/Program Files (x86)/Microsoft SDKs/MPI/Include", "/d/juvigny/msys64/mingw64/include/OpenBLAS"], # additionalIncludePaths
+['gfortran', 'gomp', 'pthread', 'openblas', 'psapi'], # additionalLibs
+['d:/juvigny/msys64/mingw64/lib', 'd:/juvigny/msys64/mingw64/bin',"c:/Program Files (x86)/Microsoft SDKs/MPI/Lib/x64"] # additionalLibPaths
+],
+###############################################################################
+'WDAAA859Z': [ 'Windows win64+msys2 (CB-Onera)',
+'gfortran', # f77compiler
+'gfortran', # f90compiler
+'gcc', # Cppcompiler
+['-Wno-attributes'], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+['c:/msys64/mingw64/include', 'c:/Program Files (x86)/Microsoft SDKs/MPI/Include', 'c:/msys64/mingw64/include/OpenBLAS'], # additionalIncludePaths
+['gomp', 'gfortran'], # additionalLibs
+['c:/msys64/mingw64/lib', 'c:/Program Files (x86)/Microsoft SDKs/MPI/Lib/x64'] # additionalLibPaths
+],
+###############################################################################
+'node6.cluster': [ 'MacOSX (generic)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -35,35 +77,77 @@ False, # CPlotOffScreen
 ['/usr/X11/lib', '/System/Library/Frameworks/OpenGL.framework/Libraries/'], # additionalLibPaths
 ],
 ###############################################################################
-'d1cn0001':[ 'AIRBUS HPC4B dev/val cluster',
+'d1log1':[ 'Cluster HPC4B dev/val (Airbus)',
 'ifort', # f77compiler
 'ifort', # f90compiler
-'icc', # Cppcompiler
-[], # CppAdditionalOptions
-[], # f77AdditionalOptions
-False, # useOMP
-False, # static
-False, # CPlotOffScreen
-['/opt/hpmpi/include', '/opt/soft/cdtng/tools/portage/1.10.1_3D/usr/include'], # additionalIncludePaths
-['svml', 'irc', 'ifcore'], # additionalLibs
-['/opt/soft/cdtng/tools/intelcompiler/14.0/compiler/lib/intel64', '/opt/soft/cdtng/tools/portage/1.10.1_3D/usr/lib', '/opt/hpmpi/lib/linux_amd64'] # additionalLibPaths
-],
-###############################################################################
-'caefr0p045': [ 'AIRBUS GISEH',
-'ifort', # f77compiler
-'ifort', # libf90dir
-'icc', # Cppcompiler
+'icpc', # Cppcompiler
 [], # CppAdditionalOptions
 [], # f77AdditionalOptions
 True, # useOMP
 False, # static
 False, # CPlotOffScreen
-['/opt/soft/cdtng/tools/portage/1.10.1_3D/usr/include'], # additionalIncludePaths
-['irc', 'mpi'], # additionalLibs
-['/softs/compilers/intel/11.0/084/lib/intel64','/opt/soft/cdtng/tools/portage/1.10.1_3D/usr/lib'] # additionalLibPaths
+['/opt/hpmpi/include', '/opt/soft/cdtng/tools/portage/1.11/usr/include'], # additionalIncludePaths
+['svml', 'irc', 'ifcore', 'iomp5'], # additionalLibs
+['/opt/soft/cdtng/tools/intelcompiler/16.0/compiler/lib/intel64', '/opt/soft/cdtng/tools/portage/1.11/usr/lib', '/opt/hpmpi/lib/linux_amd64'] # additionalLibPaths
 ],
 ###############################################################################
-'wfrontend1': [ 'Safran Kairos',
+'devt1n007.':[ 'Cluster HPC5 dev/val tou_b (Airbus)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icpc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+['/opt/mpi10/include', '/opt/soft/cdtng/tools/portage/1.11/usr/include'], # additionalIncludePaths
+['svml', 'irc', 'ifcore', 'iomp5'], # additionalLibs
+['/opt/soft/cdtng/tools/intelcompiler/2018/compilers_and_libraries_2018.5.274/linux/compiler/lib/intel64', '/opt/soft/cdtng/tools/portage/1.11/usr/lib', '/opt/mpi10/lib'] # additionalLibPaths
+],
+###############################################################################
+'caefr0p...': [ 'Cluster GISEH (Airbus)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icpc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+['/opt/soft/cdtng/tools/portage/1.11/usr/include'], # additionalIncludePaths
+['svml', 'irc', 'ifcore', 'iomp5'], # additionalLibs
+['/opt/soft/cdtng/tools/portage/1.11/composerxe/lib/intel64', '/opt/soft/cdtng/tools/portage/1.11/usr/lib'] # additionalLibPaths
+],
+###############################################################################
+'papin': [ 'Cluster MBDA (MBDA)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+['-DCACHELINE=16'], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+True, # CPlotOffScreen
+['/soft/intel-2017.5/compilers_and_libraries_2017.5.239/linux/mpi/include64','/home/mtaplaf/Environnement_Commun/Elsa/LIB_EXT/HDF5/hdf5-1.8.18-par/include'], # additionalIncludePaths
+['mpi'], # additionalLibs
+['/soft/intel-2017.5/compilers_and_libraries_2017.5.239/linux/mpi/lib64','/home/mtaplaf/Environnement_Commun/Elsa/LIB_EXT/HDF5/hdf5-1.8.18-par/lib'] # additionalLibPaths
+],
+###############################################################################
+'eiffel': [ 'Machine MBDA2 (MBDA)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+['-DCACHELINE=16'], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+True, # CPlotOffScreen
+['/soft/intel-2017.5/compilers_and_libraries_2017.5.239/linux/mpi/include64','/home/mtaplaf/Environnement_Commun/Elsa/LIB_EXT/HDF5/hdf5-1.8.18-par/include'], # additionalIncludePaths
+['mpi'], # additionalLibs
+['/soft/intel-2017.5/compilers_and_libraries_2017.5.239/linux/mpi/lib64','/home/mtaplaf/Environnement_Commun/Elsa/LIB_EXT/HDF5/hdf5-1.8.18-par/lib'] # additionalLibPaths
+],
+###############################################################################
+'wfrontend1': [ 'Cluster Kairos (Safran)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -77,7 +161,7 @@ False, # CPlotOffScreen
 ['/opt/intel/composer_xe_2013_sp1.0.080/lib/intel64', '/appl/APPLI_SNECMA/HDF5/oper/1.8.11/lib'] # additionalLibPaths
 ],
 ###############################################################################
-'santafe': [ 'MacOSX',
+'santafe': [ 'MacOSX - santafe (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -91,7 +175,7 @@ False, # CPlotOffScreen
 ['/usr/X11/lib', '/System/Library/Frameworks/OpenGL.framework/Libraries/'], # additionalLibPaths
 ],
 ###############################################################################
-'daapuv': [ 'Onera DAAP',
+'daapuv': [ 'Machine DAAP (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -105,7 +189,7 @@ True, # CPlotOffScreen
 ['/usr/local/hdf5-1.8.7/lib'] # additionalLibPaths
 ],
 ###############################################################################
-'celeste': [ 'Grosse machine de post-traitement onera',
+'celeste': [ 'Grosse machine de post-traitement (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -119,7 +203,7 @@ False, # CPlotOffScreen
 [] # additionalLibPath
 ],
 ###############################################################################
-'oneroa142': [ 'Onera',
+'oneroa142': [ 'Machine dev (Onera)',
 '/opt/intel/fc/9.1.036/bin/ifort', # f77compiler
 '/opt/intel/fc/9.1.036/bin/ifort', # f90compiler
 'icc', # Cppcompiler
@@ -133,7 +217,7 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'linux64': [ 'Production linux64',
+'linux64': [ 'Production linux64 (generic)',
 'gfortran', # f77compiler
 'gfortran', # f90compiler
 'gcc', # Cppcompiler
@@ -147,7 +231,7 @@ False, # CPlotOffScreen
 ['/stck1/benoit/lib'] # additionalLibPaths
 ],
 ###############################################################################
-'eos...z': [ 'Onera-eosXXXz',
+'eos...z': [ 'Poste grand calcul eosXXXz (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -175,11 +259,11 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'ld...': [ 'Onera-ld',
+'ld...': [ 'Poste grand calcul Onera-ld (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
-[], # CppAdditionalOptions
+['-DCACHELINE=32','-DNB_SOCKET=1'], # CppAdditionalOptions
 [], # f77AdditionalOptions
 True, # useOMP
 False, # static
@@ -189,11 +273,11 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'tiamat': [ 'Onera machine elsA',
+'tiamat': [ 'Machine de dev elsA (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
-['-DCACHELINE=16'], # CppAdditionalOptions
+['-DCACHELINE=16','-DNB_SOCKET=1','-DCORE_PER_SOCK=6'], # CppAdditionalOptions
 [], # f77AdditionalOptions
 True, # useOMP
 False, # static
@@ -203,11 +287,11 @@ True, # CPlotOffScreen
 ['/home/benoit/x86_64t'] # additionalLibPaths
 ],
 ###############################################################################
-'austri.onera': [ 'Onera machine austri',
+'austri.onera': [ 'Cluster dev austri (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
-['-DCACHELINE=32'], # CppAdditionalOptions
+['-DCACHELINE=32','-DNB_SOCKET=2','-DCORE_PER_SOCK=12','-DSIMD=AVX2'], # CppAdditionalOptions
 [], # f77AdditionalOptions
 True, # useOMP
 False, # static
@@ -217,21 +301,49 @@ True, # CPlotOffScreen
 ['/home/benoit/aus/lib'] # additionalLibPaths
 ],
 ###############################################################################
-'westri': [ 'Onera machine westri',
+'rosetta-ws': [ 'Machine rosetta (Safran)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
-['-DCACHELINE=64'], # CppAdditionalOptions
+['-DCACHELINE=16'], # CppAdditionalOptions
 [], # f77AdditionalOptions
 True, # useOMP
 False, # static
 True, # CPlotOffScreen
-['/usr/local/hdf5-1.8.8-intel-16/include'], # additionalIncludePaths
+['/softs/intel/compilers_and_libraries_2016.0.109/linux/mpi/intel64/include'], # additionalIncludePaths
 [], # additionalLibs
-['/usr/local/hdf5-1.8.8-intel-16/lib'] # additionalLibPaths
+['/softs/intel/compilers_and_libraries_2016.0.109/linux/mpi/intel64/lib'] # additionalLibPaths
 ],
 ###############################################################################
-'giulia': [ 'Onera machine elsA-ASO',
+'rosetta-compute': [ 'Machine rosetta-calcul (Safran)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+['-DCACHELINE=32'], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+True, # CPlotOffScreen
+['/softs/intel/compilers_and_libraries_2016.0.109/linux/mpi/intel64/include'], # additionalIncludePaths
+[], # additionalLibs
+['/softs/intel/compilers_and_libraries_2016.0.109/linux/mpi/intel64/lib'] # additionalLibPaths
+],
+###############################################################################
+'westri': [ 'Machine westri-KNL (Onera)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+['-DCACHELINE=64','-DNB_SOCKET=1','-DCORE_PER_SOCK=64','-Dvtune','-g','-DSIMD=MIC'], # CppAdditionalOptions
+['-g'], # f77AdditionalOptions
+True, # useOMP
+False, # static
+True, # CPlotOffScreen
+['/usr/local/hdf5-1.8.8-intel-16/include','/home/benoit/aus/include','/stck/nalferez/intel/parallel_studio_xe_2018/compilers_and_libraries_2018/linux/mpi/include64/','/stck/nalferez/intel/parallel_studio_xe_2018/vtune_amplifier_2018/include/','/stck/nalferez/intel/parallel_studio_xe_2018/advisor_2018/include/intel64'], # additionalIncludePaths
+['ittnotify','advisor'], # additionalLibs
+['/home/benoit/aus/lib','/stck/nalferez/intel/parallel_studio_xe_2018/compilers_and_libraries_2018/linux/mpi/lib64/','/stck/nalferez/intel/parallel_studio_xe_2018/compilers_and_libraries_2018/lib64/','/usr/local/hdf5-1.8.8-intel-16/lib/','/stck/nalferez/intel/parallel_studio_xe_2018/advisor_2018/lib64'] # additionalLibPaths
+],
+###############################################################################
+'giulia': [ 'Machine dev elsA-ASO (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -246,7 +358,7 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'mangrove': [ 'Onera machine GPU',
+'mangrove': [ 'Machine avec acces GPU (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -260,7 +372,7 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'moloch': [ 'Onera machine Cedre',
+'moloch': [ 'Machine dev Cedre (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -274,7 +386,7 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'cc-wdsna': [ 'Portable redhat',
+'cc-wdsna': [ 'Portable sous redhat (Onera)',
 'gfortran', # f77compiler
 'gfortran', # f90compiler
 'gcc', # Cppcompiler
@@ -288,7 +400,7 @@ False, # CPlotOffScreen
 [], # additionalLibPaths
 ],
 ###############################################################################
-'cephee': [ 'Onera Cassiopee cluster',
+'cephee': [ 'Cluser de dev Cassiopee (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -302,7 +414,7 @@ True, # CPlotOffScreen
 ['/home/tools/local/x86_64a/lib'] # additionalLibPaths
 ],
 ###############################################################################
-'btmclx2': [ 'Turbomeca cluster',
+'btmclx2': [ 'Cluster Turbomeca (Safran)',
 'gfortran', # f77compiler
 'gfortran', # f90compiler
 'gcc', # Cppcompiler
@@ -330,7 +442,21 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'visio': [ 'Onera gfx',
+'pgi': [ 'Machine eos avec PGI',
+'pgf90', # f77compiler
+'pgf90', # f90compiler
+'pgcc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+[], # additionalIncludePaths
+["pgf90","pgf902","pgc","pgmath","pgf90_rpm1","rt","pgf90rtl","pgftnrtl"], # additionalLibs
+["/d/juvigny/Logiciels/linux86-64/2018/lib"] # additionalLibPaths
+],
+##############################################################################
+'visio': [ 'Machine de post gfx (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -344,7 +470,21 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'WDSNA917Z': [ 'Machine de production win64',
+'elmer': [ 'Machine de gros post gfx (Onera)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+[], # additionalIncludePaths
+['Xxf86vm'], # additionalLibs
+[] # additionalLibPaths
+],
+###############################################################################
+'WDSNA917Z': [ 'Machine de production win64 (Onera)',
 'x86_64-w64-mingw32-gfortran', # f77compiler
 'x86_64-w64-mingw32-gfortran', # f90compiler
 'x86_64-w64-mingw32-gcc', # Cppcompiler
@@ -359,7 +499,7 @@ False, # CPlotOffScreen
 #['c:/TDM-GCC-64/lib', 'c:/Users/Adminstrateur/Anaconda2/libs'] # additionalLibPaths
 ],
 ###############################################################################
-'fulvio': [ 'Onera gfx',
+'fulvio': [ 'Machine post gfx legacy (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -373,7 +513,35 @@ False, # CPlotOffScreen
 ['/usr/local/hdf5-intel-1.8.8/lib'] # additionalLibPaths
 ],
 ###############################################################################
-'ubuntu': [ 'Generic ubuntu',
+'cobalt': [ 'CCRT machine Cobalt',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+['-DCACHELINE=32'], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+True, # CPlotOffScreen
+[], # additionalIncludePaths
+[], # additionalLibs
+[] # additionalLibPaths
+],
+###############################################################################
+'ouessant': [ 'Machine IDRIS IBM  POWER + NVIDIA P100)',
+'pgf90', # f77compiler
+'pgf90', # f90compiler
+'pgcc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+[], # additionalIncludePaths
+["pgf90","pgf902","pgc","pgmath","pgkomp",'omp',"pgf90_rpm1","rt","pgf90rtl"], # additionalLibs
+["/opt/pgi/linuxpower/18.4/lib/"] # additionalLibPaths
+],
+###############################################################################
+'ubuntu': [ 'Linux ubuntu (Onera)',
 'gfortran', # f77compiler
 'gfortran', # f90compiler
 'gcc', # Cppcompiler
@@ -387,7 +555,7 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'linux': [ 'Generic linux',
+'linux': [ 'Linux (generic)',
 'gfortran', # f77compiler
 'gfortran', # f90compiler
 'gcc', # Cppcompiler
@@ -401,7 +569,7 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'pdev': [ 'Machine Airbus',
+'pdev': [ 'Machine Airbus (Airbus)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -415,7 +583,7 @@ False, # CPlotOffScreen
 ['/opt/soft/cdtng/tools/portage/1.9/usr/lib', '/opt/hpmpi/lib', '/opt/soft/cdtng/tools/intelcompiler/11.0/lib/intel64'] # additionalLibPaths
 ],
 ###############################################################################
-'laura': [ 'Machine acou',
+'laura': [ 'Machine de dev acou (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -429,7 +597,7 @@ False, # CPlotOffScreen
 ['/usr/local/lib64', '/usr/local/hdf5/1.8.7/lib','/tmp_opt/Python/2.7.3/icc-mpt/lib'] # additionalLibPaths
 ],
 ###############################################################################
-'service': [ 'Onera Stelvio',
+'service': [ 'Cluster de calcul Stelvio (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -442,7 +610,7 @@ True, # CPlotOffScreen
 [], # additionalLibs
 [] # additionalLibPaths
 ],
-'r.i.n.': [ 'Onera Stelvio-batch node',
+'r.i.n.': [ 'Cluster Stelvio-batch node (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -456,21 +624,51 @@ True, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'sator': [ 'Onera machine Sator',
+'sator': [ 'Cluster de calcul Sator (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
-['-DCACHELINE=32','-Dvtune'], # CppAdditionalOptions
+['-DCACHELINE=32','-DNB_SOCKET=2','-DCORE_PER_SOCK=14','-Dvtune','-DSIMD=AVX2'], # CppAdditionalOptions
 [], # f77AdditionalOptions
 True, # useOMP
 False, # static
 True, # CPlotOffScreen
-['/tmp_opt/intel/studio/2017/vtune_amplifier_xe_2017.3.0.510739/include/','/tmp_opt/intel/studio/2017/advisor_2017.1.3.510716/include/intel64'], # additionalIncludePaths
+['/opt/tools/intel/studio/2017/compilers_and_libraries_2017.4.196/linux/mpi/intel64/include','/opt/tools/intel/studio/2017/vtune_amplifier_xe_2017.3.0.510739/include/','/opt/tools/intel/studio/2017/advisor_2017.1.3.510716/include/intel64'], # additionalIncludePaths
 ['ittnotify','advisor'], # additionalLibs
-['/tmp_opt/intel/studio/2017/vtune_amplifier_xe_2017.3.0.510739/lib64/','/tmp_opt/intel/studio/2017/advisor_2017.1.3.510716/lib64','/tmp_opt/lib/hdf5-1.8.17-intel-17/lib/'] # additionalLibPaths
-], 
+['/opt/tools/intel/studio/2017/vtune_amplifier_xe_2017.3.0.510739/lib64/','/opt/tools/intel/studio/2017/advisor_2017.1.3.510716/lib64','/opt/tools/lib/hdf5-1.8.17-intel-17/lib/'] # additionalLibPaths
+#['/opt/tools/intel/studio/2017/vtune_amplifier_xe_2017.3.0.510739/lib64/','/opt/tools/intel/studio/2017/advisor_2017.1.3.510716/lib64'] # additionalLibPaths
+],
 ###############################################################################
-'chi85bi': [ 'Machine EDF',
+'sat_sky': [ 'Cluster de calcul Sator skylake(Onera)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+['-DCACHELINE=64','-DNB_SOCKET=2','-DCORE_PER_SOCK=22','-Dvtune','-DSIMD=AVX512'], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+True, # CPlotOffScreen
+['/opt/tools/intel/studio/2017/compilers_and_libraries_2017.4.196/linux/mpi/intel64/include','/opt/tools/intel/studio/2017/vtune_amplifier_xe_2017.3.0.510739/include/','/opt/tools/intel/studio/2017/advisor_2017.1.3.510716/include/intel64'], # additionalIncludePaths
+['ittnotify','advisor'], # additionalLibs
+['/opt/tools/intel/studio/2017/vtune_amplifier_xe_2017.3.0.510739/lib64/','/opt/tools/intel/studio/2017/advisor_2017.1.3.510716/lib64','/opt/tools/lib/hdf5-1.8.17-intel-17/lib/'] # additionalLibPaths
+#['/opt/tools/intel/studio/2017/vtune_amplifier_xe_2017.3.0.510739/lib64/','/opt/tools/intel/studio/2017/advisor_2017.1.3.510716/lib64'] # additionalLibPaths
+],
+###############################################################################
+'spiro': [ 'Machine dev Spiro (Onera)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+['-DCACHELINE=32'], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+True, # CPlotOffScreen
+[], # additionalIncludePaths
+[], # additionalLibs
+[] # additionalLibPaths
+],
+###############################################################################
+'chi85bi': [ 'Cluster EDF (Onera)',
 'gfortran', # f77compiler
 'gfortran', # f90compiler
 'gcc', # Cppcompiler
@@ -484,23 +682,23 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'Raspail': [ 'Onera DTIM',
+'Raspail': [ 'Machine DTIM (Onera)',
 'gfortran-7', # f77compiler
 'gfortran-7', # f90compiler
-#'clang++-4.0', # Cppcompiler
-'g++-7', # Cppcompiler
-['-std=c++98', '-pedantic', '-march=native'], # CppAdditionalOptions
+'clang++-5.0', # Cppcompiler
+#'g++-7', # Cppcompiler
+['-pedantic', '-march=native', '-Wno-variadic-macros', '-Wno-long-long', '-g'], # CppAdditionalOptions
 ['-march=native', '-fdefault-real-8', '-fdefault-double-8'], # f77AdditionalOptions
 True, # useOMP
 False, # static
 False, # CPlotOffScreen
 ['/usr/include/hdf5/serial/'], # additionalIncludePaths
-['gfortran','gomp'], # additionalLibs
+[], # additionalLibs
 ['/usr/lib/gcc/x86_64-linux-gnu/7',
  '/usr/lib/x86_64-linux-gnu/'] # additionalLibPaths
 ],
 ###############################################################################
-'curie': [ 'Curie',
+'curie': [ 'Cluster Curie',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -514,7 +712,7 @@ False, # CPlotOffScreen
 ['/usr/local/hdf5-1.8.8/lib'] # hdfPath
 ],
  ##############################################################################
-'madmax64': [ 'Onera cluster madmax',
+'madmax64': [ 'Cluster madmax DTIS (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -556,7 +754,7 @@ False, # CPlotOffScreen
 [] # additionalLibPaths
 ],
 ###############################################################################
-'stelvio_impi15': [ 'Onera Stelvio Full intel',
+'stelvio_impi15': [ 'Cluster Stelvio Full intel (Onera)',
 'ifort', # f77compiler
 'ifort', # f90compiler
 'icc', # Cppcompiler
@@ -572,5 +770,33 @@ False, # CPlotOffScreen
 ['/tmp_opt/lib/hdf5-1.8.8-intel-15-impi/lib', 
  '/tmp_opt/lib/hdf5/1.8.17/15/impi/lib', 
  '/tmp_opt/intel/studio/2015/impi/5.0.3.048/intel64/lib'] # additionalLibPaths
+],
+###############################################################################
+'dumbo': [ 'Grosse machine de post-traitement (Onera)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+[], # additionalIncludePaths
+['Xxf86vm'], # additionalLibs
+[] # additionalLibPath
+],
+###############################################################################
+'xdaap': [ 'Xdaap (Onera)',
+'ifort', # f77compiler
+'ifort', # f90compiler
+'icc', # Cppcompiler
+[], # CppAdditionalOptions
+[], # f77AdditionalOptions
+True, # useOMP
+False, # static
+False, # CPlotOffScreen
+[], # additionalIncludePaths
+[], # additionalLibs
+[] # additionalLibPaths
 ]
 }

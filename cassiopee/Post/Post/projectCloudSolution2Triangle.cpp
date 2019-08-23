@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -213,8 +213,8 @@ PyObject* K_POST::projectCloudSolution2Triangle(PyObject* self, PyObject* args)
     }
   }
   
-  //cleanings
-  delete kdt;
+  // cleanings
+  delete kdt; delete coordAcc;
   E_Int size = boxes.size();
   for (E_Int v = 0; v < size; v++) delete boxes[v];
     
@@ -375,7 +375,7 @@ PyObject* K_POST::projectCloudSolution2Triangle(PyObject* self, PyObject* args)
   listOfCloudPtsPerTri.clear(); cEEN.clear();
 
   E_Int nbExtrapPts = indicesExtrap.size();
-  if ( nbExtrapPts > 0 )
+  if (nbExtrapPts > 0)
   {
     // printf(" Number of extrapolated points : %d sur %d points au total\n", nbExtrapPts, nbPtsR);
     // kdtree of cloud pts
@@ -394,7 +394,7 @@ PyObject* K_POST::projectCloudSolution2Triangle(PyObject* self, PyObject* args)
         varR[indR] = varD[indD];
       }
     }
-    delete kdt;
+    delete kdt; delete coordAcc;
   }
   RELEASESHAREDB(resr, arrayR, fr, cnr);
   RELEASESHAREDB(resd, arrayD, fd, cnd);

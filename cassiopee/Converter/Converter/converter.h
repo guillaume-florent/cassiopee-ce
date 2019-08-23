@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -22,13 +22,14 @@
 # include "kcore.h"
 namespace K_CONVERTER
 {
-  // # define SORTHOOK
+  // # define QUADDOUBLE
   PyObject* setBCDataInGhostCellsStruct(PyObject* self, PyObject* args);
   PyObject* extrapInterior2BCFaceStruct(PyObject* self, PyObject* args);
   PyObject* nullifyVectorAtBCFaceStruct(PyObject* self, PyObject* args);
   PyObject* setPartialFields(PyObject* self, PyObject* args);
   PyObject* _setPartialFields(PyObject* self, PyObject* args);
   PyObject* setPartialFieldsPT(PyObject* self, PyObject* args);
+  PyObject* filterPartialFields(PyObject* self, PyObject* args);
   PyObject* extractVars(PyObject* self, PyObject* args);
   PyObject* addVar(PyObject* self, PyObject* args);
   PyObject* addVars(PyObject* self, PyObject* args);
@@ -65,9 +66,12 @@ namespace K_CONVERTER
   PyObject* convertPenta2Tetra(PyObject* self, PyObject* args);
   PyObject* convertPyra2Tetra(PyObject* self, PyObject* args);
   PyObject* convertNGon2TetraBary(PyObject* self, PyObject* args);
+  PyObject* convertMix2BE(PyObject* self, PyObject* args);
   PyObject* convertNGon2TetraBaryBoth(PyObject* self, PyObject* args);
   PyObject* convertArray2TetraBary(PyObject* self, PyObject* args);
   PyObject* convertArray2TetraBaryBoth(PyObject* self, PyObject* args);
+  PyObject* convertHO2LO(PyObject* self, PyObject* args);
+  PyObject* convertLO2HO(PyObject* self, PyObject* args);
   PyObject* convertTri2Quad(PyObject* self, PyObject* args);
   PyObject* convertQuad2Tri(PyObject* self, PyObject* args);
   PyObject* center2Node(PyObject* self, PyObject* args);
@@ -83,6 +87,7 @@ namespace K_CONVERTER
   PyObject* convertPyTree2FFD(PyObject* self, PyObject* args);
   PyObject* readPyTreeFromPaths(PyObject* self, PyObject* args);
   PyObject* writePyTreePaths(PyObject* self, PyObject* args);
+  PyObject* deletePyTreePaths(PyObject* self, PyObject* args);
   PyObject* cpyGhost2Real(PyObject* self, PyObject* args);
   PyObject* cpyReal2Ghost(PyObject* self, PyObject* args);
   PyObject* cpyConnectA2ConnectP(PyObject* self, PyObject* args);
@@ -98,6 +103,7 @@ namespace K_CONVERTER
   PyObject* rmGhostCellsNGonNodes(PyObject* self, PyObject* args);
   PyObject* rmGhostCellsNGonCenters(PyObject* self, PyObject* args);
   PyObject* rmGhostCellsNGonBoth(PyObject* self, PyObject* args);
+  PyObject* addGhostCellsNG(PyObject* self, PyObject* args);
   // Ghost Cells structured
   PyObject* fillJoin(PyObject* self, PyObject* args);
   PyObject* fillJoinNMNodes(PyObject* self, PyObject* args);
@@ -126,6 +132,9 @@ namespace K_CONVERTER
   PyObject* nearestElements(PyObject* self, PyObject* args);
   PyObject* nearestFaces(PyObject* self, PyObject* args);
   PyObject* nearestNodes(PyObject* self, PyObject* args);
+  // topological identification
+  PyObject* createGlobalIndex(PyObject* self, PyObject* args);
+  PyObject* recoverGlobalIndex(PyObject* self, PyObject* args);
   // Adapter
   PyObject* adaptPE2NFace(PyObject* self, PyObject* args);
   PyObject* adaptNFace2PE(PyObject* self, PyObject* args);
@@ -136,6 +145,15 @@ namespace K_CONVERTER
   PyObject* adapt2FastP(PyObject* self, PyObject* args);
   PyObject* createElsaHybrid(PyObject* self, PyObject* args);
   PyObject* diffIndex(PyObject* self, PyObject* args);
+  PyObject* pointList2Ranges(PyObject* self, PyObject* args);
+  PyObject* pointList2SPL(PyObject* self, PyObject* args);
+  // Extraction d'infos pour les raccords match 
+  PyObject* extractBCMatchStruct(PyObject* self, PyObject* args);
+  PyObject* extractBCMatchNG(PyObject* self, PyObject* args);
+  PyObject* extractBCFields(PyObject* self, PyObject* args);
+  PyObject* buildBCMatchFieldStruct(PyObject* self, PyObject* args);
+  PyObject* buildBCMatchFieldNG(PyObject* self, PyObject* args);
+  PyObject* range2PointList(PyObject* self, PyObject* args);
 
   // addGhostCells NGON
   void addGhostCellsNGon2D(E_Int depth,
@@ -153,6 +171,7 @@ namespace K_CONVERTER
   void conformizeNGon(K_FLD::FldArrayF& f, E_Int posx, E_Int posy, E_Int posz,
                       K_FLD::FldArrayI& cn, E_Float tol,
                       K_FLD::FldArrayI*& cno);
+
   // a mettre ensuite dans K_CONNECT
   void orderBAR2Struct(E_Int posx, E_Int posy, E_Int posz,
                        K_FLD::FldArrayF& f, K_FLD::FldArrayI& cn,
@@ -200,5 +219,9 @@ namespace K_CONVERTER
   void splitElementConnectivity(PyObject* zone, E_Int* npoint,E_Int* nodmtch,E_Int* kpoinmtch);
   void getVarBC(PyObject* zone, E_Float* Var_l, E_Int *ielmtmtch2, E_Int* nlimt);
   void scanBC(PyObject* zone, E_Int *nlimt);
+
+  // Find cell index from a boundary face index (valid only for domain boundaries)
+  void indface2index(E_Int indface, E_Int ni, E_Int nj, E_Int nk, E_Int& ind);
+
 }
 #endif

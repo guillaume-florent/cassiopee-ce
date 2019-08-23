@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
-import os, sys
+import os
 
 #=============================================================================
 # Distributor2 requires:
@@ -32,7 +32,7 @@ libraryDirs += paths; libraries += libs
 # setup ======================================================================
 setup(
     name="Distributor2",
-    version="2.5",
+    version="2.9",
     description="Distributor for arrays and pyTrees.",
     author="Onera",
     package_dir={"":"."},

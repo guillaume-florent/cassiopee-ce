@@ -5,7 +5,7 @@ import Connector.ToolboxIBM as IBM
 import Post.PyTree as P
 import Geom.PyTree as D
 import Dist2Walls.PyTree as DTW
-import KCore.test as test
+
 N = 21
 a = G.cart((0,0,0),(1./(N-1),1./(N-1),1./(N-1)),(N,N,N))
 body = D.sphere((0.5,0,0),0.1,N=20)

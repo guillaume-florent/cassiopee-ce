@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -17,6 +17,8 @@
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "../Data.h"
+#include "Shaders/shaders_id.h"
+#include <iostream>
 
 //=============================================================================
 // Trigger le shader approprie en fonction de material, de scale et de color
@@ -27,11 +29,12 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
   float dx = K_FUNC::E_max(1.e-6, 1./(z.xmax-z.xmin));
   float dy = K_FUNC::E_max(1.e-6, 1./(z.ymax-z.ymin));
   float dz = K_FUNC::E_max(1.e-6, 1./(z.zmax-z.zmin));
-
+  int t;
+  
   switch (material)
   {
     case 1: // Glass
-      shader = 3;
+      shader = _shaders.shader_id(shader::glass);
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_2D, _texEnviron1); // environnement
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -55,7 +58,7 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
       break;
 
     case 2: // Chrome
-      shader = 4;
+      shader = _shaders.shader_id(shader::chrome);
       SHADOWTEXTURE;
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_2D, _texEnviron1); // environnement
@@ -66,13 +69,14 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
       if (_shaders.currentShader() != shader) _shaders.activate(shader);
       _shaders.activate(shader);
       _shaders[shader]->setUniform("MixRatio", (float)0.6*z.shaderParam1);
+      _shaders[shader]->setUniform("intensity", (float)z.shaderParam2);
       _shaders[shader]->setUniform("EnvMap", (int)1);
       _shaders[shader]->setUniform("shadow", (int)ptrState->shadow);
       _shaders[shader]->setUniform("ShadowMap", (int)0);
       break;
 
     case 3: // Metal
-       shader = 5;
+       shader = _shaders.shader_id(shader::metal);
        SHADOWTEXTURE;
        glActiveTexture(GL_TEXTURE1);
        glBindTexture(GL_TEXTURE_3D, _texNoise);
@@ -86,7 +90,7 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
       break;
 
     case 4: // Wood
-      shader = 6;
+      shader = _shaders.shader_id(shader::wood);
       SHADOWTEXTURE;
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_3D, _texNoise);
@@ -116,7 +120,7 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
       break;
       
     case 5: // Marble
-      shader = 7;
+      shader = _shaders.shader_id(shader::marble);
       SHADOWTEXTURE;
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_3D, _texNoise);
@@ -135,7 +139,7 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
       break;
       
     case 6: // Smoke: volumetric shader
-      shader = 8;
+      shader = _shaders.shader_id(shader::smoke);
       glEnable(GL_CULL_FACE); glDepthMask(GL_FALSE);
       glActiveTexture(GL_TEXTURE0);
       glBindTexture(GL_TEXTURE_3D, _texVoxelBuffer);
@@ -159,14 +163,15 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
       break;
 
     case 7: // XRay
-      shader = 9;
+      shader = _shaders.shader_id(shader::xray);
       /*glEnable(GL_CULL_FACE);*/ glDepthMask(GL_FALSE);
       if (_shaders.currentShader() != shader) _shaders.activate(shader);
       _shaders[shader]->setUniform("EdgeFalloff", (float)0.9*z.shaderParam1);
+      _shaders[shader]->setUniform("intensity", (float)z.shaderParam2);
       break;
 
     case 8: // Granite
-      shader = 11;
+      shader = _shaders.shader_id(shader::granite);
       SHADOWTEXTURE;
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_3D, _texNoise);
@@ -183,25 +188,32 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
     case 9: // billboarding
       if (z.shaderParam2 < 0.1) // Sphere billboard
       {
-        shader = 12;
+        shader = _shaders.shader_id(shader::sphere_billboarding);
+        ptrState->billBoardNi = 1;
+        ptrState->billBoardNj = 1;
+        ptrState->billBoardWidth = 1;
+        ptrState->billBoardHeight = 1;
+        
         if (_shaders.currentShader() != shader) _shaders.activate(shader);
       }
       else if (z.shaderParam2 >= 0.1) // texture billboards
       {
-        int type = (int)(z.shaderParam2*3.);
+        int type = (int)( (z.shaderParam2)*(_nBillBoards*0.5) );
         int t = type-1;
         t = std::max(t, 0);
         t = std::min(t, _nBillBoards-1);
         if (_billBoardTexs[t] == 0) 
         {
-            createPngTexture(_billBoardFiles[t], _billBoardTexs[t], true);
-            //printf("loading %d %s\n", type, _billBoardFiles[t]);
+          createPngTexture(_billBoardFiles[t], _billBoardTexs[t], _billBoardWidths[t], _billBoardHeights[t], true);
+          //printf("loading %d %s\n", type, _billBoardFiles[t]);
         }
         ptrState->billBoardNi = _billBoardNis[t];
         ptrState->billBoardNj = _billBoardNjs[t];
+        ptrState->billBoardWidth = _billBoardWidths[t];
+        ptrState->billBoardHeight = _billBoardHeights[t];
         _texBillBoard = _billBoardTexs[t];
 
-        shader = 23;
+        shader = _shaders.shader_id(shader::billboard);
         //glEnable(GL_CULL_FACE);
         glDepthMask(GL_FALSE);
         
@@ -217,7 +229,7 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
       break;
 
     case 10: // Bricks
-      shader = 16;
+      shader = _shaders.shader_id(shader::brick);
       SHADOWTEXTURE;
       if (_shaders.currentShader() != shader) _shaders.activate(shader);
       _shaders[shader]->setUniform("MortarColor", (float)1., (float)1., (float)1.);
@@ -228,7 +240,7 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
       break;
 
     case 11: // Clouds
-      shader = 17;
+      shader = _shaders.shader_id(shader::cloud);
       SHADOWTEXTURE;
       glActiveTexture(GL_TEXTURE1);
       glBindTexture(GL_TEXTURE_3D, _texNoise);
@@ -242,53 +254,115 @@ void Data::triggerShader(Zone& z, int material, float scale, float* color)
       break;
 
     case 12: // gooch
-      shader = 21;
+      shader = _shaders.shader_id(shader::gooch);
       SHADOWTEXTURE;
       if (_shaders.currentShader() != shader) _shaders.activate(shader);
-      _shaders[shader]->setUniform("fallOff", (float)1.+z.shaderParam1);
+      _shaders[shader]->setUniform("specularFactor", (float)z.shaderParam2);
+      _shaders[shader]->setUniform("exponent", (float)z.shaderParam1);
       _shaders[shader]->setUniform("shadow", (int)ptrState->shadow);
       _shaders[shader]->setUniform("ShadowMap", (int)0);
       break;
 
     case 13: // flat shader (no light)
-      shader = 22;
+      shader = _shaders.shader_id(shader::flat);
       SHADOWTEXTURE;
       if (_shaders.currentShader() != shader) _shaders.activate(shader);
       _shaders[shader]->setUniform("shadow", (int)ptrState->shadow);
       _shaders[shader]->setUniform("ShadowMap", (int)0);
       break;
 
+    case 14: // textured
+      if (_nMaterials > 0)
+      {
+        shader = _shaders.shader_id(shader::textured_material);
+        SHADOWTEXTURE;
+        // choix de la texture
+        t = (int)( (z.shaderParam2)*((_nMaterials-1)*0.5) );
+        t = std::max(t, 0);
+        t = std::min(t, _nMaterials-1);
+        glActiveTexture(GL_TEXTURE1);
+        if (_materialTexs[t] == 0) 
+        {
+           createPngTexture(_materialFiles[t], _materialTexs[t], _materialWidths[t], _materialHeights[t], true);
+          //printf("loading %d %s\n", 0, _materialFiles[0]);
+        }
+        glBindTexture(GL_TEXTURE_2D, _materialTexs[t]);
+        
+        // choix de la bump map (if any)
+        bool hasBump = false;
+        if (t < _nBumpMaps)
+        {
+          glActiveTexture(GL_TEXTURE2);
+          if (_bumpMapFiles[t] != NULL)
+          {
+            hasBump = true;
+            if (_bumpMapTexs[t] == 0) 
+            {
+              createPngTexture(_bumpMapFiles[t], _bumpMapTexs[t], _bumpMapWidths[t], _bumpMapHeights[t], true);
+            }
+          }
+          glBindTexture(GL_TEXTURE_2D, _bumpMapTexs[t]);
+        }
+        
+        if (_shaders.currentShader() != shader) _shaders.activate(shader);
+        _shaders[shader]->setUniform("specularFactor", (float)z.shaderParam1);
+        _shaders[shader]->setUniform("shadow", (int)ptrState->shadow);
+        _shaders[shader]->setUniform("hasBump", (int)hasBump);
+        if (z.blending == -1.) _shaders[shader]->setUniform("blend", (float)1.);
+        else _shaders[shader]->setUniform("blend", (float)z.blending);
+        _shaders[shader]->setUniform("ShadowMap", (int)0);
+        _shaders[shader]->setUniform("Texmat0", (int)1);
+        if (hasBump) _shaders[shader]->setUniform("Texbump0", (int)2);
+      }
+      else
+      {
+        _shaders.activate((short unsigned int)0); // no shader
+      }
+      break;
+
     default: // phong
       if (ptrState->dim == 3)
-      {
+      {        
         if (ptrState->solidStyle == 0) // one side
         {
-          shader = 1;
+          shader = _shaders.shader_id(shader::unidirectionnel_phong);
           SHADOWTEXTURE;
           if (_shaders.currentShader() != shader)
             _shaders.activate((short unsigned int)shader);
           if (ptrState->mode == RENDER)
-            _shaders[shader]->setUniform("specularFactor", (float)z.shaderParam1); 
+          {
+            _shaders[shader]->setUniform("specularFactor", (float)z.shaderParam1);
+            _shaders[shader]->setUniform("diffuseFactor", (float)z.shaderParam2); 
+          }
           else
-            _shaders[shader]->setUniform("specularFactor", (float)1.); 
+          {
+            _shaders[shader]->setUniform("specularFactor", (float)1.);
+            _shaders[shader]->setUniform("diffuseFactor", (float)1.);  
+          }
           _shaders[shader]->setUniform("shadow", (int)ptrState->shadow);
           _shaders[shader]->setUniform("ShadowMap", (int)0);
         }
         else if (ptrState->solidStyle == 1 || ptrState->solidStyle == 3 || ptrState->solidStyle == 4) // two sides
         {
-          shader = 2;
+          shader = _shaders.shader_id(shader::bidirectionnel_phong);
           SHADOWTEXTURE;
           if (_shaders.currentShader() != shader)
             _shaders.activate((short unsigned int)shader);
           if (ptrState->mode == RENDER)
-            _shaders[shader]->setUniform("specularFactor", (float)z.shaderParam1); 
+          {
+            _shaders[shader]->setUniform("specularFactor", (float)z.shaderParam1);
+            _shaders[shader]->setUniform("diffuseFactor", (float)z.shaderParam2);
+          }
           else
-            _shaders[shader]->setUniform("specularFactor", (float)1.); 
+          {
+            _shaders[shader]->setUniform("specularFactor", (float)1.);
+            _shaders[shader]->setUniform("diffuseFactor", (float)1.);
+          }
           _shaders[shader]->setUniform("shadow", (int)ptrState->shadow);
           _shaders[shader]->setUniform("ShadowMap", (int)0);
         }
-        else _shaders.activate((short unsigned int)0);
+        else _shaders.activate((short unsigned int)shader::None);
       }
-      else _shaders.activate((short unsigned int)0);
+      else _shaders.activate((short unsigned int)shader::None);
   }
 }

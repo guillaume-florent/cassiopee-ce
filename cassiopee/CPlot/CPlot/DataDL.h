@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -41,8 +41,10 @@ public:
   virtual void createIsoGPUResForRender(); // scalaire for render mode
   virtual void createGPUSMeshZone(StructZone* zonep, int zone);
   virtual void createGPUUMeshZone(UnstructZone* zonep, int zone, int zonet);
+  virtual void createGPUUMeshZone_ho(UnstructZone* zonep, int zone, int zonet);
   virtual void createGPUSSolidZone(StructZone* zonep, int zone);
   virtual void createGPUUSolidZone(UnstructZone* zonep, int zone, int zonet);
+  virtual void createGPUUSolidHOZone(UnstructZone* zonep, int zone, int zonet);
   virtual void createGPUSIsoSolidZone(StructZone* zonep, int zone, int nofield);
   virtual void createGPUSIsoSolidZone(StructZone* zonep, int zone, int nofield1,
 			      int nofield2, int nofield3);
@@ -55,6 +57,7 @@ public:
   virtual void renderGPUUMeshZone(UnstructZone* zonep, int zone, int zonet);
   virtual void renderGPUSSolidZone(StructZone* zonep, int zone);
   virtual void renderGPUUSolidZone(UnstructZone* zonep, int zone, int zonet);
+  virtual void renderGPUUSolidHOZone(UnstructZone* zonep, int zone, int zonet);
   virtual void renderSIsoSolidZone(StructZone* zonep, int zone, int nofield);
   virtual void renderSIsoSolidZone(StructZone* zonep, int zone, int nofield1,
 				   int nofield2, int nofield3);
@@ -79,7 +82,9 @@ public:
 			    std::vector<K_FLD::FldArrayI*>& cnt,
 			    std::vector<char*>& eltType,
 			    std::vector<char*>& zoneNames,
-			    std::vector<char*>& zoneTags);
+			    std::vector<char*>& zoneTags,
+          E_Int referenceNfield=-1,
+          char** referenceVarNames=NULL);
   virtual void initState();
 
 protected:

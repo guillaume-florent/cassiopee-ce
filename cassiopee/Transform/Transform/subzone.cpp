@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -107,7 +107,7 @@ PyObject* K_TRANSFORM::subzoneStruct(PyObject* self, PyObject* args)
             for (E_Int k = k1; k <= k2; k++)
               for (E_Int i = i1; i <= i2; i++)
               {
-                ind  = i-1  + (j-1)*im + (k-1)*imjm;
+                ind  = i-1 + (j-1)*im + (k-1)*imjm;
                 ind2 = (i-i1)+(j-j1)*in+(k-k1)*injn;
                 sp[ind2] = fp[ind];
               }
@@ -1728,7 +1728,7 @@ PyObject* K_TRANSFORM::subzoneFacesBoth(PyObject* self, PyObject* args)
     PyObject* tpl1 = K_ARRAY::buildArray(*f2, varString, 
                                          *cnout, -1, eltTypeFaces);
     PyList_Append(l, tpl1); Py_DECREF(tpl1); delete f2;
-    RELEASESHAREDU(arrayNodes,f, cn);RELEASESHAREDU(arrayCenters, fc, cnc); 
+    RELEASESHAREDU(arrayNodes,f, cn); RELEASESHAREDU(arrayCenters, fc, cnc); 
     FldArrayI* cncout = new FldArrayI(); *cncout = *cnout;
     PyObject* tpl2 = K_ARRAY::buildArray(*fc2, varStringc, 
                                          *cncout, -1, eltTypeFaces, true);

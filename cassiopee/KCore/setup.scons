@@ -31,28 +31,37 @@ libraryDirs += paths; libraries += libs
 
 # Env =========================================================================
 import srcs
+cpp_srcs1 = srcs.cpp_srcs[0:100]
+cpp_srcs2 = srcs.cpp_srcs[100:]
+
 if Dist.getSystem()[0] == 'mingw': tools = ['mingw']
 else: tools = None
 AR = Dist.getAR()
-env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CCFLAGS=[], CXXFLAGS=[],
+env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CPPFLAGS=[],
                   FORTRAN=f77compiler,
                   LIBPATH=additionalLibPaths+libraryDirs,
                   LIBS=libraries+additionalLibs,
-                  CPPPATH=["KCore"]+additionalIncludePaths+[pythonIncDir, numpyIncDir],
-                  CPPFLAGS=Dist.getCppArgs(),
+                  CPPPATH=["KCore", "KCore/Metis"]+additionalIncludePaths+[pythonIncDir, numpyIncDir],
+                  CFLAGS=Dist.getCArgs(),
+                  CXXFLAGS=Dist.getCppArgs(),
                   SHLIBSUFFIX=so_ext, SHLIBPREFIX='',
                   LINKFLAGS=Dist.getLinkArgs(),
-                  ENV={'PATH': Dist.getenv('PATH'),
-                       'LD_LIBRARY_PATH': Dist.getenv('LD_LIBRARY_PATH'),
-                       'LM_LICENSE_FILE': Dist.getenv('LM_LICENSE_FILE')})
+                  ENV=Dist.getEnvForScons())
 
 env = Dist.createFortranBuilder(env, ['./KCore'])
 ppf = Dist.createFortranFiles(env, srcs)
 
+import os
+ELSAPROD = os.environ.get('ELSAPROD', 'x86_r8')
+env.Command('merge.l', 'merge.ar', "sed -e s/ELSAPROD/%s/g merge.ar > merge.l"%ELSAPROD)
+env.Command('libkcore.a', ['libkcore1.a', 'libkcore2.a', 'merge.l'], "ar -M < merge.l")
+
 #==============================================================================
 
-myMod = env.StaticLibrary('kcore', srcs.cpp_srcs+ppf)
-modDir = installPath+'/KCore/' 
+myMod1 = env.StaticLibrary('kcore1', source=cpp_srcs1)
+myMod2 = env.StaticLibrary('kcore2', source=cpp_srcs2+ppf)
+myMod = 'libkcore.a'
+modDir = installPath+'/KCore/'
 dp1 = env.Install(modDir, myMod)
 dp2 = env.Install(modDir, Glob('KCore/*.py'))
 

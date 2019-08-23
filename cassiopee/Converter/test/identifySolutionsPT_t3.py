@@ -1,13 +1,12 @@
 # - identifySolutions (pyTree) -
 import Converter.PyTree  as C
-import Post.PyTree  as P
 import Generator.PyTree  as G
 import Geom.PyTree  as D
 import KCore.test as test
 ni = 21; nj = 21; nk = 21
 m = G.cart((0,0,0), (1./(ni-1),1./(nj-1),1./(nk-1)), (ni,nj,nk))
-m = C.initVars(m, 'G={CoordinateY}')
-m = C.initVars(m,'centers:F={centers:CoordinateX}')
+m = C.initVars(m, '{G}={CoordinateY}')
+m = C.initVars(m,'{centers:F}={centers:CoordinateX}')
 m = C.fillEmptyBCWith(m, 'nref','BCFarfield')
 
 # Create receptor mesh

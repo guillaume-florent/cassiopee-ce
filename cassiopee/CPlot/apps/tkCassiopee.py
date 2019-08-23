@@ -1,20 +1,24 @@
 # -- Cassiopee main app --
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
 import CPlot.Panels as Panels
 import Converter.Internal as Internal
+import Converter.Distributed as Distributed
 import os
+import os.path, sys
 
 # Liste des apps par sous menu et perso
 TREEAPPS = ['tkTreeOps', 'tkCheckPyTree', '---',
-            'tkFilter', '---',
+            
             'tkFamily']
 STATEAPPS = ['tkState', '---',
-             'tkPrefs', 'tkPerfo', 'tkContainers', '---',
+             'tkPrefs', 'tkPerfo', 'tkContainers', 'tkCamera', '---',
              #'tkLogFile', '---',
-             'tkRuler', 'tkFind']
+             'tkFilter', 'tkFind', '---',
+             'tkRuler']
 EDGEAPPS = ['tkCanvas', 'tkPoint', 'tkDraw','---',
             'tkExtractEdges', 'tkMapEdge']
 SURFAPPS = ['tkBasicSurfs', 'tkText', '---',
@@ -35,15 +39,16 @@ BCAPPS = ['tkBC', '---',
           'tkExtractBC']
 MOTIONAPPS = ['tkRigidMotion', 'tkTime']
 SOLVERAPPS = ['tkInit', 'tkDistributor', 'tkDist2Walls', '---',
-              'tkCassiopeeSolver', 'tkElsaSolver']
+              'tkCassiopeeSolver', 'tkElsaSolver', 'tkFastSolver']
 POSTAPPS = ['tkVariables', '---',
             'tkExtractMesh', '---',
             'tkStream', 'tkIsoLine', 'tkIsoSurf', '---',
             'tkInteg']
-VISUAPPS = ['tkView', 'tkPlot', 'tkPlotXY', '---',
+VISUAPPS = ['tkView', #'tkPlot', 
+            'tkPlotXY', '---',
             'tkSlice', 'tkCellN', '---',
             'tkBackground']
-RENDERAPPS = ['tkRenderSet', '---',
+RENDERAPPS = ['tkRenderTree', 'tkRenderSet', '---',
               'tkStereo', 'tkEffects', 'tkDemo', '---',
               'tkPovRay', 'tkLuxRender']
 
@@ -64,13 +69,14 @@ def preferences():
 # Add a personal app to pref file
 #==============================================================================
 def addPersonalApp():
-    import tkFileDialog
+    try: import tkFileDialog
+    except: import tkinter.filedialog as tkFileDialog 
     file = tkFileDialog.askopenfilename(
         filetypes=[('python', '*.py')])
     a = os.access(file, os.F_OK)
     if not a: return
     CTK.loadPrefFile()
-    if CTK.PREFS.has_key('module'): CTK.PREFS['module'] += ' ;'+file
+    if 'module' in CTK.PREFS: CTK.PREFS['module'] += ' ;'+file
     else: CTK.PREFS['module'] = file
     CTK.savePrefFile()
     file = os.path.split(file)
@@ -106,7 +112,7 @@ def notImplemented():
 # IN: submenus: dict to keep trace of allready created submenus
 # OUT: TKMODULES: le dictionnaire des modules importes
 #==============================================================================
-def addMenuItem(app, menu, frame, submenus):
+def addMenuItem(app, menu, frame, submenus, auto):
     app = app.split('/')
     if len(app) == 2: submenu = app[0]; app = app[1]
     else: submenu = None; app = app[0]
@@ -114,16 +120,14 @@ def addMenuItem(app, menu, frame, submenus):
     if submenu is None:
         if app == '---': menu.add_separator()
         else:
-            #try:
-            module = __import__(app)
-            CTK.TKMODULES[app] = module
+            CTK.TKMODULES[app] = None
+            CTK.TKMODULEFRAMES[app] = frame
             name = app; name = '  '+name
-            menu.add_command(label=name, command=module.showApp)
-            module.createApp(frame)
-            if auto[app] == 1: module.showApp()
-            #except: pass
+            menu.add_command(label=name, command=lambda x=app:CTK.openApp(x))
+            if auto[app] == 1: CTK.openApp(app)
+
     else: # submenu
-        if submenus.has_key(submenu):
+        if submenu in submenus:
             myMenu = submenus[submenu]
         else:
             myMenu = TK.Menu(menu, tearoff=0)
@@ -131,36 +135,30 @@ def addMenuItem(app, menu, frame, submenus):
             menu.add_cascade(label=submenu, menu=myMenu)
         if app == '---': myMenu.add_separator()
         else:
-            #try:
-            module = __import__(app)
-            CTK.TKMODULES[app] = module
+            CTK.MODULES[app] = None
+            CTK.MODULEFRAMES[app] = frame
             name = app; name = '  '+name
-            myMenu.add_command(label=name, command=module.showApp)
-            module.createApp(frame)
-            if auto[app] == 1: module.showApp()
-            #except: pass
+            myMenu.add_command(label=name, command=lambda x=app:CTK.openApp(x))
+            if auto[app] == 1: CTK.openApp(app)
 
 #==============================================================================
-if (__name__ == "__main__"):
-
-    # Ouverture du fichier de la ligne de commande
-    import sys
-    if len(sys.argv) == 2:
-        CTK.FILE = sys.argv[1]
-        try:
-            CTK.t = C.convertFile2PyTree(CTK.FILE, density=1.)
-            CTK.t = CTK.upgradeTree(CTK.t)
-            (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
-            fileName = os.path.split(CTK.FILE)[1]
-            CPlot.CPlot.cplot.setWindowTitle(fileName)
-        except: print 'Error: convertFile2PyTree: fail to read file %s.'%CTK.FILE
-
+# To be called when CTK.t is set
+def run(t=None):
+    if t is not None:
+        if Internal.isTopTree(t): CTK.t = t
+        else: CTK.t, ntype = Internal.node2PyTree(t)
+        
+    if CTK.t != []:
+        # upgrade tree
+        CTK.t = CTK.upgradeTree(CTK.t)
+        (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
+    
     # - Verifie l'arbre -
     errors = []
     if CTK.t != []:
         errors = Internal.checkPyTree(CTK.t, level=5)
         if errors == []: CTK.display(CTK.t)
-
+    
     # Load and set prefs for interface
     CTK.loadPrefFile(); CTK.setPrefs()
 
@@ -171,7 +169,7 @@ if (__name__ == "__main__"):
         if len(app) == 2: app = app[1]
         else: app = app[0]
         auto[app] = 0
-    if CTK.PREFS.has_key('auto'):
+    if 'auto' in CTK.PREFS:
         p = CTK.PREFS['auto']; p = p.split(';')
         for i in p:
             i = i.strip()
@@ -180,45 +178,47 @@ if (__name__ == "__main__"):
     # Main window
     (win, frames, menu, menus, file, tools) = CTK.minimal2('Cassiopee '+C.__version__,
                                                            show=False)
+    fileName = os.path.split(CTK.FILE)
+    CTK.changeWindowTitle(fileName[1], fileName[0])
 
     # - Apps -
     submenus = {}
-    for app in TREEAPPS: addMenuItem(app, menus[0], frames[0], submenus)
+    for app in TREEAPPS: addMenuItem(app, menus[0], frames[0], submenus, auto)
     submenus = {}
-    for app in STATEAPPS: addMenuItem(app, menus[1], frames[1], submenus)
+    for app in STATEAPPS: addMenuItem(app, menus[1], frames[1], submenus, auto)
     submenus = {}
-    for app in EDGEAPPS: addMenuItem(app, menus[2], frames[2], submenus)
+    for app in EDGEAPPS: addMenuItem(app, menus[2], frames[2], submenus, auto)
     submenus = {}
-    for app in SURFAPPS: addMenuItem(app, menus[3], frames[3], submenus)
+    for app in SURFAPPS: addMenuItem(app, menus[3], frames[3], submenus, auto)
     submenus = {}
-    for app in MESHAPPS: addMenuItem(app, menus[4], frames[4], submenus)
+    for app in MESHAPPS: addMenuItem(app, menus[4], frames[4], submenus, auto)
     submenus = {}
-    for app in BLOCKAPPS: addMenuItem(app, menus[5], frames[5], submenus)
+    for app in BLOCKAPPS: addMenuItem(app, menus[5], frames[5], submenus, auto)
     submenus = {}
-    for app in BCAPPS: addMenuItem(app, menus[6], frames[6], submenus)
+    for app in BCAPPS: addMenuItem(app, menus[6], frames[6], submenus, auto)
     submenus = {}
-    for app in MOTIONAPPS: addMenuItem(app, menus[7], frames[7], submenus)
+    for app in MOTIONAPPS: addMenuItem(app, menus[7], frames[7], submenus, auto)
     submenus = {}
-    for app in SOLVERAPPS: addMenuItem(app, menus[8], frames[8], submenus)
+    for app in SOLVERAPPS: addMenuItem(app, menus[8], frames[8], submenus, auto)
     submenus = {}
-    for app in POSTAPPS: addMenuItem(app, menus[9], frames[9], submenus)
+    for app in POSTAPPS: addMenuItem(app, menus[9], frames[9], submenus, auto)
     submenus = {}
-    for app in VISUAPPS: addMenuItem(app, menus[10], frames[10], submenus)
+    for app in VISUAPPS: addMenuItem(app, menus[10], frames[10], submenus, auto)
     submenus = {}
-    for app in RENDERAPPS: addMenuItem(app, menus[11], frames[11], submenus)
+    for app in RENDERAPPS: addMenuItem(app, menus[11], frames[11], submenus, auto)
 
     # Updated Apps from tree (containers from tree containers)
-    if CTK.TKMODULES.has_key('tkContainers'): CTK.TKMODULES['tkContainers'].updateApp()
+    module = CTK.getModule('tkContainers'); module.updateApp()
 
     # Get tkPlotXY if any
-    CTK.TKPLOTXY = CTK.TKMODULES['tkPlotXY']
+    module = CTK.getModule('tkPlotXY')
+    if module is not None: CTK.TKPLOTXY = module
 
     # - Personal apps  -
     tools.add_command(label='Add a personal app',
                       command=addPersonalApp)
 
-    import os.path, sys
-    if CTK.PREFS.has_key('module'):
+    if 'module' in CTK.PREFS:
         mod = CTK.PREFS['module']
         mod = mod.split(';')
         for i in mod:
@@ -251,8 +251,26 @@ if (__name__ == "__main__"):
         CTK.display(CTK.t)
         CTK.TKTREE.updateApp()
 
+    # - open load panel if partial load -
+    if CTK.t != []:
+        zones = Internal.getZones(CTK.t)
+        if len(zones) == 0: # all skeletons certainely
+            Panels.openLoadPanel()
+
+    # Load textures, billboards file names into CPlot
+    CPlot.loadImageFiles(CTK.t)
+    
     # - Main loop -
     win.mainloop()
 
     # Del photos
-    CTK.PHOTOS = []
+    CTK.PHOTOS = []    
+
+#==============================================================================
+if __name__ == "__main__":
+    # Ouverture du fichier de la ligne de commande
+    import sys
+    if len(sys.argv) >= 2:
+        files = sys.argv[1:]
+        CTK.tkLoadFile(files, mode='auto')
+    run()

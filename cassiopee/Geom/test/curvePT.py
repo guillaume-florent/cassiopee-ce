@@ -9,4 +9,3 @@ def f(t):
 
 a = D.curve(f)
 C.convertPyTree2File(a, 'out.cgns')
-

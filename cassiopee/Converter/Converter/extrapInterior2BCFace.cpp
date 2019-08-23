@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -39,9 +39,9 @@ PyObject* K_CONVERTER::extrapInterior2BCFaceStruct(PyObject* self, PyObject* arg
   char* varString; char* eltType;
   vector<E_Float*> fields; vector<E_Int> locs;
   vector<E_Int*> cn;
-  E_Int res = K_PYTREE::getFromZone(zone, 0, Loc, varString, fields, locs, im, jm, km, 
-                                    cn, cnSize, cnNfld, eltType, hook, GridCoordinates, 
-                                    FlowSolutionNodes, FlowSolutionCenters);
+  K_PYTREE::getFromZone(zone, 0, Loc, varString, fields, locs, im, jm, km, 
+                        cn, cnSize, cnNfld, eltType, hook, GridCoordinates, 
+                        FlowSolutionNodes, FlowSolutionCenters);
   E_Int posf = K_ARRAY::isNamePresent(varname,varString);
   if (posf == -1) 
   {

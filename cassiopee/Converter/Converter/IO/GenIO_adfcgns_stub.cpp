@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -46,7 +46,8 @@ E_Int K_IO::GenIO::adfcgnswrite(char* file, PyObject* tree)
 }
 
 //=============================================================================
-PyObject* K_IO::GenIO::adfcgnsReadFromPaths(char* file, PyObject* paths)
+PyObject* K_IO::GenIO::adfcgnsReadFromPaths(char* file, PyObject* paths,
+                                            E_Int maxFloatSize, E_Int maxDepth)
 { 
   printf("Error: Converter has been installed without CGNS/ADF support.\n");
   printf("Error: please install libcgns first for CGNS/ADF support.\n");
@@ -55,7 +56,15 @@ PyObject* K_IO::GenIO::adfcgnsReadFromPaths(char* file, PyObject* paths)
 
 //=============================================================================
 E_Int K_IO::GenIO::adfcgnsWritePaths(char* file, PyObject* treeList, 
-                                     PyObject* paths)
+                                     PyObject* paths, E_Int recursive, E_Int mode)
+{
+  printf("Error: Converter has been installed without CGNS/ADF support.\n");
+  printf("Error: please install libcgns first for CGNS/ADF support.\n");
+  return 0;
+}
+
+//=============================================================================
+E_Int K_IO::GenIO::adfcgnsDeletePaths(char* file, PyObject* paths)
 {
   printf("Error: Converter has been installed without CGNS/ADF support.\n");
   printf("Error: please install libcgns first for CGNS/ADF support.\n");

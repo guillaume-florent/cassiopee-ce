@@ -1,5 +1,6 @@
 # - IBC app -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
@@ -13,9 +14,11 @@ import Transform.PyTree as T
 import Converter
 import numpy
 
+try: range = xrange
+except: pass
+
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 # Creation des premiers pts IBC
@@ -27,10 +30,10 @@ def getIBCFrontForZone__(a):
     f0 = T.join(f0); f0 = G.close(f0)
     
     # recuperation des champs en centres perdus par selectCells
-    a2 = C.initVars(a,'centers:cellN',1.)
-    ta = C.newPyTree(['Base']); ta[2][1][2] = [a2]
-    tf0 = C.newPyTree(['Base']); tf0[2][1][2] = [f0]
-    tf0 = P.extractMesh(ta,tf0)
+    a2 = C.initVars(a, 'centers:cellN', 1.)
+    ta = C.newPyTree(['Base', a2])
+    tf0 = C.newPyTree(['Base', f0])
+    tf0 = P.extractMesh(ta, tf0)
     tf0 = C.rmVars(tf0,['centers:cellN','cellN'])
     coords = C.getFields(Internal.__GridCoordinates__,tf0)
     solc =  C.getFields(Internal.__FlowSolutionCenters__,tf0)
@@ -60,10 +63,10 @@ def getIBCFrontInfo__(fc1, parentZone, dhloc, toldist=1.e-10):
     C.freeHook(hook)
 
     coords1 = C.getFields(Internal.__GridCoordinates__,fc1)[0]
-    coords1 = Converter.initVars(coords1,'ind',-1.)
-    coords1 = Converter.initVars(coords1,'indI',-1.)
-    coords1 = Converter.initVars(coords1,'indJ',-1.)
-    coords1 = Converter.initVars(coords1,'indK',-1.)
+    Converter._initVars(coords1,'ind',-1.)
+    Converter._initVars(coords1,'indI',-1.)
+    Converter._initVars(coords1,'indJ',-1.)
+    Converter._initVars(coords1,'indK',-1.)
     coords1 = Converter.extractVars(coords1,['ind','indI','indJ','indK'])
 
     npts = coords1[1].shape[1]
@@ -73,7 +76,7 @@ def getIBCFrontInfo__(fc1, parentZone, dhloc, toldist=1.e-10):
     xt = C.getField('CoordinateX',parentZone)[0][1]
     yt = C.getField('CoordinateY',parentZone)[0][1]
     zt = C.getField('CoordinateZ',parentZone)[0][1]
-    for ind in xrange(npts):
+    for ind in range(npts):
         index = indices[ind]-1
         dist  = distances[ind]
         if dist < toldist:
@@ -103,25 +106,25 @@ def getIBCFrontInfo__(fc1, parentZone, dhloc, toldist=1.e-10):
     varny = 'gradyTurbulentDistance'
     varnz = 'gradzTurbulentDistance'
     fc1 = C.normalize(fc1, [varnx, varny, varnz])
-    #
+    
     if listPts == []:
-        fc1 = C.initVars(fc1,'delta',0.)
+        C._initVars(fc1,'delta',0.)
         deltaa = C.getField('delta',fc1)[0]
         distance = C.getField('TurbulentDistance',fc1)[0][1]
         # formule d obtention du frontC2
-        for ind in xrange(deltaa[1].shape[1]):
+        for ind in range(deltaa[1].shape[1]):
             dist = distance[0,ind]
             # NOUVELLE VERSION
             # # cas 1 : le centre est proche paroi, le point interpole est alors positionne a dhloc+eps de la paroi
-	    # if abs(dist) < dhLoc[ind]: deltaa[1][0,ind] =  2*dhLoc[ind] + eps
+	        # if abs(dist) < dhLoc[ind]: deltaa[1][0,ind] =  2*dhLoc[ind] + eps
             # # cas 2 : le centre est loin de la paroi, le point interpole est alors positionne a dist+eps de la paroi
-	    # else: deltaa[1][0,ind] = 2.*abs(dist) + eps
+	        # else: deltaa[1][0,ind] = 2.*abs(dist) + eps
             # FIN NOUVELLE VERSION
 
             # cas 1 : le centre est proche paroi, le point interpole est alors positionne a dhloc+eps de la paroi
-	    if abs(dist) < dhloc: deltaa[1][0,ind] = abs(dist) + dhloc + eps
             # cas 2 : le centre est loin de la paroi, le point interpole est alors positionne a dist+eps de la paroi
-	    else: deltaa[1][0,ind] = 2.*abs(dist) + eps
+            if abs(dist) < dhloc: deltaa[1][0,ind] = abs(dist) + dhloc + eps
+            else: deltaa[1][0,ind] = 2.*abs(dist) + eps
         C.setFields([deltaa], fc1, loc='nodes')
 
     else:
@@ -129,10 +132,10 @@ def getIBCFrontInfo__(fc1, parentZone, dhloc, toldist=1.e-10):
         deltaa = C.getField('delta',fc1)[0]
         for ind in listPts: deltaa[1][0,ind] += eps
         C.setFields([deltaa], fc1, loc='nodes')
-    #
-    fc1 = C.initVars(fc1, '{nx} = {gradxTurbulentDistance} * {delta}')
-    fc1 = C.initVars(fc1, '{ny} = {gradyTurbulentDistance} * {delta}')
-    fc1 = C.initVars(fc1, '{nz} = {gradzTurbulentDistance} * {delta}')
+    
+    C._initVars(fc1, '{nx} = {gradxTurbulentDistance} * {delta}')
+    C._initVars(fc1, '{ny} = {gradyTurbulentDistance} * {delta}')
+    C._initVars(fc1, '{nz} = {gradzTurbulentDistance} * {delta}')
     return fc1
 
 #==============================================================================
@@ -142,7 +145,7 @@ def setSurface():
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (nzs == []):
+    if nzs == []:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     selected = ''
@@ -158,8 +161,8 @@ def setSurface():
 # blanking de la selection avec la surface fournie 
 #==============================================================================
 def blank():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     # type de blanking
@@ -179,7 +182,7 @@ def blank():
         v = v.lstrip(); v = v.rstrip()
         sname = v.split('/', 1)
         bases = Internal.getNodesFromName1(CTK.t, sname[0])
-        if (bases != []):
+        if bases != []:
             nodes = Internal.getNodesFromType1(bases[0], 'Zone_t')
             for z in nodes:
                 if (z[0] == sname[1]): surfaces.append(z)
@@ -196,7 +199,7 @@ def blank():
 
     # Creation de l'arbre temporaire
     nzs = CPlot.getSelectedZones()
-    if (nzs == []):
+    if nzs == []:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     t = C.newPyTree(['Base'])
@@ -211,12 +214,12 @@ def blank():
     t = X.blankCells(t, [surfaces], blankingMatrix=BM,
                      blankingType=type0,
                      delta=delta, dim=dimPb, tol=tol)
-    t = C.initVars(t, '{centers:cellN}=minimum(1.,{centers:cellN})')
+    C._initVars(t, '{centers:cellN}=minimum(1.,{centers:cellN})')
     t = X.cellN2OversetHoles(t)
     t = X.setHoleInterpolatedPoints(t, depth=-depth)
 
     tp = C.newPyTree(['Base']); donorNoz=[]
-    for noz in xrange(len(t[2][1][2])):       
+    for noz in range(len(t[2][1][2])):       
         z = t[2][1][2][noz]
         valmax = C.getMaxValue(z, 'centers:cellN')
         if valmax == 2.: tp[2][1][2].append(z); donorNoz.append(noz)
@@ -225,7 +228,7 @@ def blank():
     tp = Internal.correctPyTree(tp, level= 6) 
     tp = C.center2Node(tp,'centers:TurbulentDistance')
     tp = P.computeGrad(tp, 'TurbulentDistance')
-    for noz2 in xrange(len(donorNoz)):
+    for noz2 in range(len(donorNoz)):
         noz = donorNoz[noz2]
         t[2][1][2][noz] = tp[2][1][2][noz2]
 
@@ -238,23 +241,23 @@ def blank():
         CTK.t[2][nob][2][noz] = z
         c += 1
 
-    CTK.t = C.fillMissingVariables(CTK.t)
+    C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'Blanking done.\n')
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)    
 
 #==============================================================================
 def getIBCFront():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (nzs == []):
+    if nzs == []:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
-    front1 = [];nozDonors=[]# numerotation ds td
+    front1 = []; nozDonors=[]# numerotation ds td
     td = C.newPyTree(['Donors'])
     nozloc = 0
     for nz in nzs:
@@ -279,7 +282,7 @@ def getIBCFront():
     # dhloc : distmin a partir de laquelle on peut symetriser fc1
     dhloc = float(VARS[9].get())
     # get ind,indi,indj,indk,delta,nx,ny,nz pour les pts du front1
-    for nof1 in xrange(len(front1)):
+    for nof1 in range(len(front1)):
         fc1 = front1[nof1]
         fc1 = getIBCFrontInfo__(fc1, td[2][1][2][nozDonors[nof1]], dhloc)
         fc1 = C.rmNodes(fc1,'gradxTurbulentDistance')
@@ -304,7 +307,7 @@ def getIBCFront():
     nob = C.getNobOfBase(bases[0], CTK.t)
     for i in front2: CTK.add(CTK.t, nob, -1, i)
 
-    CTK.t = C.fillMissingVariables(CTK.t)
+    C._fillMissingVariables(CTK.t)
     CTK.t = C.rmVars(CTK.t,'centers:cellN')
     CTK.TXT.insert('START', 'IBC front zones added.\n')    
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
@@ -320,7 +323,7 @@ def createApp(win):
                            text='tkIBC', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Compute OBC points.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=0)
     Frame.columnconfigure(1, weight=1)
@@ -465,6 +468,7 @@ def createApp(win):
 #==============================================================================
 def showApp():
     WIDGETS['frame'].grid(sticky=TK.EW); updateApp()
+
 #==============================================================================
 # Called to hide widgets
 #==============================================================================
@@ -483,7 +487,7 @@ def displayFrameMenu(event=None):
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

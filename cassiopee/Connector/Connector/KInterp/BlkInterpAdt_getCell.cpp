@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -412,7 +412,7 @@ short K_KINTERP::BlkInterpAdt::searchInterpolationCell(
   /* If the technique of jump succeeds, find the interpolation coefficients
      in the cell by cut it in 24 tetrahedras */
   saut:
-  if (JUMP)  
+  if (JUMP)
   {
     if (getCoeffInterpHexa(x, y, z,
                            isomm,
@@ -457,7 +457,7 @@ short K_KINTERP::BlkInterpAdt::searchExtrapolationCell(
   E_Float x, E_Float y, E_Float z,
   E_Int& ic, E_Int& jc, E_Int& kc,
   FldArrayF& cf,
-  E_Int order,
+  E_Int order, E_Float cfMax,
   const FldArrayF& cellNatureField)
 {
   // interpolation mesh
@@ -515,7 +515,6 @@ short K_KINTERP::BlkInterpAdt::searchExtrapolationCell(
     j = (ind-kmnij)/ni+1; jmni = (j-1)*ni;
     i = ind-jmni-kmnij+1;
     
-    
     // Index of interpolation cell (in center)
     //E_Int ind0 = (i-1)+(j-1)*ni+(k-1)*ni*nj;
     //E_Int ind1 = ind0+1;
@@ -548,12 +547,13 @@ short K_KINTERP::BlkInterpAdt::searchExtrapolationCell(
     testNature = 1;
     // - order: order of the extrapolation
     // (is, js, ks): neighbour cell (not used here)
-    K_KINTERP::BlkInterpWithKMesh::getExtrapolationCoeffForCell(x, y, z, i, j, k, cf, cellN, testNature, order, is, js, ks, interpType, interpMeshType);
+    K_KINTERP::BlkInterpWithKMesh::getExtrapolationCoeffForCell(x, y, z, i, j, k, cf, cellN, testNature, order, 
+                                                                is, js, ks, cfMax, interpType, interpMeshType);
     
     // Keep extrapolation cell with minimum distance (~ minimum sum of absolute coefficients) 
     // from the interpolated point
     sum_coef = E_abs(cf[0])+E_abs(cf[1])+E_abs(cf[2])+E_abs(cf[3])+E_abs(cf[4])+E_abs(cf[5])+E_abs(cf[6])+E_abs(cf[7]);
-    if (sum_coef < saved_sum_coef)
+    if (sum_coef < saved_sum_coef && sum_coef < cfMax)
     {
       foundInDomain = 1;
       saved_sum_coef = sum_coef;
@@ -565,7 +565,7 @@ short K_KINTERP::BlkInterpAdt::searchExtrapolationCell(
   }
 
   ic = icsav; jc = jcsav; kc = kcsav;
-  cf=cf_sav;
+  cf = cf_sav;
   return foundInDomain;
 }
 // ============================================================================
@@ -845,28 +845,30 @@ void K_KINTERP::BlkInterpAdt::searchInterpolationCellv(
 //=============================================================================
 short 
 K_KINTERP::BlkInterpAdt::getExtrapolationCell(E_Float x, E_Float y, E_Float z,
-                                             E_Int& ic, E_Int& jc, E_Int& kc,
-                                             FldArrayF& cf,
-                                             const FldArrayI& cellNatureField,
-                                             E_Int testNature,
-                                             K_KINTERP::BlkInterpData::InterpolationType interpType,
-                                             K_KINTERP::BlkInterpData::InterpMeshType interpMeshType)
-{
+                                              E_Int& ic, E_Int& jc, E_Int& kc,
+                                              FldArrayF& cf,
+                                              const FldArrayI& cellNatureField,
+                                              E_Int testNature,
+                                              E_Float& test,
+                                              K_KINTERP::BlkInterpData::InterpolationType interpType,
+                                              K_KINTERP::BlkInterpData::InterpMeshType interpMeshType,
+                                              E_Float cfMax)
+{  
   return  K_KINTERP::BlkInterpWithKMesh::getExtrapolationCell( 
     x, y, z, ic, jc, kc,
-    cf, cellNatureField, testNature, interpType, interpMeshType);
+    cf, cellNatureField, testNature, test, interpType, interpMeshType, cfMax);
 }
 
 // ============================================================================
 short K_KINTERP::BlkInterpAdt::getExtrapolationCellStruct(E_Float x, E_Float y, E_Float z,
                                                          FldArrayI& indi,
                                                          FldArrayF& cf,
-                                                         E_Int order,
+                                                         E_Int order, E_Float cfMax,
                                                          const FldArrayF& cellNatureField,
                                                          InterpolationType interpType)
 {
   return  K_KINTERP::BlkInterpWithKMesh::getExtrapolationCellStruct( 
-    x, y, z, indi, cf, order, cellNatureField, interpType);
+    x, y, z, indi, cf, order, cfMax, cellNatureField, interpType);
 }
 
 // ============================================================================
@@ -890,12 +892,12 @@ short K_KINTERP::BlkInterpAdt::getExtrapolationCellUnstr(E_Float x, E_Float y, E
 short K_KINTERP::BlkInterpAdt::getExtrapolationCoeffForCell(
   E_Float x, E_Float y, E_Float z,
   E_Int ic, E_Int jc, E_Int kc,
-  FldArrayF& cf,
+  FldArrayF& cf, E_Float cfMax,
   K_KINTERP::BlkInterpData::InterpolationType interpType,
   K_KINTERP::BlkInterpData::InterpMeshType interpMeshType)
 {
   return  K_KINTERP::BlkInterpWithKMesh::getExtrapolationCoeffForCell( 
-    x, y, z, ic, jc, kc, cf, interpType, interpMeshType);
+    x, y, z, ic, jc, kc, cf, cfMax, interpType, interpMeshType);
 }
 
 //=============================================================================
@@ -905,13 +907,13 @@ short K_KINTERP::BlkInterpAdt::getExtrapolationCoeffForCell(
   FldArrayF& cf,
   const FldArrayI& cellNatureField,
   E_Int testNature, E_Int order,
-  E_Int& is, E_Int& js, E_Int& ks,
+  E_Int& is, E_Int& js, E_Int& ks, E_Float cfMax,
   K_KINTERP::BlkInterpData::InterpolationType interpType,
   K_KINTERP::BlkInterpData::InterpMeshType interpMeshType)
 {
   return  K_KINTERP::BlkInterpWithKMesh::getExtrapolationCoeffForCell( 
     x, y, z, ic, jc, kc, cf,
     cellNatureField, testNature, order,
-    is, js, ks, interpType, interpMeshType);
+    is, js, ks, cfMax, interpType, interpMeshType);
 }
 // =====================Interp/BlkInterpAdt_getCell.cpp ==================

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -33,9 +33,9 @@ using namespace K_ARRAY;
 
 extern "C"
 {
-  void k6compvolofstructcell_(E_Int& ni, E_Int& nj, E_Int& nk, 
-                              E_Int& indcell, E_Float* x, 
-                              E_Float* y, E_Float* z, 
+  void k6compvolofstructcell_(const E_Int& ni, const E_Int& nj, const E_Int& nk, 
+                              const E_Int& indcell, const E_Int& indnode,
+                              const E_Float* x, const E_Float* y, const E_Float* z, 
                               E_Float& vol);
   void k6compvoloftetracell_(const E_Int& npts, 
                              const E_Int& ind1, const E_Int& ind2, 
@@ -336,7 +336,7 @@ short K_KINTERP::getExtrapolationCell(
   vector<FldArrayF*>& fieldu, vector<FldArrayI*>& connectu,
   vector<E_Int>& posxu, vector<E_Int>& posyu, 
   vector<E_Int>& poszu, vector<E_Int>& poscu,
-  E_Float& voli, FldArrayI& indi, FldArrayF& cf,
+  E_Float& voli, FldArrayI& indi, FldArrayF& cf, E_Float cfMax,
   K_KINTERP::BlkInterpData::InterpMeshType interpMeshType,
   K_KINTERP::BlkInterpData::InterpolationType interpType)
 {
@@ -349,17 +349,17 @@ short K_KINTERP::getExtrapolationCell(
   E_Int shift = interpDatas.size();
   E_Float vols = K_CONST::E_MAX_FLOAT;
   E_Float volu = K_CONST::E_MAX_FLOAT;
-  // Recherche de la meilleure cellule d extrapolation structuree 
+  // Recherche de la meilleure cellule d'extrapolation structuree 
   if (interpDatas.size() > 0)
   {
     vols = selectBestStructuredExtrapolationCell(
       x, y, z, interpDatas, fields, nis, njs, nks, 
       posxs, posys, poszs, poscs, 
-      indis, cfs, noblks, 
+      indis, cfs, noblks, cfMax,
       interpMeshType, interpType);
   }
   // Recherche de la meilleure cellule d'extrapolation non structuree
-  if ( interpDatau.size() > 0 )
+  if (interpDatau.size() > 0)
   {
     volu = selectBestUnstructuredExtrapolationCell(
       x, y, z, interpDatau, eltType, fieldu, connectu, posxu, posyu, poszu, poscu, 
@@ -493,9 +493,9 @@ E_Float K_KINTERP::selectBestStructuredInterpolationCell(
       
       if (isvalid == 1) // pas de pt masque ou interpole dans la cellule donneuse
       {
-        E_Int indcell = tmpIndi[1]+tmpIndi[order+1]*ni+tmpIndi[order*2+1]*ninj;
+        E_Int indnode = tmpIndi[1]+tmpIndi[order+1]*ni+tmpIndi[order*2+1]*ninj;
         // calcul de cellvol
-        k6compvolofstructcell_(ni, nj, nk, indcell, oneField.begin(posx0),
+        k6compvolofstructcell_(ni, nj, nk, -1, indnode, oneField.begin(posx0),
                                oneField.begin(posy0), oneField.begin(posz0),vol);
         if (penalty == 1 && extrapB == 1 ) vol += 1.e3;
         if ( vol < best ) 
@@ -614,7 +614,7 @@ E_Float K_KINTERP::selectBestStructuredExtrapolationCell(
   vector<E_Int>& posx, vector<E_Int>& posy, 
   vector<E_Int>& posz, vector<E_Int>& posc,
   FldArrayI& indi, 
-  FldArrayF& cf, E_Int& noblks,
+  FldArrayF& cf, E_Int& noblks, E_Float cfMax,
   K_KINTERP::BlkInterpData::InterpMeshType interpMeshType,
   K_KINTERP::BlkInterpData::InterpolationType interpType)
 {
@@ -631,7 +631,7 @@ E_Float K_KINTERP::selectBestStructuredExtrapolationCell(
   FldArrayF tmpCf(cf.getSize());
   E_Int ni, nj, nk, ninj;
   E_Int posx0, posy0, posz0, posc0;
-  E_Int order, indcell;
+  E_Int order, indnode;
 
   for (E_Int i = 0; i < s; i++)
   {
@@ -654,18 +654,18 @@ E_Float K_KINTERP::selectBestStructuredExtrapolationCell(
     found = interpDatas[i]->getExtrapolationCellStruct(x, y, z,
                                                        tmpIndi, 
                                                        tmpCf,
-                                                       0,
+                                                       0, cfMax,
                                                        cellNatureField,
                                                        interpType);
     if (found > 0)
     {
       order = tmpIndi[0];
-      indcell = tmpIndi[1] + tmpIndi[order+1] * ni + 
-        tmpIndi[order*2+1] * ninj;
+      indnode = tmpIndi[1] + tmpIndi[order+1]*ni + tmpIndi[order*2+1]*ninj;
       // calcul de cellvol
-      k6compvolofstructcell_(ni, nj, nk, indcell, oneField.begin(posx0),
+      k6compvolofstructcell_(ni, nj, nk, -1, indnode, 
+                             oneField.begin(posx0),
                              oneField.begin(posy0),
-                             oneField.begin(posz0),vol);
+                             oneField.begin(posz0), vol);
       
       if (vol < best) 
       {

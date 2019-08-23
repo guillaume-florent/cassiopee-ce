@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -18,6 +18,9 @@
 */
 
 #include "../Data.h"
+#ifdef hypot
+#undef hypot
+#endif
 
 void CreateNoise3D();
 

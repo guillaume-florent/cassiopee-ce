@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -18,27 +18,26 @@
 */
 
 // Some boolean operations like intersection, union, minus...
+//#define FLAG_STEP
+//#define DEBUG_W_PYTHON_LAYER
 
 # include <string>
 # include <sstream> 
 # include "intersector.h"
 # include "Nuga/Boolean/TRI_BooleanOperator.h"
 # include "Nuga/Boolean/BAR_BooleanOperator.h"
-# include "Nuga/Boolean/NGON_BooleanOperator.h"
 #include <memory>
+#include "stub.h"
 
 using namespace std;
 using namespace NUGA;
 
-#ifdef FLAG_STEP
-E_Int chrono::verbose=1;
-#endif
 
 //=============================================================================
 /* Factorisation de la récupération et de la validation des arguments. */
 //=============================================================================
 
-enum eOperation {INTERSECTION, UNION, MINUS12, INTERSECTION_BORDER, MODIFIED_SOLID};
+enum eOperation {INTERSECTION, UNION, MINUS12, INTERSECTION_BORDER, MODIFIED_SOLID, DIFFSURF};
 
 std::string getName(eOperation oper)
 {
@@ -54,6 +53,8 @@ std::string getName(eOperation oper)
       return "booleanIntersectionBorder";
     case MODIFIED_SOLID:
       return "booleanModifiedSolid";
+    case DIFFSURF:
+      return "Diffsurf";
     default:
       return "Unknown";
   }
@@ -72,6 +73,12 @@ bool is_valid (char* eltType, eOperation oper)
       if ((strcmp(eltType, "TRI") == 0) || (strcmp(eltType, "BAR") == 0) || (strcmp(eltType, "NGON") == 0))
         return true;
       else return false;
+    case DIFFSURF:
+    {
+      if (strcmp(eltType, "NGON") == 0)
+        return true;
+      else return false;
+    }
     default: return false;
   }
 }
@@ -80,24 +87,26 @@ bool is_valid (char* eltType, eOperation oper)
 bool getArgs(PyObject* args, eOperation oper,
              K_FLD::FloatArray& pos1, K_FLD::IntArray& connect1,
              K_FLD::FloatArray& pos2, K_FLD::IntArray& connect2,
-             E_Float& tolerance, E_Int& preserve_right, E_Int& solid_right, E_Int& agg_mode, char*& eltType, char*& varString)
+             E_Float& tolerance, E_Int& preserve_right, E_Int& solid_right, E_Int& agg_mode, bool& improve_conformal_cloud_qual, char*& eltType, char*& varString)
 {
   PyObject *arrS[2];
   E_Float tol = 0.;
-  E_Int preserv_r, solid_r;
+  E_Int preserv_r, solid_r, imp_qual(0);
   std::ostringstream o;
   std::string opername = getName(oper);
 
   if (!PYPARSETUPLE(args, 
-                    "OOdlll", "OOdiii", "OOflll", "OOfiii", 
-                    &arrS[0], &arrS[1], &tol, &preserv_r, &solid_r, &agg_mode))
+                    "OOdllll", "OOdiiii", "OOfllll", "OOfiiii", 
+                    &arrS[0], &arrS[1], &tol, &preserv_r, &solid_r, &agg_mode, &imp_qual))
   {
     o << opername << ": wrong arguments.";
     PyErr_SetString(PyExc_TypeError, o.str().c_str());
     return false;
   }
 
-  E_Int ni, nj, nk, posx, posy, posz, err(0);
+  improve_conformal_cloud_qual = bool(imp_qual);
+
+  E_Int ni, nj, nk, posx[2], posy[2], posz[2], err(0);
   K_FLD::FloatArray *fS[2];
   K_FLD::IntArray* cn[2];
 
@@ -115,11 +124,11 @@ bool getArgs(PyObject* args, eOperation oper,
     }
 
     // Check coordinates.
-    posx = K_ARRAY::isCoordinateXPresent(varString);
-    posy = K_ARRAY::isCoordinateYPresent(varString);
-    posz = K_ARRAY::isCoordinateZPresent(varString);
+    posx[n] = K_ARRAY::isCoordinateXPresent(varString);
+    posy[n] = K_ARRAY::isCoordinateYPresent(varString);
+    posz[n] = K_ARRAY::isCoordinateZPresent(varString);
 
-    if ((posx == -1) || (posy == -1) || (posz == -1))
+    if ((posx[n] == -1) || (posy[n] == -1) || (posz[n] == -1))
     {
       o << opername << ": can't find coordinates in array.";
       PyErr_SetString(PyExc_TypeError, o.str().c_str());
@@ -130,7 +139,27 @@ bool getArgs(PyObject* args, eOperation oper,
   if (!err)
   {
     pos1 = *fS[0];
+    if (posx[0] !=0 || posy[0] != 1 || posz[0] != 2)
+    {
+      for (E_Int i=0; i < pos1.cols(); ++i)
+      {
+        pos1(0,i) = (*fS[0])(posx[0],i);
+        pos1(1,i) = (*fS[0])(posy[0],i);
+        pos1(2,i) = (*fS[0])(posz[0],i);    
+      }
+    }
+
     pos2 = *fS[1];
+    if (posx[1] !=0 || posy[1] != 1 || posz[1] != 2)
+    {
+      for (E_Int i=0; i < pos2.cols(); ++i)
+      {
+        pos2(0,i) = (*fS[1])(posx[1],i);
+        pos2(1,i) = (*fS[1])(posy[1],i);
+        pos2(2,i) = (*fS[1])(posz[1],i);    
+      }
+    }
+    
     connect1 = *cn[0];
     connect2 = *cn[1];
     tolerance = tol;
@@ -149,28 +178,30 @@ bool getArgs(PyObject* args, eOperation oper,
 bool getUnionArgs(PyObject* args,
              K_FLD::FloatArray& pos1, K_FLD::IntArray& connect1,
              K_FLD::FloatArray& pos2, K_FLD::IntArray& connect2,
-             E_Float& tolerance, E_Int& preserve_right, E_Int& solid_right, E_Int& agg_mode,
+             E_Float& tolerance, E_Int& preserve_right, E_Int& solid_right, E_Int& agg_mode, bool& improve_conformal_cloud_qual,
              std::vector<E_Int>& pgsList,
              char*& eltType, char*& varString)
 {
   PyObject *arrS[2], *pgs;
   E_Float tol = 0.;
-  E_Int preserv_r, solid_r;
+  E_Int preserv_r, solid_r, imp_qual(0);
   std::ostringstream o;
   std::string opername = getName(UNION);
 
   pgsList.clear();
 
   if (!PYPARSETUPLE(args, 
-                    "OOdlllO", "OOdiiiO", "OOflllO", "OOfiiiO", 
-                    &arrS[0], &arrS[1], &tol, &preserv_r, &solid_r, &agg_mode, &pgs))
+                    "OOdllllO", "OOdiiiiO", "OOfllllO", "OOfiiiiO", 
+                    &arrS[0], &arrS[1], &tol, &preserv_r, &solid_r, &agg_mode, &imp_qual, &pgs))
   {
     o << opername << ": wrong arguments.";
     PyErr_SetString(PyExc_TypeError, o.str().c_str());
     return false;
   }
 
-  E_Int ni, nj, nk, posx, posy, posz, err(0);
+  improve_conformal_cloud_qual = bool(imp_qual);
+
+  E_Int ni, nj, nk, posx[2], posy[2], posz[2], err(0);
   K_FLD::FloatArray *fS[2];
   K_FLD::IntArray* cn[2];
 
@@ -188,11 +219,11 @@ bool getUnionArgs(PyObject* args,
     }
 
     // Check coordinates.
-    posx = K_ARRAY::isCoordinateXPresent(varString);
-    posy = K_ARRAY::isCoordinateYPresent(varString);
-    posz = K_ARRAY::isCoordinateZPresent(varString);
+    posx[n] = K_ARRAY::isCoordinateXPresent(varString);
+    posy[n] = K_ARRAY::isCoordinateYPresent(varString);
+    posz[n] = K_ARRAY::isCoordinateZPresent(varString);
 
-    if ((posx == -1) || (posy == -1) || (posz == -1))
+    if ((posx[n] == -1) || (posy[n] == -1) || (posz[n] == -1))
     {
       o << opername << ": can't find coordinates in array.";
       PyErr_SetString(PyExc_TypeError, o.str().c_str());
@@ -203,7 +234,35 @@ bool getUnionArgs(PyObject* args,
   if (!err)
   {
     pos1 = *fS[0];
+    if (posx[0] !=0 || posy[0] != 1 || posz[0] != 2)
+    {
+      // std::cout << "posx 0 : " << posx[0] << std::endl;
+      // std::cout << "posy 0 : " << posy[0] << std::endl;
+      // std::cout << "posz 0 : " << posz[0] << std::endl;
+
+      for (E_Int i=0; i < pos1.cols(); ++i)
+      {
+        pos1(0,i) = (*fS[0])(posx[0],i);
+        pos1(1,i) = (*fS[0])(posy[0],i);
+        pos1(2,i) = (*fS[0])(posz[0],i);    
+      }
+    }
+
     pos2 = *fS[1];
+    if (posx[1] !=0 || posy[1] != 1 || posz[1] != 2)
+    {
+      // std::cout << "posx 1 : " << posx[1] << std::endl;
+      // std::cout << "posy 1 : " << posy[1] << std::endl;
+      // std::cout << "posz 1 : " << posz[1] << std::endl;
+
+      for (E_Int i=0; i < pos2.cols(); ++i)
+      {
+        pos2(0,i) = (*fS[1])(posx[1],i);
+        pos2(1,i) = (*fS[1])(posy[1],i);
+        pos2(2,i) = (*fS[1])(posz[1],i);    
+      }
+    }
+    
     connect1 = *cn[0];
     connect2 = *cn[1];
     tolerance = tol;
@@ -273,9 +332,10 @@ PyObject* call_operation(PyObject* args, eOperation oper)
   char *eltType, *varString;
   std::vector<E_Int> colors;
   E_Int preserve_right, solid_right, agg_mode;
+  bool improve_conformal_cloud_qual(false);
   
   bool ok = getArgs(args, oper, pos1, connect1, pos2, connect2, tolerance, 
-		    preserve_right, solid_right, agg_mode, eltType, varString);
+		    preserve_right, solid_right, agg_mode, improve_conformal_cloud_qual, eltType, varString);
   if (!ok) return NULL;
   PyObject* tpl = NULL;
   E_Int err(0), et=-1;
@@ -313,31 +373,8 @@ PyObject* call_operation(PyObject* args, eOperation oper)
   }
   else if (strcmp(eltType, "NGON") == 0)
   {
-    typedef NGON_BooleanOperator<K_FLD::FloatArray, K_FLD::IntArray> bo_t;
-    
-    bo_t::eAggregation AGG=bo_t::CONVEX;
-    if (agg_mode == 0) // NONE
-    {
-      //AGG = bo_t::NONE; fixme : not working because of new_skin PG triangulation : diconnexion between modified and unlodified parts
-    }
-    else if (agg_mode == 2)
-      AGG = bo_t::FULL;
-        
-    bo_t BO(pos1, connect1, pos2, connect2, tolerance, AGG);
-
-    switch (oper)
-    {
-    case INTERSECTION:        
-      err=BO.Intersection(pos, connect, (bo_t::eInterPolicy)solid_right, (bo_t::eMergePolicy)preserve_right); break;
-    case UNION :              
-      err=BO.Union(pos, connect, (bo_t::eInterPolicy)solid_right, (bo_t::eMergePolicy)preserve_right); break;
-    case MINUS12:             
-      err=BO.Diff(pos, connect, (bo_t::eInterPolicy)solid_right, (bo_t::eMergePolicy)preserve_right); break;
-    case MODIFIED_SOLID:             
-      err=BO.Modified_Solid(pos, connect, (bo_t::eMergePolicy)preserve_right); break;
-    default: return NULL;
-    }
-    et = 8;
+    PyErr_SetString(PyExc_NotImplementedError, STUBMSG);
+    return NULL;
   }
   
   if (err != 1)
@@ -353,21 +390,28 @@ PyObject* call_operation(PyObject* args, eOperation oper)
 
 PyObject* call_union(PyObject* args)
 {
-  K_FLD::FloatArray pos1, pos2, pos;
-  K_FLD::IntArray connect1, connect2, connect;
+  K_FLD::FloatArray pos1, pos2;
+  K_FLD::IntArray connect1, connect2;
   E_Float tolerance;
   char *eltType, *varString;
   std::vector<E_Int> colors, ghost_pgs;
   E_Int preserve_right, solid_right, agg_mode;
+  bool improve_conformal_cloud_qual(false);
   
   bool ok = getUnionArgs(args, pos1, connect1, pos2, connect2, tolerance, 
-        preserve_right, solid_right, agg_mode, ghost_pgs, eltType, varString);
+        preserve_right, solid_right, agg_mode, improve_conformal_cloud_qual, ghost_pgs, eltType, varString);
   if (!ok) return NULL;
   PyObject* tpl = NULL;
   E_Int err(0), et=-1;
+  PyObject *l(PyList_New(0));
 
   char eltType2[20];
   strcpy(eltType2, eltType);
+
+  std::vector<K_FLD::FloatArray> crds;
+  std::vector<K_FLD::IntArray> cnts;
+  std::vector<std::string> znames;
+
 
   if ((strcmp(eltType, "TRI") == 0) || (strcmp(eltType, "BAR") == 0))
   {
@@ -385,42 +429,18 @@ PyObject* call_union(PyObject* args)
       op = getOperation<BAR_BooleanOperator>(UNION);
     }
     
-    err = (BO->*op)(pos, connect, colors);
+    crds.resize(1);
+    cnts.resize(1);
+
+    err = (BO->*op)(crds[0], cnts[0], colors);
     delete BO;
     et=-1;
   }
   else if (strcmp(eltType, "NGON") == 0)
   {
-    typedef NGON_BooleanOperator<K_FLD::FloatArray, K_FLD::IntArray> bo_t;
-    
-    bo_t::eAggregation AGG=bo_t::CONVEX;
-    if (agg_mode == 0) // NONE
-    {
-      //AGG = bo_t::NONE; fixme : not working because of new_skin PG triangulation : diconnexion between modified and unlodified parts
-    }
-    else if (agg_mode == 2)
-      AGG = bo_t::FULL;
-        
-    bo_t BO(pos1, connect1, pos2, connect2, tolerance, AGG);
-
-    if (!ghost_pgs.empty())
-      BO.passPGs(1, ghost_pgs);
-
-    //BO.setTriangulatorParams(/*do not shuffle : */true, /*improve quality:*/false);
-
-    err=BO.Union(pos, connect, (bo_t::eInterPolicy)solid_right, (bo_t::eMergePolicy)preserve_right);
-    et = 8;
+    PyErr_SetString(PyExc_NotImplementedError, STUBMSG);
+    return NULL;
   }
-  
-  if (err != 1)
-    tpl = K_ARRAY::buildArray(pos, varString, connect, et, eltType2, false);
-  else
-  {
-    std::ostringstream o;
-    o << "Union : failed to proceed.";
-    PyErr_SetString(PyExc_TypeError, o.str().c_str());
-  }
-  return tpl;
 }
 
 //=============================================================================
@@ -462,6 +482,13 @@ PyObject* K_INTERSECTOR::booleanIntersectionBorder(PyObject* self, PyObject* arg
 PyObject* K_INTERSECTOR::booleanModifiedSolid(PyObject* self, PyObject* args)
 {
   return call_operation(args, MODIFIED_SOLID);
+}
+
+
+PyObject* K_INTERSECTOR::DiffSurf(PyObject* self, PyObject* args)
+{
+  PyErr_SetString(PyExc_NotImplementedError, STUBMSG);
+  return NULL;
 }
 
 //=======================  Generator/booleanOperations.cpp ====================

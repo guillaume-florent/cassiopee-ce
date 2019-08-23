@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -37,7 +37,7 @@ using namespace NUGA;
 PyObject* K_INTERSECTOR::selfX(PyObject* self, PyObject* args)
 {
   PyObject *arr;
-  E_Float vmin(0.), vratio(1000.);
+  //E_Float vmin(0.), vratio(1000.);
 
   if (!PyArg_ParseTuple(args, "O", &arr)) return NULL;
 

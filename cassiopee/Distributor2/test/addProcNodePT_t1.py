@@ -1,5 +1,4 @@
 # - addProcNode (pyTree) -
-import Converter.PyTree as C
 import Generator.PyTree as G
 import Distributor2.PyTree as D2
 import KCore.test as test

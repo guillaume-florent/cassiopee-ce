@@ -5,7 +5,7 @@ import KCore.test as test
 
 # 1D : BAR
 a = G.cart((0.,0.,0.), (0.1,0.1,0.2), (10,1,1))
-a = C.initVars(a, 'F={x}+{y}')
+a = C.initVars(a, '{F}={x}+{y}')
 a = C.convertArray2Tetra(a)
 test.testA([a], 11)
 

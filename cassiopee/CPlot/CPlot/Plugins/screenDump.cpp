@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -29,6 +29,12 @@
 //=============================================================================
 void Data::exportFile()
 {
+  if ((ptrState==NULL) || (ptrState->_isExporting==1)) {
+    pthread_mutex_lock(&ptrState->export_mutex);
+    //if (d->ptrState->shootScreen == 1)
+    pthread_cond_wait (&ptrState->unlocked_export, &ptrState->export_mutex); 
+    pthread_mutex_unlock(&ptrState->export_mutex);    
+  }
   int stateHeader, stateInfo, stateMenu, stateBB;
   stateHeader = ptrState->header;
   stateInfo = ptrState->info;
@@ -43,8 +49,10 @@ void Data::exportFile()
   ptrState->info = stateInfo;
   ptrState->menu = stateMenu;
   ptrState->bb = stateBB;
-  if (ptrState->continuousExport == 0) { ptrState->shootScreen = 0; }
+  if (ptrState->continuousExport == 0) { ptrState->shootScreen = 0; }  
+  ptrState->_mustExport = 1;
   pthread_cond_signal(&ptrState->unlocked_export); // signal end of export
+  pthread_mutex_unlock(&ptrState->export_mutex);
 }
 
 //=============================================================================
@@ -53,9 +61,9 @@ void Data::exportFile()
 // exportWidth et exportHeight doivent etre Pairs
 // Si mode=1, ajoute depth au buffer
 //=============================================================================
-char* Data::export2Image(int exportWidth, int exportHeight, int mode) 
+char* Data::export2Image(int exportWidth, int exportHeight) 
 {
-  printf("mode = %d\n", mode);
+  //printf("mode = %d\n", ptrState->offscreen);
 
   // resolution
   GLuint fb, rb, db;
@@ -75,12 +83,21 @@ char* Data::export2Image(int exportWidth, int exportHeight, int mode)
   
   glGenRenderbuffersEXT(1, &db);
   glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, db);
-  glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, 
-                           GL_DEPTH_COMPONENT24, exportWidth, exportHeight);
-  
-  // Attach depth buffer to FBO
-  glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, 
-                               GL_RENDERBUFFER_EXT, db);
+  if (ptrState->offscreen > 2) 
+  {
+    //glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH24_STENCIL8, exportWidth, exportHeight);
+    //glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT32, exportWidth, exportHeight);
+    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT32F, exportWidth, exportHeight);
+    // Attach depth buffer to FBO
+    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER_EXT, db);
+  }
+  else 
+  {
+    glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT24, exportWidth, exportHeight);
+    // Attach depth buffer to FBO
+    glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT,
+                                 GL_RENDERBUFFER_EXT, db);
+  }
 
   int status = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
   if (status == GL_FRAMEBUFFER_COMPLETE_EXT)
@@ -97,9 +114,13 @@ char* Data::export2Image(int exportWidth, int exportHeight, int mode)
 #endif
 
   int s = exportWidth*exportHeight;
+  unsigned szDepth = 4*s; // Nombre d'octets par pixel si DEPTH32F et STENCIL 8 : 4 bytes pour detpth + 1 byte  spare + 1 byte stencil
+  // _accumBuffer = 4*s pixels à afficher + 4*s donnée de profondeur :-)
+  //if (_accumBuffer.size() == 0) std::vector<unsigned char>(8*s, unsigned char(0)).swap(_accumBuffer);
   char* buffer;
-  if (mode == 0) buffer = (char*)malloc(s*3);
-  else buffer = (char*)malloc(s*4); // depth at the end
+  buffer = (char*)malloc(s*3*sizeof(char));
+  float* depth = (float*)malloc(szDepth);
+  for (E_Int i = 0; i < s; i++) depth[i] = 0;
 
   // Switch viewport
   int viewWSav = _view.w; int viewHSav = _view.h;
@@ -115,19 +136,113 @@ char* Data::export2Image(int exportWidth, int exportHeight, int mode)
   _view.ratio = (double)_view.w/(double)_view.h;
   glViewport(0, 0, (GLsizei) _view.w, (GLsizei) _view.h);
 
+  // Traduction en buffer
   if (ptrState->offscreen != 1)
   {
-    // Read FBO contents from color buffer with glReadPixels
-    glReadPixels(0, 0, exportWidth, exportHeight, 
-                 GL_RGB, GL_UNSIGNED_BYTE, buffer);
-    if (mode == 1) // get zbuffer
+    if (ptrState->offscreen > 2)
     {
-      float* zbuf = new float [s];
-      glReadPixels(0, 0, exportWidth, exportHeight, 
-                   GL_DEPTH_COMPONENT, GL_FLOAT, zbuf);
-      delete [] zbuf;
-      for (int i = 0; i < s; i++) { printf("%f ", zbuf[i]); buffer[i] = int(zbuf[i]*255); }
-      printf("\n");
+      if (ptrState->offscreenBuffer == NULL)
+      {
+        //float scale, bias;
+        //glGetFloatv(GL_DEPTH_SCALE, &scale);
+        //glGetFloatv(GL_DEPTH_BIAS, &bias);
+        //printf("scale=%f bias=%f\n", scale, bias);
+        
+        glReadPixels(0, 0, exportWidth, exportHeight, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+
+        glReadPixels(0, 0, exportWidth, exportHeight, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
+        //glReadPixels(0, 0, exportWidth, exportHeight, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT_24_8, depth);
+        //glReadPixels(0, 0, exportWidth, exportHeight, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, depth);
+        //glReadPixels(0, 0, exportWidth, exportHeight, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, depth);
+        //glReadPixels(0, 0, exportWidth, exportHeight, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, depth);
+
+        //glGetFloatv(GL_DEPTH_SCALE, &scale);
+        //glGetFloatv(GL_DEPTH_BIAS, &bias);GL_UNSIGNED_INT_24_8
+        //printf("scale=%f bias=%f\n", scale, bias);
+        
+        ptrState->offscreenBuffer = (char*)malloc(s*3*sizeof(char));
+        memcpy(ptrState->offscreenBuffer, buffer, s*3*sizeof(char));
+        ptrState->offscreenDepthBuffer = (float*)malloc(szDepth);
+        /*GLfloat projMat[16];
+        glGetFloatv(GL_PROJECTION_MATRIX, projMat);
+        for ( int i = 0; i < 4; ++i ) {
+          for ( int j = 0; j < 4; ++j )
+            printf("%11.8f\t", projMat[4*j+i]);
+          printf("\n");
+        }
+        */
+        double zNear = _view.nearD; 
+        double zFar  = _view.farD;
+        //printf("Znear : %e, zFar : %e\n",zNear, zFar);
+        for (int i = 0; i < exportHeight*exportWidth; i++)
+        {
+          double z_n = 2.*double(depth[i])-1.0;
+          double z_e = 2.0*zNear*zFar/(zFar+zNear-z_n*(zFar-zNear));
+          ptrState->offscreenDepthBuffer[i] = float(z_e);//0.5*(-A*depth[i]+B)/depth[i] + 0.5;
+        }
+        
+        //memcpy(ptrState->offscreenDepthBuffer, depth, szDepth);
+        /*printf("Profondeur obtenue pour le rendu 1:\n");
+        for ( size_t i = 0; i < exportHeight; ++i ) {
+          for ( size_t j = 0; j < exportWidth; ++j )
+            printf("%9.7e",ptrState->offscreenDepthBuffer[i*exportWidth+j]);
+          printf("\n");
+        }*/
+        
+      }
+      else
+      {
+                // Relit et stocke RGB + depth
+        glReadPixels(0, 0, exportWidth, exportHeight, GL_RGB, GL_UNSIGNED_BYTE, buffer);
+        glReadPixels(0, 0, exportWidth, exportHeight, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
+        /*GLfloat projMat[16];
+        glGetFloatv(GL_PROJECTION_MATRIX, projMat);
+        for ( int i = 0; i < 4; ++i ) {
+          for ( int j = 0; j < 4; ++j )
+            printf("%11.8f", projMat[4*j+i]);
+          printf("\n");
+        }*/
+        double zNear = _view.nearD; 
+        double zFar  = _view.farD;
+        //printf("Znear : %e, ZFar : %e\n",zNear, zFar);
+        for (int i = 0; i < exportHeight*exportWidth; i++)
+        {
+          double z_n = 2.*double(depth[i])-1.0;
+          double z_e = 2.0*zNear*zFar/(zFar+zNear-z_n*(zFar-zNear));
+          depth[i] = float(z_e);//0.5*(-A*depth[i]+B)/depth[i] + 0.5;
+        }
+        /*printf("Profondeur obtenue pour le rendu 2:\n");
+        for ( size_t i = 0; i < exportHeight; ++i ) {
+          for ( size_t j = 0; j < exportWidth; ++j )
+            printf("%9.7e",depth[i*exportWidth+j]);
+          printf("\n");
+        }*/
+        //exit(0);
+
+        char* offscreen = (char*)ptrState->offscreenBuffer;
+        float* offscreenD = (float*)ptrState->offscreenDepthBuffer;
+        for ( unsigned i = 0; i < exportHeight; ++i ) {
+          for ( unsigned j = 0; j < exportWidth; ++j ) {
+            unsigned ind = i*exportWidth+j;
+            assert(ind<s);
+            if (depth[ind] <offscreenD[ind]) {
+              //printf("replace pixel %d,%d => %e < %e \n", i, j, depth[ind], offscreenD[ind]);
+              offscreen[3*ind  ] = buffer[3*ind  ];
+              offscreen[3*ind+1] = buffer[3*ind+1];
+              offscreen[3*ind+2] = buffer[3*ind+2];
+              offscreenD[ind]    = depth[ind];
+            }
+          }
+        }
+        memcpy(buffer, ptrState->offscreenBuffer, 3*s*sizeof(char));
+      }
+    }
+    else
+    {
+      if (ptrState->offscreenBuffer != NULL)
+          memcpy(buffer, ptrState->offscreenBuffer, 3*s*sizeof(char));
+      else
+          glReadPixels(0, 0, exportWidth, exportHeight, GL_RGB, GL_UNSIGNED_BYTE, buffer);
     }
   }
   else 
@@ -150,6 +265,7 @@ char* Data::export2Image(int exportWidth, int exportHeight, int mode)
   glDeleteFramebuffersEXT(1, &fb);
 #endif
 
+  free(depth);
   return buffer;
 }
 
@@ -192,8 +308,6 @@ void Data::dumpWindow()
   }
   else // Other formats
   {
-    int mode = 0;
-    if (strcmp(_pref.screenDump->extension, "dpng") == 0) mode = 1;
 
     int exportWidth = _view.w;
     int exportHeight = _view.h;
@@ -218,12 +332,12 @@ void Data::dumpWindow()
     
     char* buffer; char* buffer2;
     int antialiasing = 1;
-    if (strcmp(_pref.screenDump->extension, "dpng") == 0) antialiasing = 0;
+    if (ptrState->offscreen >= 3) antialiasing=0;
 
     if (antialiasing == 1)
     {
       // get image X2
-      buffer = export2Image(2*exportWidth, 2*exportHeight, mode);
+      buffer = export2Image(2*exportWidth, 2*exportHeight);
     
       // blur image X2
       buffer2 = (char*)malloc(3*2*exportWidth*2*exportHeight*sizeof(char));
@@ -240,7 +354,7 @@ void Data::dumpWindow()
     }
     else
     {
-      buffer = export2Image(exportWidth, exportHeight, mode);
+      buffer = export2Image(exportWidth, exportHeight);
     }
     
     if (strcmp(_pref.screenDump->extension, "mpeg") == 0)
@@ -254,7 +368,8 @@ void Data::dumpWindow()
     }
 
     // Dump the buffer to a file
-    _pref.screenDump->f(this, fileName, buffer, exportWidth, exportHeight, 0);    
+    if (ptrState->offscreen != 3)
+      _pref.screenDump->f(this, fileName, buffer, exportWidth, exportHeight, 0);    
     free(buffer);
   }
 }

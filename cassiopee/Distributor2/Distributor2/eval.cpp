@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -70,7 +70,7 @@ E_Float K_DISTRIBUTOR2::eval(
   // Check for empty processors
   for (i = 0; i < NProc; i++)
   {
-    if (nbPtsPerProcsp[i] == 0) res += 1.e6;
+    if (K_FUNC::E_abs(nbPtsPerProcsp[i]) < 1.e-10) res += 1.e9;
   }
   return res;
 }

@@ -3,7 +3,6 @@ import Converter.PyTree as C
 import Distributor2.PyTree as D2
 import Distributor2.Mpi as D2mpi
 import Converter.Mpi as Cmpi
-import Transform.PyTree as T
 import Connector.PyTree as X
 import Converter.Internal as Internal
 import Generator.PyTree as G
@@ -12,7 +11,7 @@ import Generator.PyTree as G
 N = 11
 t = C.newPyTree(['Base'])
 pos = 0
-for i in xrange(N):
+for i in range(N):
     a = G.cart((pos,0,0), (1,1,1), (10+i, 10, 10))
     pos += 10 + i - 1
     t[2][1][2].append(a)

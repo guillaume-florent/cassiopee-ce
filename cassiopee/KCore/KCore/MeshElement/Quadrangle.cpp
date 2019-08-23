@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -23,11 +23,6 @@
 
 namespace K_MESH
 {
-  void Quadrangle::triangulate(const E_Int* nodes, E_Int* target)
-  {    
-    E_Int t[3];
-    t[0] = nodes[0]; t[1] = nodes[1]; t[2] = nodes[3];
-    std::copy(&t[0], &t[0]+3, target);
-    std::copy(&nodes[0]+1, &nodes[0]+4, target+3);
-  }
+  const E_Int Quadrangle::NB_NODES=4;
+  const E_Int Quadrangle::NB_TRIS=2;
 }

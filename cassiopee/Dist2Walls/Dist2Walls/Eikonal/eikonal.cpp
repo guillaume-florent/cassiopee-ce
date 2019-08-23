@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -19,6 +19,10 @@
 
 # include "dist2walls.h"
 # include "eikonalSolver.h"
+# include "eikonalFMMSolver.h"
+# include "eikonalFIMSolver.h"
+# include <iostream>
+# include <ctime>
 
 using namespace std;
 using namespace K_FUNC;
@@ -31,8 +35,10 @@ using namespace K_FLD;
 PyObject* K_DIST2WALLS::eikonal(PyObject* self, PyObject* args)
 {
   PyObject* array;
-
-  if (!PyArg_ParseTuple(args, "O", &array)) return NULL;
+  //struct timespec beg, end;
+  //clock_gettime(CLOCK_REALTIME, &beg);
+  int algo = 0;
+  if (!PyArg_ParseTuple(args, "O|i", &array,&algo)) return NULL;
   
   // Check array
   E_Int nil, njl, nkl;
@@ -93,6 +99,9 @@ PyObject* K_DIST2WALLS::eikonal(PyObject* self, PyObject* args)
     return NULL;
   }
   E_Float* phi = fn.begin(pos+1);
+  E_Float max_float = 0;
+  for ( int i = 0; i < nil*njl*nkl; ++i )
+    max_float = std::max(max_float,phi[i]);
 
   // Get the pointer on v (speed)
   E_Int posv = K_ARRAY::isNamePresent("speed", varString);
@@ -108,9 +117,23 @@ PyObject* K_DIST2WALLS::eikonal(PyObject* self, PyObject* args)
   E_Float dh = x[1]-x[0];
   //E_Int nbSubIter = 5;
 
-  E_Int nt =  __NUMTHREADS__;  
-  nt = 0; // pas de multithread pour l instant
-  if (nt == 0) 
+  //clock_gettime(CLOCK_REALTIME, &end);
+  //double seconds = (double)((end.tv_sec+end.tv_nsec*1.E-9) - (beg.tv_sec+beg.tv_nsec*1.E-9));
+  //std::cout << "Temps passé en C avant appel Eikonal solver : " << seconds << "secondes" << std::endl;  
+  //E_Int nt = __NUMTHREADS__;  
+  //nt = 0; // pas de multithread pour l'instant
+  //clock_gettime(CLOCK_REALTIME, &beg);
+  if (algo == 0 ) // Algorithme d'origine FMM
+{
+   Eikonal::FMM::solveOnIsotropGrid( nil, njl, nkl, x[0], y[0], z[0], dh, phi, v);
+
+}
+  if (algo == 1 ) // Variant de l'algorithme d'origine : FIM
+{
+    Eikonal::FIM::solveOnIsotropGrid( nil, njl, nkl, x[0], y[0], z[0], dh, phi, v, max_float);
+}
+  if (algo == 2 )// Si on a choisit l'algorithme FIM
+//  if (nt == 0) 
   {
     solveEikonalOnIsotropGrid(nil, njl, nkl,
                               x[0], y[0], z[0],
@@ -120,7 +143,9 @@ PyObject* K_DIST2WALLS::eikonal(PyObject* self, PyObject* args)
   // {
   //   blockFIM( nil, njl, nkl, x[0], y[0], z[0], dh, niBlk, njBlk, nkBlk, nbSubIter, v, phi);
   // }
- 
+  //clock_gettime(CLOCK_REALTIME, &end);
+  //seconds = (double)((end.tv_sec+end.tv_nsec*1.E-9) - (beg.tv_sec+beg.tv_nsec*1.E-9));
+  //std::cout << "Temps passé pour Eikonal solver : " << seconds << "secondes" << std::endl;  
   RELEASESHAREDB(res, array, f, cn);
   return tpl;
 }

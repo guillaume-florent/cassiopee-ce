@@ -77,6 +77,11 @@
 ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 */
 
+// Added for Cassiope
+#define GLEW_NO_GLU
+#define GLEW_STATIC
+// End Cassiopee
+
 #ifndef __glew_h__
 #define __glew_h__
 #define __GLEW_H__

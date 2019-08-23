@@ -1,8 +1,11 @@
 """Surface walk module. Extension of Generator.
 """
-import Generator as G
-import generator
+from . import Generator as G
+from . import generator
 __version__ = G.__version__
+
+try: range = xrange
+except: pass
 
 #=============================================================================
 # Python Interface to create surface grids by marching on surfaces
@@ -23,7 +26,7 @@ def buildExtension__(c, surfaces, dh, niter=0):
     vars = c[0]
     c = C.convertBAR2Struct(c)
     imax = c[1].shape[1]
-    for nos in xrange(len(surfaces)):
+    for nos in range(len(surfaces)):
         if (len(surfaces[nos]) == 5): surfaces[nos] = C.convertArray2Hexa(surfaces[nos])
     surfaces = T.join(surfaces)
     surfaces = G.close(surfaces)
@@ -35,7 +38,7 @@ def buildExtension__(c, surfaces, dh, niter=0):
     # contour
     jmax = dh[2]
     cp = c
-    coords = C.arrayS(vars,imax,jmax,1)
+    coords = C.array(vars,imax,jmax,1)
     coords[1][0,0:imax] = cp[1][0,:]
     coords[1][1,0:imax] = cp[1][1,:]
     coords[1][2,0:imax] = cp[1][2,:]
@@ -83,10 +86,10 @@ def surfaceWalk__(surfaces, c, distrib, constraints, niter,alphaRef, check, told
     constraints2 = []; constrainedPts = []
     if constraints != []:
         hp0 = 1.e12
-        for i in xrange(1,distrib[2]): hp0 = min(hp0, distrib[1][0,i]-distrib[1][0,i-1])
+        for i in range(1,distrib[2]): hp0 = min(hp0, distrib[1][0,i]-distrib[1][0,i-1])
         hook = C.createHook(c2, function='nodes')
         # identification des pts de la contrainte avec le contour
-        for noc in xrange(len(constraints)):
+        for noc in range(len(constraints)):
             cons = constraints[noc]
             if len(cons) == 4: cons = C.convertBAR2Struct(cons)
             nodesc = C.identifyNodes(hook, cons, tol=toldist)
@@ -108,7 +111,7 @@ def surfaceWalk__(surfaces, c, distrib, constraints, niter,alphaRef, check, told
 
     # 4.  Surface walk
     # 4.1 tableau de coordonnees de la surface : la premiere  rangee correspond a c0 (et non c0 projete)
-    coords = C.arrayS(c0[0], imax, jmax,1)
+    coords = C.array(c0[0], imax, jmax,1)
     coords[1][:,0:imax] = c0[1][:,0:imax]
     if loop == 1: coords[1][:,imax-1] = coords[1][:,0]
 
@@ -140,7 +143,7 @@ def surfaceWalk__(surfaces, c, distrib, constraints, niter,alphaRef, check, told
             alpxn = alpn[1][0,:]; alpyn = alpn[1][1,:]; alpzn = alpn[1][2,:]
             alpxp = alpp[1][0,:]; alpyp = alpp[1][1,:]; alpzp = alpp[1][2,:]
 
-            for ieta in xrange(eta[1].shape[1]):
+            for ieta in range(eta[1].shape[1]):
                 ps = alpxn[ieta]*alpxp[ieta]+alpyn[ieta]*alpyp[ieta]+alpzn[ieta]*alpzp[ieta]                
                 if abs(ps) < cosalphaRef: stop = 1; jmaxout = j1; break
         #----------------------------------

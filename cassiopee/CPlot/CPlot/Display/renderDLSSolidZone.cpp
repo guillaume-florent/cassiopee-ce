@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -55,6 +55,31 @@ void DataDL::renderGPUSSolidZone(StructZone* zonep, int zone)
   s = MAX(s, zonep->zmax-zonep->zmin);
   s = 100./(s+1.e-12);
 
+  // Only for textured rendering, we use vect display =======================
+  if (ptrState->mode == RENDER && zonep->material == 14 && zonep->texu != NULL) // Textured rendering
+  {
+#ifdef __SHADERS__
+      triggerShader(*zonep, zonep->material, s, color1);
+#endif
+      double* f1 = zonep->texu;
+      double* f2 = zonep->texv;
+      double* f3 = zonep->texw;
+      double fmin1, fmax1, fmin2, fmax2, fmin3, fmax3;
+      fmax1 = 0.; fmin1 = 1.;
+      fmax2 = 0.; fmin2 = 1.;
+      fmax3 = 0.; fmin3 = 1.;
+  
+      int stepi, stepj, stepk;
+      computeSteps(zonep, stepi, stepj, stepk);
+      #undef PLOT
+      #define GL_QUADS_ARE GL_QUADS
+      #define PLOT PLOTQ
+      #include "displaySVectSolidZone.h"
+      glLineWidth(1.);
+      return;
+  }
+  // END Textured rendering ============================================
+
 #ifdef __SHADERS__
   if (ptrState->mode == RENDER)
   {
@@ -68,7 +93,6 @@ void DataDL::renderGPUSSolidZone(StructZone* zonep, int zone)
       triggerShader(*zonep, 0, s, color2);
     else triggerShader(*zonep, 0, s, color1);
   }
-  //if (is1D == true) { light(2); glColor3f(1,0,0); printf("deactivating\n"); _shaders.deactivate(); }
 #endif
 
   ZoneImplDL* zImpl = static_cast<ZoneImplDL*>(zonep->ptr_impl);

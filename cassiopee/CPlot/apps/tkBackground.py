@@ -1,5 +1,6 @@
 # - backgrounds -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -8,8 +9,7 @@ import Generator.PyTree as G
 import Converter.Internal as Internal
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 # Si half = 1, cree que la moitie
@@ -264,7 +264,7 @@ def setBackground(event=None):
         base = Internal.getNodesFromName1(CTK.t, 'BACKGROUND')[0]
         nob = C.getNobOfBase(base, CTK.t)
         for b in B: CTK.add(CTK.t, nob, -1, b)
-        CTK.t = C.fillMissingVariables(CTK.t)
+        #C._fillMissingVariables(CTK.t)
         
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
@@ -279,7 +279,7 @@ def createApp(win):
                            text='tkBackground', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Create a background.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=2)
@@ -297,11 +297,11 @@ def createApp(win):
     # - VARS -
     # -0- Type de background -
     V = TK.StringVar(win); V.set('None'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBackgroundType'): 
+    if 'tkBackgroundType' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBackgroundType'])
     # -1- Border
     V = TK.StringVar(win); V.set('2'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBackgroundBorder'): 
+    if 'tkBackgroundBorder' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBackgroundBorder'])
 
     # - Type de background -

@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -27,6 +27,7 @@ static PyMethodDef Pyconverter [] =
   {"copy", K_CONVERTER::copy, METH_VARARGS},
   {"setPartialFields", K_CONVERTER::setPartialFields, METH_VARARGS},
   {"_setPartialFields", K_CONVERTER::_setPartialFields, METH_VARARGS},
+  {"filterPartialFields", K_CONVERTER::filterPartialFields, METH_VARARGS},
   {"setPartialFieldsPT", K_CONVERTER::setPartialFieldsPT, METH_VARARGS},
   {"extractVars", K_CONVERTER::extractVars, METH_VARARGS},
   {"addVars", K_CONVERTER::addVars, METH_VARARGS},
@@ -60,8 +61,11 @@ static PyMethodDef Pyconverter [] =
   {"convertArray2TetraBaryBoth", K_CONVERTER::convertArray2TetraBaryBoth, METH_VARARGS},
   {"convertNGon2TetraBary", K_CONVERTER::convertNGon2TetraBary, METH_VARARGS},
   {"convertNGon2TetraBaryBoth", K_CONVERTER::convertNGon2TetraBaryBoth, METH_VARARGS},
+  {"convertHO2LO", K_CONVERTER::convertHO2LO, METH_VARARGS},
+  {"convertLO2HO", K_CONVERTER::convertLO2HO, METH_VARARGS},
   {"convertTri2Quad", K_CONVERTER::convertTri2Quad, METH_VARARGS},
   {"convertQuad2Tri", K_CONVERTER::convertQuad2Tri, METH_VARARGS},
+  {"convertMix2BE", K_CONVERTER::convertMix2BE, METH_VARARGS},
   {"convertArray2Node", K_CONVERTER::convertArray2Node, METH_VARARGS},
   {"node2Center", K_CONVERTER::node2Center, METH_VARARGS},
   {"center2Node", K_CONVERTER::center2Node, METH_VARARGS},
@@ -76,6 +80,7 @@ static PyMethodDef Pyconverter [] =
   {"convertPyTree2FilePartial", K_CONVERTER::convertPyTree2FilePartial, METH_VARARGS},
   {"readPyTreeFromPaths", K_CONVERTER::readPyTreeFromPaths, METH_VARARGS},
   {"writePyTreePaths", K_CONVERTER::writePyTreePaths, METH_VARARGS},
+  {"deletePyTreePaths", K_CONVERTER::deletePyTreePaths, METH_VARARGS},
   {"addGhostCellsNGonNodes", K_CONVERTER::addGhostCellsNGonNodes, METH_VARARGS},
   {"addGhostCellsNGonCenters", K_CONVERTER::addGhostCellsNGonCenters, METH_VARARGS},
   {"addGhostCellsNGonBoth", K_CONVERTER::addGhostCellsNGonBoth, METH_VARARGS},
@@ -115,6 +120,8 @@ static PyMethodDef Pyconverter [] =
   {"nearestElements", K_CONVERTER::nearestElements, METH_VARARGS},
   {"nearestFaces", K_CONVERTER::nearestFaces, METH_VARARGS},
   {"nearestNodes", K_CONVERTER::nearestNodes, METH_VARARGS},
+  {"createGlobalIndex", K_CONVERTER::createGlobalIndex, METH_VARARGS},
+  {"recoverGlobalIndex", K_CONVERTER::recoverGlobalIndex, METH_VARARGS},
   {"adaptPE2NFace", K_CONVERTER::adaptPE2NFace, METH_VARARGS},
   {"adaptNFace2PE", K_CONVERTER::adaptNFace2PE, METH_VARARGS},
   {"adaptNGon2Index", K_CONVERTER::adaptNGon2Index, METH_VARARGS},
@@ -123,19 +130,66 @@ static PyMethodDef Pyconverter [] =
   {"adapt2FastP", K_CONVERTER::adapt2FastP, METH_VARARGS},
   {"createElsaHybrid", K_CONVERTER::createElsaHybrid, METH_VARARGS},
   {"diffIndex", K_CONVERTER::diffIndex, METH_VARARGS},
+  {"pointList2Ranges", K_CONVERTER::pointList2Ranges, METH_VARARGS},
+  {"pointList2SPL", K_CONVERTER::pointList2SPL, METH_VARARGS},
+  {"range2PointList", K_CONVERTER::range2PointList, METH_VARARGS},
+  {"addGhostCellsNG", K_CONVERTER::addGhostCellsNG, METH_VARARGS},
+  {"extractBCMatchStruct", K_CONVERTER::extractBCMatchStruct, METH_VARARGS},
+  {"extractBCMatchNG", K_CONVERTER::extractBCMatchNG, METH_VARARGS},
+  {"buildBCMatchFieldStruct", K_CONVERTER::buildBCMatchFieldStruct, METH_VARARGS},
+  {"buildBCMatchFieldNG", K_CONVERTER::buildBCMatchFieldNG, METH_VARARGS},
+  {"extractBCFields", K_CONVERTER::extractBCFields, METH_VARARGS},
   {NULL, NULL}
 };
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+struct module_state {
+    PyObject *error;
+};
+static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+static int myextension_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "converter",
+        NULL,
+        sizeof(struct module_state),
+        Pyconverter,
+        NULL,
+        myextension_traverse,
+        myextension_clear,
+        NULL
+};
+#endif
 
 // ============================================================================
 /* Init of module */
 // ============================================================================
 extern "C"
 {
-  void initconverter();
-  void initconverter()
+#if PY_MAJOR_VERSION >= 3
+  PyMODINIT_FUNC PyInit_converter();
+  PyMODINIT_FUNC PyInit_converter()
+#else
+  PyMODINIT_FUNC initconverter();
+  PyMODINIT_FUNC initconverter()
+#endif
   {
+#if PY_MAJOR_VERSION >= 3
+    PyObject* module = PyModule_Create(&moduledef);
+#else
     Py_InitModule("converter", Pyconverter);
+#endif
     import_array();
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
   }
 }
 

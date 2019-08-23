@@ -1,10 +1,8 @@
 # - getProcDict (pyTree) -
 import Converter.PyTree as C
-import Converter.Internal as Internal
 import Converter.Mpi as Cmpi
 import Distributor2.PyTree as Distributor2
 import Generator.PyTree as G
-import KCore.test as test
 
 # Cree le fichier test
 if Cmpi.rank == 0:
@@ -19,5 +17,5 @@ t = Cmpi.convertFile2SkeletonTree('in.cgns')
 (t, dic) = Distributor2.distribute(t, NProc=2, algorithm='fast')
 
 procDict = Cmpi.getProcDict(t)
-if Cmpi.rank == 0: print procDict
+if Cmpi.rank == 0: print(procDict)
 #>> {'cart.0': 1, 'cart': 0}

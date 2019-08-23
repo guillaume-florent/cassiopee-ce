@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -29,18 +29,22 @@ PyObject* K_CONNECTOR::setIBCTransfersD(PyObject* self, PyObject* args)
   PyObject *pyArrayXPC, *pyArrayXPI, *pyArrayXPW;
   PyObject *pyArrayYPC, *pyArrayYPI, *pyArrayYPW;
   PyObject *pyArrayZPC, *pyArrayZPI, *pyArrayZPW;
-  PyObject *pyArrayDens, *pyArrayPressure, *pyArrayUtau, *pyArrayYplus;
+  PyObject *pyArrayDens, *pyArrayPressure;
+  PyObject *pyArrayVx, *pyArrayVy, *pyArrayVz; 
+  PyObject *pyArrayUtau, *pyArrayYplus;
   E_Int bctype, vartype;
   E_Float gamma, cv, muS, Cs, Ts;
 
   if (!PYPARSETUPLE(args,
-                    "OOOOOOOOOOOOOOOOOllddddd", "OOOOOOOOOOOOOOOOOiiddddd",
-                    "OOOOOOOOOOOOOOOOOllfffff", "OOOOOOOOOOOOOOOOOiifffff",
+                    "OOOOOOOOOOOOOOOOOOOOllddddd", "OOOOOOOOOOOOOOOOOOOOiiddddd",
+                    "OOOOOOOOOOOOOOOOOOOOllfffff", "OOOOOOOOOOOOOOOOOOOOiifffff",
                     &arrayD, &pyIndDonor, &pyArrayTypes, &pyArrayCoefs, 
                     &pyArrayXPC, &pyArrayYPC, &pyArrayZPC,
                     &pyArrayXPW, &pyArrayYPW, &pyArrayZPW,
                     &pyArrayXPI, &pyArrayYPI, &pyArrayZPI,
-                    &pyArrayDens, &pyArrayPressure, &pyArrayUtau, &pyArrayYplus,
+                    &pyArrayDens, &pyArrayPressure, 
+                    &pyArrayVx, &pyArrayVy, &pyArrayVz, 
+                    &pyArrayUtau, &pyArrayYplus,
                     &bctype, &vartype, &gamma, &cv, &muS, &Cs, &Ts))
   {
       return NULL;
@@ -166,7 +170,7 @@ PyObject* K_CONNECTOR::setIBCTransfersD(PyObject* self, PyObject* args)
                     "setIBCTransfersD: coordinates of interpolated points are invalid.");
     return NULL;
   }
-  if (okD*okP*okU*okY == 0 )
+  if (okD*okP*okVx*okVy*okVz*okU*okY == 0 )
   {
     RELEASESHAREDB(resd, arrayD, fd, cnd); 
     RELEASESHAREDN(pyIndDonor  , donorPtsI  );
@@ -183,6 +187,9 @@ PyObject* K_CONNECTOR::setIBCTransfersD(PyObject* self, PyObject* args)
     RELEASESHAREDN(pyArrayZPI  , coordzPI  );
     if (okD != 0) { RELEASESHAREDN(pyArrayDens    , densF    );}
     if (okP != 0) { RELEASESHAREDN(pyArrayPressure, pressF  );}
+    if (okVx != 0) { RELEASESHAREDN(pyArrayVx      , vxF     );}
+    if (okVy != 0) { RELEASESHAREDN(pyArrayVy      , vyF     );}
+    if (okVz != 0) { RELEASESHAREDN(pyArrayVz      , vzF     );}
     if (okU != 0) { RELEASESHAREDN(pyArrayUtau    , utauF   );}
     if (okY != 0) { RELEASESHAREDN(pyArrayYplus   , yplusF  );}
     PyErr_SetString(PyExc_TypeError, 
@@ -255,24 +262,36 @@ PyObject* K_CONNECTOR::setIBCTransfersD(PyObject* self, PyObject* args)
 
    if (varType == 1 || varType == 11) 
      setIBCTransfersCommonVar1(bcType, rcvPts, nbRcvPts, ideb, ifin, ithread, 
-			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, density, pressure, utau, yplus,
-                              ipt_tmp, size,
-                              gamma, cv, muS, Cs, Ts,
-	      	              vectOfDnrFields, vectOfRcvFields);
+			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, 
+            density, pressure, 
+            vx, vy, vz, 
+            utau, yplus,
+            NULL, NULL, NULL, NULL, NULL,
+            ipt_tmp, size,
+            gamma, cv, muS, Cs, Ts, 0.71,
+            vectOfDnrFields, vectOfRcvFields);
   
    else if (varType == 2 || varType == 21) 
      setIBCTransfersCommonVar2(bcType, rcvPts, nbRcvPts, ideb, ifin, ithread,
-			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, density, pressure, utau, yplus,
-                              ipt_tmp, size,
-                              gamma, cv, muS, Cs, Ts,
-		              vectOfDnrFields, vectOfRcvFields);
+			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, 
+            density, pressure, 
+            vx, vy, vz, 
+            utau, yplus,
+            NULL, NULL, NULL, NULL, NULL,
+            ipt_tmp, size,
+            gamma, cv, muS, Cs, Ts, 0.71,
+            vectOfDnrFields, vectOfRcvFields);
 
    else if (varType == 3 || varType == 31)
      setIBCTransfersCommonVar3(bcType, rcvPts, nbRcvPts, ideb, ifin, ithread,
-    			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, density, pressure, utau, yplus,
-                              ipt_tmp, size,
-                              gamma, cv, muS, Cs, Ts,
-  			      vectOfDnrFields, vectOfRcvFields);
+    			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, 
+                density, pressure, 
+                vx, vy, vz, 
+                utau, yplus,
+                NULL, NULL, NULL, NULL, NULL,
+                ipt_tmp, size,
+                gamma, cv, muS, Cs, Ts, 0.71,
+                vectOfDnrFields, vectOfRcvFields);
 
  }//fin omp
 
@@ -293,20 +312,24 @@ PyObject* K_CONNECTOR::_setIBCTransfersD(PyObject* self, PyObject* args)
   PyObject *pyArrayXPC, *pyArrayXPI, *pyArrayXPW;
   PyObject *pyArrayYPC, *pyArrayYPI, *pyArrayYPW;
   PyObject *pyArrayZPC, *pyArrayZPI, *pyArrayZPW;
-  PyObject *pyArrayDens, *pyArrayPressure, *pyArrayUtau, *pyArrayYplus;
+  PyObject *pyArrayDens, *pyArrayPressure;
+  PyObject *pyArrayVx, *pyArrayVy, *pyArrayVz;
+  PyObject *pyArrayUtau, *pyArrayYplus;
   PyObject* pyVariables;
   E_Int bctype, vartype, compact;
   E_Float gamma, cv, muS, Cs, Ts;
   char* GridCoordinates; char* FlowSolutionNodes; char* FlowSolutionCenters;
 
   if (!PYPARSETUPLE(args,
-                    "OOOOOOOOOOOOOOOOOOllldddddsss", "OOOOOOOOOOOOOOOOOOiiidddddsss",
-                    "OOOOOOOOOOOOOOOOOOlllfffffsss", "OOOOOOOOOOOOOOOOOOiiifffffsss",
+                    "OOOOOOOOOOOOOOOOOOOOOllldddddsss", "OOOOOOOOOOOOOOOOOOOOOiiidddddsss",
+                    "OOOOOOOOOOOOOOOOOOOOOlllfffffsss", "OOOOOOOOOOOOOOOOOOOOOiiifffffsss",
                     &zoneD, &pyVariables, &pyIndDonor, &pyArrayTypes, &pyArrayCoefs, 
                     &pyArrayXPC, &pyArrayYPC, &pyArrayZPC,
                     &pyArrayXPW, &pyArrayYPW, &pyArrayZPW,
                     &pyArrayXPI, &pyArrayYPI, &pyArrayZPI,
-                    &pyArrayDens, &pyArrayPressure, &pyArrayUtau, &pyArrayYplus,
+                    &pyArrayDens, &pyArrayPressure, 
+                    &pyArrayVx, &pyArrayVy, &pyArrayVz, 
+                    &pyArrayUtau, &pyArrayYplus,
                     &bctype, &vartype, &compact, &gamma, &cv, &muS, &Cs, &Ts,
                     &GridCoordinates,  &FlowSolutionNodes, &FlowSolutionCenters))
   {
@@ -357,9 +380,7 @@ PyObject* K_CONNECTOR::_setIBCTransfersD(PyObject* self, PyObject* args)
          for (int i = 0; i < nvariables; i++)
          {
            PyObject* tpl0 = PyList_GetItem(pyVariables, i);
-           if (PyString_Check(tpl0) == 0)
-             PyErr_Warn(PyExc_Warning, "_setIBCTransfersD: variable must be a string. Skipped.");
-           else 
+           if (PyString_Check(tpl0))
            {
              char* varname = PyString_AsString(tpl0);        
              posvd = K_ARRAY::isNamePresent(varname, varStringD);      
@@ -370,6 +391,21 @@ PyObject* K_CONNECTOR::_setIBCTransfersD(PyObject* self, PyObject* args)
                else {strcat(varStringOut,","); strcat(varStringOut,varname);}
              }
            }
+#if PY_VERSION_HEX >= 0x03000000
+           else if (PyUnicode_Check(tpl0)) 
+           {
+              char* varname = PyBytes_AsString(PyUnicode_AsUTF8String(tpl0));
+              posvd = K_ARRAY::isNamePresent(varname, varStringD);      
+              if (posvd != -1) 
+              { 
+                 posvarsD.push_back(posvd);
+                if (varStringOut[0]=='\0') strcpy(varStringOut,varname);
+                else {strcat(varStringOut,","); strcat(varStringOut,varname);}
+              }
+           }
+#endif
+           else 
+             PyErr_Warn(PyExc_Warning, "_setIBCTransfersD: variable must be a string. Skipped.");
          }
        }
       }
@@ -387,7 +423,6 @@ PyObject* K_CONNECTOR::_setIBCTransfersD(PyObject* self, PyObject* args)
   //utile la mise a zero???
   //
   fieldROut.setAllValuesAtNull();
-
 
   vector<E_Float*> vectOfRcvFields(nvars);
   vector<E_Float*> vectOfDnrFields(nvars);
@@ -426,7 +461,7 @@ PyObject* K_CONNECTOR::_setIBCTransfersD(PyObject* self, PyObject* args)
     if (bctype <=1 ) size = 0;               // tableau inutile
 
     FldArrayF  tmp(size*16*threadmax_sdm);
-    E_Float* ipt_tmp=  tmp.begin();
+    E_Float* ipt_tmp = tmp.begin();
 
 
 #pragma omp parallel default(shared)
@@ -456,24 +491,36 @@ PyObject* K_CONNECTOR::_setIBCTransfersD(PyObject* self, PyObject* args)
 
    if (varType == 1 || varType == 11) 
      setIBCTransfersCommonVar1(bcType, rcvPts, nbRcvPts, ideb, ifin, ithread, 
-			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, density, pressure, utau, yplus,
-                              ipt_tmp, size,
-                              gamma, cv, muS, Cs, Ts,
-	      	              vectOfDnrFields, vectOfRcvFields);
+			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, 
+            density, pressure, 
+            vx, vy, vz, 
+            utau, yplus,
+            NULL, NULL, NULL, NULL, NULL,
+            ipt_tmp, size,
+            gamma, cv, muS, Cs, Ts, 0.71,
+            vectOfDnrFields, vectOfRcvFields);
   
    else if (varType == 2 || varType == 21) 
      setIBCTransfersCommonVar2(bcType, rcvPts, nbRcvPts, ideb, ifin, ithread,
-			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, density, pressure, utau, yplus,
-                              ipt_tmp, size,
-                              gamma, cv, muS, Cs, Ts,
-		              vectOfDnrFields, vectOfRcvFields);
+			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, 
+            density, pressure, 
+            vx, vy, vz, 
+            utau, yplus,
+            NULL, NULL, NULL, NULL, NULL,
+            ipt_tmp, size,
+            gamma, cv, muS, Cs, Ts, 0.71,
+            vectOfDnrFields, vectOfRcvFields);
 
    else if (varType == 3 || varType == 31)
      setIBCTransfersCommonVar3(bcType, rcvPts, nbRcvPts, ideb, ifin, ithread,
-    			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, density, pressure, utau, yplus,
-                              ipt_tmp, size,
-                              gamma, cv, muS, Cs, Ts,
-  			      vectOfDnrFields, vectOfRcvFields);
+    			      xPC, yPC, zPC, xPW, yPW, zPW, xPI, yPI, zPI, 
+                density, pressure, 
+                vx, vy, vz, 
+                utau, yplus,
+                NULL, NULL, NULL, NULL, NULL,
+                ipt_tmp, size,
+                gamma, cv, muS, Cs, Ts, 0.71,
+                vectOfDnrFields, vectOfRcvFields);
 
   } // Fin zone // omp
 

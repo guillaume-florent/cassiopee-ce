@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -34,9 +34,6 @@
   int eltType = zonep->eltType;
   int nd, l;
 
-  if (eltType == 1) glLineWidth(3.);
-  else glLineWidth(1.);
-  
   glBegin(GL_LINES);
   
   if (zonep->blank == 0)
@@ -481,5 +478,5 @@
     }
   }
   glEnd();
-  glLineWidth(1.);
+  //glLineWidth(1.);
 

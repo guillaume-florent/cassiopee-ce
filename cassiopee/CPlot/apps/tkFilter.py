@@ -1,5 +1,6 @@
 # -- filters in a pyTree --
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -7,8 +8,7 @@ import CPlot.Tk as CTK
 import Converter.Internal as Internal
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 # Set filter zones depending on regexp
@@ -342,7 +342,7 @@ def createApp(win):
                            text='tkFilter', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Display/select certain blocks.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -359,13 +359,13 @@ def createApp(win):
     # - VARS -
     # -0- filter value -
     V = TK.StringVar(win); V.set(''); VARS.append(V)
-    if CTK.PREFS.has_key('tkFilterValue'): V.set(CTK.PREFS['tkFilterValue'])
+    if 'tkFilterValue' in CTK.PREFS: V.set(CTK.PREFS['tkFilterValue'])
     # -1- filter type
     V = TK.StringVar(win); V.set('By name'); VARS.append(V)
-    if CTK.PREFS.has_key('tkFilterName'): V.set(CTK.PREFS['tkFilterName'])
+    if 'tkFilterName' in CTK.PREFS: V.set(CTK.PREFS['tkFilterName'])
     # -2- action
     V = TK.StringVar(win); V.set('Activate'); VARS.append(V)
-    if CTK.PREFS.has_key('tkFilterAction'): V.set(CTK.PREFS['tkFilterAction'])
+    if 'tkFilterAction' in CTK.PREFS: V.set(CTK.PREFS['tkFilterAction'])
 
     # - Options -
     B = TTK.OptionMenu(Frame, VARS[2], 'Activate', 'Deactivate', 'Select')
@@ -420,7 +420,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-    
+
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

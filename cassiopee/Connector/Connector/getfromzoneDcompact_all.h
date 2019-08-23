@@ -5,7 +5,7 @@
        sol = K_PYTREE::getNodeFromName1(zoneD , "FlowSolution#Centers");
        if (sol != NULL)
        {  
-          t  = K_PYTREE::getNodeFromName1(sol, varname );
+         t  = K_PYTREE::getNodeFromName1(sol, varname );
          ipt_roD_vert[nd] = K_PYTREE::getValueAF(t, hook);
        }
        else { ipt_roD_vert[nd]= NULL; } 
@@ -24,12 +24,11 @@
         type =  K_PYTREE::getValueS(t, s, hook);
         // get dims
         d  =  K_PYTREE::getValueAI(zoneD, s0, s1, hook);
-
         if (K_STRING::cmp(type, s, "Structured") == 0)
         { 
-          meshtype = 1; E_Int shift = 0;// if(loc == 0) shift =1;
+          meshtype = 1; //E_Int shift = 0; if(loc == 0) shift =1;
           ipt_ndimdxD[nd+ nidomD*6] = meshtype;
-
+          
           if  (s0 == 1){ ipt_ndimdxD[nd+ nidomD  ]= d[0]; ipt_ndimdxD[nd+ nidomD*2]=  1 ; kmd=1   ; ipt_ndimdxD[nd          ]= d[0];  
                                ipt_ndimdxD[nd+ nidomD*4]= d[3]; ipt_ndimdxD[nd+ nidomD*5]=  1 ; kmd=1   ; ipt_ndimdxD[nd+ nidomD*3]= d[3];
                             }
@@ -39,7 +38,7 @@
           else if (s0 == 3){ ipt_ndimdxD[nd+ nidomD  ]= d[0]; ipt_ndimdxD[nd+ nidomD*2]=d[1]; kmd=d[2]; ipt_ndimdxD[nd          ]= d[0]*d[1]*kmd;
                              ipt_ndimdxD[nd+ nidomD*4]= d[3]; ipt_ndimdxD[nd+ nidomD*5]=d[4]; kmd=d[5]; ipt_ndimdxD[nd+ nidomD*3]= d[3]*d[4]*kmd;
                            }
-
+          cnNfldD = 0;
           ipt_ndimdxD[nd+ nidomD*7] = cnNfldD;
           ipt_cnd[nd] = NULL;
         }

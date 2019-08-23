@@ -1,5 +1,6 @@
 # - TFI mesher -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -10,6 +11,9 @@ import Converter.Internal as Internal
 import Generator.PyTree as G
 import Generator.TFIs as TFIs
 import Transform.PyTree as T
+
+try: range = xrange
+except: pass
 
 # local widgets list
 WIDGETS = {}; VARS = []
@@ -42,7 +46,7 @@ def getSurfaces():
         v = v.lstrip(); v = v.rstrip()
         sname = v.split('/')
         bases = Internal.getNodesFromName1(CTK.t, sname[0])
-        if (bases != []):
+        if bases != []:
             zones = Internal.getNodesFromType1(bases[0], 'Zone_t')
             for z in zones:
                 if (z[0] == sname[1]): surfaces.append(z)
@@ -50,12 +54,12 @@ def getSurfaces():
 
 #==============================================================================
 def TFI():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (len(nzs) == 0):
+    if len(nzs) == 0:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     surf = getSurfaces()
@@ -66,24 +70,24 @@ def TFI():
         noz = CTK.Nz[nz]
         z = CTK.t[2][nob][2][noz]
         dim = Internal.getZoneDim(z)
-        if (dim[3] == 'BAR'):
+        if dim[3] == 'BAR':
             zp = C.convertBAR2Struct(z); zones.append(zp)
         else: zones.append(z)
 
     try:
         CTK.saveTree()
         mesh = G.TFI(zones)
-        if (surf != []): mesh = T.projectOrthoSmooth(mesh, surf)
+        if surf != []: mesh = T.projectOrthoSmooth(mesh, surf)
         CTK.t = C.addBase2PyTree(CTK.t, 'MESHES')
         bases = Internal.getNodesFromName1(CTK.t, 'MESHES')
         nob = C.getNobOfBase(bases[0], CTK.t)
         CTK.add(CTK.t, nob, -1, mesh)
         CTK.TXT.insert('START', 'TFI mesh created.\n')
-        CTK.t = C.fillMissingVariables(CTK.t)
+        #C._fillMissingVariables(CTK.t)
         (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
         CTK.TKTREE.updateApp()
         CPlot.render()
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: TFI')
         CTK.TXT.insert('START', 'TFI mesh failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -113,7 +117,7 @@ def trimesh(a1, a2, a3):
 def mono2mesh(a1, a2):
     N1 = a1[2]; N2 = a2[2]
     diff = N2-N1
-    if (diff/2 != diff*0.5): return ['N1-N2 must be even.']
+    if diff/2 != diff*0.5: return ['N1-N2 must be even.']
     return TFIs.TFIMono(a1, a2)
 
 #==============================================================================
@@ -146,12 +150,12 @@ def quality(meshes):
 
 #==============================================================================
 def OTFI():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (len(nzs) == 0):
+    if len(nzs) == 0:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     surf = getSurfaces()
@@ -170,7 +174,7 @@ def OTFI():
 
     # Nombre de pts
     Nt = Internal.getZoneDim(a)[1]
-    if (Nt/2 - Nt*0.5 == 0):
+    if Nt/2 - Nt*0.5 == 0:
         CTK.TXT.insert('START', 'Number of points of countour must be odd.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
@@ -178,16 +182,16 @@ def OTFI():
 
     optWeight = 0; optOffset = 0; optScore = 1.e6
     Nt = coords[2]
-    for j in xrange(-Nt/4,Nt/4+1):
-        for i in xrange(3,10):
+    for j in range(-Nt//4,Nt//4+1):
+        for i in range(3,10):
             try:
                 [m,m1,m2,m3,m4] = TFIs.TFIO__(coords, i, j)
                 score = quality([m,m1,m2,m3])
-                if (score < optScore):
+                if score < optScore:
                     optWeight = i; optOffset = j; optScore = score
             except: pass
-    print 'resulting weight=%g, offset=%g.'%(optWeight,optOffset)
-    print 'resulting score=%g.'%optScore
+    print('resulting weight=%g, offset=%g.'%(optWeight,optOffset))
+    print('resulting score=%g.'%optScore)
     [m,m1,m2,m3,m4] = TFIs.TFIO__(coords, optWeight, optOffset)
     
     m = C.convertArrays2ZoneNode('TFI1', [m])
@@ -196,7 +200,7 @@ def OTFI():
     m3 = C.convertArrays2ZoneNode('TFI4', [m3])
     m4 = C.convertArrays2ZoneNode('TFI5', [m4])
 
-    if (surf != []):
+    if surf != []:
         m = T.projectOrtho(m, surf)
         m1 = T.projectOrthoSmooth(m1, surf)
         m2 = T.projectOrthoSmooth(m2, surf)
@@ -210,19 +214,19 @@ def OTFI():
     for i in [m,m1,m2,m3,m4]: CTK.add(CTK.t, nob, -1, i)
     CTK.TXT.insert('START', 'O-TFI mesh created.\n')
             
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
 
 #==============================================================================
 def HOTFI():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (len(nzs) == 0):
+    if len(nzs) == 0:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     surf = getSurfaces()
@@ -235,7 +239,7 @@ def HOTFI():
         z = C.convertBAR2Struct(z)
         zones.append(z)
 
-    if (len(zones) != 2):
+    if len(zones) != 2:
         CTK.TXT.insert('START', 'HO TFI takes 2 contours.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
@@ -244,10 +248,10 @@ def HOTFI():
     # Nombre de pts (tous les 2 pairs ou tous les 2 impairs)
     Nt1 = Internal.getZoneDim(zones[0])[1]  
     Nt2 = Internal.getZoneDim(zones[1])[1]
-    if (Nt1/2 - Nt1*0.5 == 0 and Nt2/2 - Nt2*0.5 != 0):
+    if Nt1/2 - Nt1*0.5 == 0 and Nt2/2 - Nt2*0.5 != 0:
         CTK.TXT.insert('START', 'Number of points of countours must be all odd or all even.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
-    if (Nt1/2 - Nt1*0.5 != 0 and Nt2/2 - Nt2*0.5 == 0):
+    if Nt1/2 - Nt1*0.5 != 0 and Nt2/2 - Nt2*0.5 == 0:
         CTK.TXT.insert('START', 'Number of points of countours must be all odd or all even.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
@@ -256,15 +260,15 @@ def HOTFI():
 
     optWeight = 0; optOffset = 0; optScore = 1.e6
     Nt2 = coords2[2]
-    for j in xrange(-Nt2/8,Nt2/8):
-        for i in xrange(2,10):
+    for j in range(-Nt2//8,Nt2//8):
+        for i in range(2,10):
             try:
                 [m,m1,m2,m3] = TFIs.TFIHalfO__(coords1, coords2, i, j)
                 score = quality([m,m1,m2,m3])
                 if (score < optScore):
                     optWeight = i; optScore = score; optOffset = j
             except: pass
-    print 'resulting score=%g'%optScore
+    print('resulting score=%g'%optScore)
     [m,m1,m2,m3] = TFIs.TFIHalfO__(coords1, coords2, optWeight, optOffset) 
     
     m = C.convertArrays2ZoneNode('TFI1', [m])
@@ -272,7 +276,7 @@ def HOTFI():
     m2 = C.convertArrays2ZoneNode('TFI3', [m2])
     m3 = C.convertArrays2ZoneNode('TFI4', [m3])
 
-    if (surf != []):
+    if surf != []:
         m = T.projectOrthoSmooth(m, surf)
         m1 = T.projectOrthoSmooth(m1, surf)
         m2 = T.projectOrthoSmooth(m2, surf)
@@ -285,19 +289,19 @@ def HOTFI():
     for i in [m,m1,m2,m3]: CTK.add(CTK.t, nob, -1, i)
     CTK.TXT.insert('START', 'HO-TFI mesh created.\n')
             
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
     
 #==============================================================================
 def TRITFI():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (len(nzs) == 0):
+    if len(nzs) == 0:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     surf = getSurfaces()
@@ -310,7 +314,7 @@ def TRITFI():
         z = C.convertBAR2Struct(z)
         zones.append(z)
 
-    if (len(zones) != 3):
+    if len(zones) != 3:
         CTK.TXT.insert('START', 'TRI TFI takes 3 contours.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
@@ -327,7 +331,7 @@ def TRITFI():
     m2 = C.convertArrays2ZoneNode('TFI2', [m2])
     m3 = C.convertArrays2ZoneNode('TFI3', [m3])
 
-    if (surf != []):
+    if surf != []:
         m1 = T.projectOrthoSmooth(m1, surf)
         m2 = T.projectOrthoSmooth(m2, surf)
         m3 = T.projectOrthoSmooth(m3, surf)
@@ -339,19 +343,19 @@ def TRITFI():
     for i in [m1,m2,m3]: CTK.add(CTK.t, nob, -1, i)
     CTK.TXT.insert('START', 'TRI-TFI mesh created.\n')
             
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
 
 #==============================================================================
 def MONO2TFI():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (len(nzs) == 0):
+    if len(nzs) == 0:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     surf = getSurfaces()
@@ -364,7 +368,7 @@ def MONO2TFI():
         z = C.convertBAR2Struct(z)
         zones.append(z)
 
-    if (len(zones) != 2):
+    if len(zones) != 2:
         CTK.TXT.insert('START', 'MONO2 TFI takes 2 contours.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
@@ -377,7 +381,7 @@ def MONO2TFI():
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
         
     m = C.convertArrays2ZoneNode('TFI', [m])
-    if (surf != []): m = T.projectOrthoSmooth(m, surf)
+    if surf != []: m = T.projectOrthoSmooth(m, surf)
 
     CTK.saveTree()
     CTK.t = C.addBase2PyTree(CTK.t, 'MESHES')
@@ -386,7 +390,7 @@ def MONO2TFI():
     CTK.add(CTK.t, nob, -1, m)
     CTK.TXT.insert('START', 'HO-TFI mesh created.\n')
             
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -400,7 +404,7 @@ def createApp(win):
                            text='tkTFI', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Transfinite interpolation mesh generation.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=2)
     Frame.columnconfigure(1, weight=2)
@@ -474,11 +478,11 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

@@ -8,7 +8,7 @@ namespace NUGA
 typedef K_FLD::FloatArray crd_t;
 typedef K_FLD::IntArray cnt_t;
 
-
+#ifndef NETBEANSZ
 inline bool getBoundary(const E_Int* t0, const E_Int* t1, E_Int& i, E_Int& j)
 {
   for (i=0; i < 3; ++i)
@@ -31,6 +31,7 @@ inline bool getBoundary(const E_Int* t0, const E_Int* t1, E_Int& i, E_Int& j)
   i=j=E_IDX_NONE;
   return false;
 }
+#endif
 
 ///
 template <E_Int DIM>
@@ -136,9 +137,9 @@ E_Bool __intersect
 (const K_FLD::FloatArray& pos, const K_FLD::IntArray& connect, E_Int t, E_Int e0, E_Int e1, E_Float tol, E_Bool& coplanar)
 {
   
-  E_Float u0[2], E[DIM], eps(/*100.*E_EPSILON*/tol), IP[DIM];
+  E_Float u0[2], E[DIM], eps(/*100.*E_EPSILON*/tol);
   E_Bool  overlap, intersect;
-  E_Int Ni, tx[2];  
+  E_Int tx[2];  
   K_FLD::IntArray::const_iterator pS = connect.col(t);
 
   if (*pS == e0 && *(pS+1) == e1)
@@ -227,20 +228,10 @@ E_Int intersect_from_Conformizer_wo_trace
   
   // Fast return : Triangles far from each others  
   if (__fast_discard<DIM>(pos, connect.col(t2), connect.col(t1), tol))
-  {
-#ifdef DEBUG_TRI_CONFORMIZER
-    ++K_GENERATOR::ConformizerRoot::fastdiscard_counter;
-#endif
     return 0;
-  }
     
   if (__fast_discard<DIM>(pos, connect.col(t1), connect.col(t2), tol))
-  {
-#ifdef DEBUG_TRI_CONFORMIZER
-    ++K_GENERATOR::ConformizerRoot::fastdiscard_counter;
-#endif
     return 0;
-  }
 
   //bool insideT1(false), insideT2(false);
   E_Bool coplanarE;
@@ -283,13 +274,13 @@ E_Int intersect_from_Conformizer_wo_trace
 
 void concatenate_PG_triangles (E_Int PGi, const ngon_t<cnt_t>& ng, const cnt_t& cntT3, const std::vector<E_Int>& PG_to_T3s, std::vector<E_Int>& pgi_T3s)
 {  
-  if (PGi+1 > PG_to_T3s.size()-1)
+  if (PGi+1 > (E_Int)PG_to_T3s.size()-1)
     return;
   
   E_Int nb_T3=PG_to_T3s[PGi+1]-PG_to_T3s[PGi];
   if (nb_T3 <= 0) return;
     
-  for (size_t k=0; k<nb_T3; ++k)
+  for (E_Int k=0; k<nb_T3; ++k)
     pgi_T3s.push_back(PG_to_T3s[PGi]+k);
 }
 
@@ -316,7 +307,12 @@ void selfX(const K_FLD::FloatArray& crd, const ngon_t<cnt_t>& ng, std::vector<E_
   
   std::cout << "selfX : Triangulating ..." << std::endl;
   // Triangulate once all the PGs
-  ngon_t<cnt_t>::triangulate_pgs<TriangulatorType>(ng.PGs, crd, cntT3, T3_to_PG, true, false);
+  E_Int err = ngon_t<cnt_t>::triangulate_pgs<TriangulatorType>(ng.PGs, crd, cntT3, T3_to_PG, true, true);
+  if (err)
+  {
+    std::cout << "selX ERROR : triangulation failure." << std::endl;
+    return;
+  }
   
   // Inverse indirection
   PG_to_T3s.reserve(ng.PGs.size()+1);
@@ -350,7 +346,7 @@ void selfX(const K_FLD::FloatArray& crd, const ngon_t<cnt_t>& ng, std::vector<E_
   std::vector<E_Int> pgi_T3s, pgj_T3s, candidates;
   
   //std::cout << "selfX : run ..." << std::endl;
-  for (size_t i = 0; i < nb_elts; ++i)
+  for (E_Int i = 0; i < nb_elts; ++i)
   {  
     if (i > 10000 && i%10000 == 0)
       std::cout << i << " -th element processed over " << nb_elts << std::endl;
@@ -366,6 +362,8 @@ void selfX(const K_FLD::FloatArray& crd, const ngon_t<cnt_t>& ng, std::vector<E_
     // Get all the triangles for this PHi
     //concatenate_triangles(i, ng, cntT3, PG_to_T3s, phi_T3s);
     
+    bool is_x=false;
+    
     for (size_t j=0; j< candidates.size(); ++j)
     {
       E_Int& jj = candidates[j];
@@ -376,20 +374,18 @@ void selfX(const K_FLD::FloatArray& crd, const ngon_t<cnt_t>& ng, std::vector<E_
       E_Int nb_PGjs = ng.PHs.stride(jj);
       const E_Int* pPGj = ng.PHs.get_facets_ptr(jj);
       
-      bool is_x=false;
-      
-      for (size_t pgi=0; (pgi<nb_PGis) && !is_x; ++pgi)
+      for (E_Int pgi=0; (pgi<nb_PGis) && !is_x; ++pgi)
       {
         E_Int PGi = *(pPGi+pgi)-1;
-        
+//        
         pgi_T3s.clear();
         concatenate_PG_triangles(PGi, ng, cntT3, PG_to_T3s, pgi_T3s);
                 
-        for (size_t pgj=0; (pgj<nb_PGjs) && !is_x; ++pgj)
+        for (E_Int pgj=0; (pgj<nb_PGjs) && !is_x; ++pgj)
         {
           E_Int PGj = *(pPGj+pgj)-1;
-          if (!processed_PG_pairs.insert(K_MESH::NO_Edge(PGi, PGj)).second) // if already in
-            continue;
+          //if (!processed_PG_pairs.insert(K_MESH::NO_Edge(PGi, PGj)).second) // if already in
+            //continue;
           
           pgj_T3s.clear();
           concatenate_PG_triangles(PGj, ng, cntT3, PG_to_T3s, pgj_T3s);
@@ -410,9 +406,20 @@ void selfX(const K_FLD::FloatArray& crd, const ngon_t<cnt_t>& ng, std::vector<E_
               const E_Float* Q2 = crd.col(cntT3(1,J));
               const E_Float* Q3 = crd.col(cntT3(2,J));
           
-              is_x = K_MESH::Triangle::fast_intersectT3<3>(P1, P2, P3, Q1, Q2, Q3);
+              is_x = K_MESH::Triangle::fast_intersectT3<3>(P1, P2, P3, Q1, Q2, Q3, E_EPSILON/*dummy tol*/);
               if (is_x)
                 is_x = intersect_from_Conformizer_wo_trace<3>(crd, cntT3, I, J, E_EPSILON);
+#ifdef DEBUG_SELFX
+              if (is_x)
+              {
+                std::cout << "intersecting pair I/J : " << I << "/" << J << std::endl;
+                K_FLD::IntArray tmp;
+                tmp.pushBack(cntT3.col(I), cntT3.col(I)+3);
+                tmp.pushBack(cntT3.col(J), cntT3.col(J)+3);
+                MIO::write("xpair.mesh", crd, tmp, "TRI");
+                
+              }
+#endif
             }
           }
         }
@@ -422,9 +429,10 @@ void selfX(const K_FLD::FloatArray& crd, const ngon_t<cnt_t>& ng, std::vector<E_
         xlist.push_back(i); xlist.push_back(jj);
         break;
       }
-      
     }
+    if (is_x) break;
   }
+
   std::cout << "selfX : DONE." ;
   if (xlist.empty())
     std::cout << " No self-intersections found." << std::endl;

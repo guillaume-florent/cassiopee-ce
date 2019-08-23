@@ -16,11 +16,11 @@ sphere = D.sphere((6.4,6.4,0), 1., 100)
 sphere = C.convertArray2Tetra(sphere)
 sphere = G.close(sphere)
 t = C.newPyTree(['Base']); t[2][1][2] = [a]; 
-C._initVars(t,'cellN=1')
+C._initVars(t,'cellN', 1)
 t = X.blankCellsTri(t, [[sphere]], numpy.array([[1]]), blankingType='node_in')
 # Condition aux limites
 t = X.setHoleInterpolatedPoints(t,depth=1,loc='nodes')
-C._initVars(t,'flag=({cellN}>1.)')
+C._initVars(t,'{flag}=({cellN}>1.)')
 t = DTW.distance2WallsEikonal(t,sphere,DEPTH=DEPTH,nitmax=10)
 C.convertPyTree2File(t, 'out.cgns')
 
@@ -32,11 +32,11 @@ sphere = D.sphere((6.4,6.4,0), 1., 100)
 sphere = C.convertArray2Tetra(sphere)
 sphere = G.close(sphere)
 t = C.newPyTree(['Base']); t[2][1][2] = [a]
-C._initVars(t,'cellN=1.')
+C._initVars(t,'cellN', 1.)
 t = X.blankCellsTri(t, [[sphere]], numpy.array([[1]]), blankingType='node_in')
 t = X.setHoleInterpolatedPoints(t,depth=1,loc='nodes')
 # Initialise le front
-C._initVars(t,'flag=({cellN}>1.)')
+C._initVars(t,'{flag}=({cellN}>1.)')
 t = DTW.distance2WallsEikonal(t,sphere,DEPTH=DEPTH,nitmax=10)
 C.convertPyTree2File(t, 'out2.cgns')
 

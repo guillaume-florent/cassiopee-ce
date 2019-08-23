@@ -33,7 +33,7 @@ else: # Essai en dynamique
         shutil.copy(installPathLocal+"/KCore/kcore"+__EXTMODULE__,
                     libPath+"/libkcore"+__EXTSHARED__) 
     else:
-        print "Error: kcore%s can not be found in %s."%(__EXTMODULE__,installPathLocal)
+        print("Error: kcore%s can not be found in %s."%(__EXTMODULE__,installPathLocal))
 
 # Copie aussi les .py
 shutil.copy("config.py", installPathLocal+"/KCore/config.py")
@@ -51,4 +51,4 @@ Dist.writeEnvs()
 
 # Installe la licence
 f = open('KCore/installKey.py'); a = f.read(); f.close()
-exec a
+exec(a)

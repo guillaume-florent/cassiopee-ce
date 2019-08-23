@@ -42,7 +42,8 @@ if [ $? -eq 0 ]; then
     # export SCONSOPT=""
     scons install prefix="$INSTALLPATH" "$SCONSOPT"
     [ $? != 0 ] && exit;
-    touch Post/post.cpp
+    #touch Post/post.cpp
+    rm -f build/lib.*/Post/post.*
     python setupScons.py install --prefix="$INSTALLPATH"
 else
     python setup.py install --prefix="$INSTALLPATH"

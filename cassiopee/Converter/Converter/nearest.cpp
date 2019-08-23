@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -23,6 +23,8 @@
 
 using namespace K_FUNC;
 using namespace K_FLD;
+# include "ExtArith/quad_double.hpp"
+using namespace ExtendedArithmetics;
 
 // ============================================================================
 /* Trouve pour les noeuds de a le point le plus proche parmi les points
@@ -59,8 +61,8 @@ PyObject* K_CONVERTER::nearestNodes(PyObject* self, PyObject* args)
   E_Int nil, njl, nkl, res;
   FldArrayF* f; FldArrayI* cnl;
   char* varString; char* eltType;
-  res = K_ARRAY::getFromArray(array, varString, 
-                              f, nil, njl, nkl, cnl, eltType, true);
+  res = K_ARRAY::getFromArray2(array, varString, 
+                               f, nil, njl, nkl, cnl, eltType);
 
   if (res != 1 && res != 2)
   {
@@ -152,8 +154,8 @@ PyObject* K_CONVERTER::nearestFaces(PyObject* self, PyObject* args)
   E_Int nil, njl, nkl, res;
   FldArrayF* f; FldArrayI* cnl;
   char* varString; char* eltType;
-  res = K_ARRAY::getFromArray(array, varString, 
-                              f, nil, njl, nkl, cnl, eltType, true);
+  res = K_ARRAY::getFromArray2(array, varString, 
+                               f, nil, njl, nkl, cnl, eltType);
 
   if (res != 1 && res != 2)
   {
@@ -212,42 +214,29 @@ PyObject* K_CONVERTER::nearestFaces(PyObject* self, PyObject* args)
   {
     E_Int posf = posFace[i];
     E_Int* ptrFace = &ptr[posf];
-
-#ifdef SORTHOOK
-    std::vector<E_Float> sxp;
-    sxp.reserve(1024);
-    std::vector<E_Float> syp;
-    syp.reserve(1024);
-    std::vector<E_Float> szp;
-    szp.reserve(1024);
-    std::vector<E_Int> vertices; vertices.reserve(1024);
-#endif
-
     E_Int nv = ptrFace[0];
     E_Float xf=0.,yf=0.,zf=0.;
-
+    quad_double  qxf, qyf, qzf;
     for (E_Int n = 1; n <= nv; n++)
     {
       E_Int indv = ptrFace[n]-1;
-#ifdef SORTHOOK
-      vertices.push_back(indv);
+
+#ifdef QUADDOUBLE
+      qxf = qxf+quad_double(xp[indv]); 
+      qyf = qyf+quad_double(yp[indv]); 
+      qzf = qzf+quad_double(zp[indv]); 
     }//loop on vertices
-    std::sort(vertices.begin(), vertices.end());
-    vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end() );
 
-    for (E_Int nov = 0; nov < vertices.size(); nov++)
-    {
-      E_Int indv = vertices[nov];
-      sxp.push_back(xp[indv]); syp.push_back(yp[indv]); szp.push_back(zp[indv]); 
-    }
-    std::sort(sxp.begin(), sxp.end());
-    std::sort(syp.begin(), syp.end());
-    std::sort(szp.begin(), szp.end());
-
-    for (E_Int n = 0; n < sxp.size(); n++) { xf += sxp[n]; yf+= syp[n]; zf += szp[n];}
-    E_Float inv = 1./E_Float(sxp.size()); xf *= inv; yf *= inv; zf *= inv;     
+    E_Float qinv = quad_double(nv); 
+    qxf = qxf/qinv; qyf = qyf/qinv; qzf = qzf/qinv;
+    xf = E_Float(qxf); yf = E_Float(qyf); zf = E_Float(qzf);
 # else
+    {
+      #ifdef __INTEL_COMPILER
+      #pragma float_control(precise, on)
+      #endif
       xf += xp[indv]; yf += yp[indv]; zf += zp[indv];
+    }
     }//loop on vertices
     E_Float inv = 1./E_Float(nv); xf *= inv; yf *= inv; zf *= inv;
 #endif
@@ -285,15 +274,13 @@ PyObject* K_CONVERTER::nearestElements(PyObject* self, PyObject* args)
 #endif
   E_Int* type = (E_Int*)packet[0];
   if (*type != 0 && *type != 2 && *type != 3 &&
-      *type != 100 && *type != 102 && *type != 103) 
+      *type != 100 && *type != 102 && *type != 103)
   {
     PyErr_SetString(PyExc_TypeError, 
                     "nearestElts: this function requires a identify KDT hook.");
     return NULL;
   }
   FldArrayF* centers = (FldArrayF*)packet[1];
-  //K_SEARCH::KdTree<FldArrayF>* coordAcc = 
-  //  (K_SEARCH::KdTree<FldArrayF>*) packet[2];
   K_SEARCH::KdTree<FldArrayF>* globalKdt = 
     (K_SEARCH::KdTree<FldArrayF>*) packet[3];
 
@@ -330,7 +317,6 @@ PyObject* K_CONVERTER::nearestElements(PyObject* self, PyObject* args)
     return NULL; 
   }
   posx++; posy++; posz++;
-
   if (strcmp(eltType, "NGON") == 0)
   {  
     // Cree le numpy de sortie
@@ -362,50 +348,38 @@ PyObject* K_CONVERTER::nearestElements(PyObject* self, PyObject* args)
       E_Int nf = ptrElt[0]; 
       E_Float xf = 0., yf = 0., zf = 0.; 
       E_Int c = 0;
+      quad_double qxf, qyf, qzf;
 
-  #ifdef SORTHOOK
-      std::vector<E_Float> sxp; sxp.reserve(1024);
-      std::vector<E_Float> syp; syp.reserve(1024);
-      std::vector<E_Float> szp; szp.reserve(1024);
-      std::vector<E_Int> vertices; vertices.reserve(1024);
-  #endif
+      for (E_Int n = 1; n <= nf; n++)
+      { 
+        E_Int ind = ptrElt[n]-1;
+        E_Int pos = posFace[ind];
+        E_Int* ptrFace = &ptr[pos];
+        E_Int nv = ptrFace[0];
 
-    for (E_Int n = 1; n <= nf; n++)
-    { 
-      E_Int ind = ptrElt[n]-1;
-      E_Int pos = posFace[ind];
-      E_Int* ptrFace = &ptr[pos];
-      E_Int nv = ptrFace[0];
-      
-  #ifdef SORTHOOK
+  #ifdef QUADDOUBLE
+        for (E_Int p = 1; p <= nv; p++)
+        { 
+          ind = ptrFace[p]-1; 
+          qxf = qxf+quad_double(xp[ind]); 
+          qyf = qyf+quad_double(yp[ind]); 
+          qzf = qzf+quad_double(zp[ind]); 
+          c++;
+        }
+      }
+      quad_double qinv = quad_double(c); qxf = qxf/qinv; qyf = qyf/qinv; qzf = qzf/qinv;
+      xf = E_Float(qxf); yf = E_Float(qyf); zf = E_Float(qzf);
+  #else
+      {
+      #ifdef __INTEL_COMPILER
+      #pragma float_control(precise, on)
+      #endif
       for (E_Int p = 1; p <= nv; p++)
       { 
-        E_Int indv = ptrFace[p]-1; 
-        vertices.push_back(indv);
+        ind = ptrFace[p]-1; 
+        xf += xp[ind]; yf += yp[ind]; zf += zp[ind]; c++; 
       }
-    }
-
-    std::sort(vertices.begin(), vertices.end());
-    vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end() );
-
-    for (E_Int nov = 0; nov < vertices.size(); nov++)
-    {
-      E_Int indv = vertices[nov];
-      sxp.push_back(xp[indv]); syp.push_back(yp[indv]); szp.push_back(zp[indv]); 
-    }
-    std::sort(sxp.begin(), sxp.end());
-    std::sort(syp.begin(), syp.end());
-    std::sort(szp.begin(), szp.end());
-
-    for (E_Int n = 0; n < sxp.size(); n++) { xf += sxp[n]; yf+= syp[n]; zf += szp[n];
-    }
-    E_Float inv = 1./E_Float(sxp.size()); xf *= inv; yf *= inv; zf *= inv; 
-
-  #else
-    for (E_Int p = 1; p <= nv; p++)
-    { 
-      ind = ptrFace[p]-1; 
-      xf += xp[ind]; yf += yp[ind]; zf += zp[ind]; c++; }
+      }
     }
     E_Float inv = 1./E_Float(c); xf *= inv; yf *= inv; zf *= inv;
   #endif
@@ -438,6 +412,7 @@ PyObject* K_CONVERTER::nearestElements(PyObject* self, PyObject* args)
     PyObject* dist = K_NUMPY::buildNumpyArray(nelts, 1, 0);
     E_Float* nptr2 = K_NUMPY::getNumpyPtrF(dist);
     E_Float inv = 1./E_Float(nvert);
+    quad_double qinv = quad_double(nvert);
     E_Float pt[3];
 
 #pragma omp parallel for default(shared) private(pt) schedule(dynamic)
@@ -446,44 +421,36 @@ PyObject* K_CONVERTER::nearestElements(PyObject* self, PyObject* args)
       E_Float dx,dy,dz;
       E_Int ind;
       E_Float xf=0.,yf=0.,zf=0.;
+      quad_double qxf, qyf, qzf;
 
-#ifdef SORTHOOK
-      std::vector<E_Float> sxp; sxp.reserve(1024);
-      std::vector<E_Float> syp; syp.reserve(1024);
-      std::vector<E_Float> szp; szp.reserve(1024);
-      std::vector<E_Int> vertices; vertices.reserve(1024);
-
+#ifdef QUADDOUBLE
       for (E_Int n = 1; n <= nvert; n++)
       {
-        ind = (*cnl)(i,n)-1; vertices.push_back(ind);
+        ind = (*cnl)(i,n)-1; 
+        qxf = qxf+quad_double(xp[ind]); 
+        qyf = qyf+quad_double(yp[ind]); 
+        qzf = qzf+quad_double(zp[ind]); 
       }
-      std::sort(vertices.begin(), vertices.end());
-      vertices.erase(std::unique(vertices.begin(), vertices.end()), vertices.end() );
-
-      for (E_Int nov = 0; nov < vertices.size(); nov++)
-      {
-        E_Int indv = vertices[nov];
-        sxp.push_back(xp[indv]); syp.push_back(yp[indv]); szp.push_back(zp[indv]); 
-      }
-      std::sort(sxp.begin(), sxp.end());
-      std::sort(syp.begin(), syp.end());
-      std::sort(szp.begin(), szp.end());
-      for (E_Int j = 0; j < sxp.size(); j++)
-      {xf+= sxp[j]; yf += syp[j]; zf += szp[j];}
-      E_Float inv0 = 1./(E_Float(sxp.size()));
-      xf *= inv0; yf *= inv0; zf *= inv0;
+      qxf = qxf/qinv; qyf = qyf/qinv; qzf = qzf/qinv;
+      xf = E_Float(qxf); yf = E_Float(qyf); zf = E_Float(qzf);
 #else
+      {
+      #ifdef __INTEL_COMPILER
+      #pragma float_control(precise, on)
+      #endif
       for (E_Int n = 1; n <= nvert; n++)
       {
         ind = (*cnl)(i,n)-1; 
         xf += xp[ind]; yf += yp[ind]; zf += zp[ind];        
       }
       xf*=inv; yf*=inv; zf*=inv;
+      }
 #endif
-      pt[0] = xf; pt[1] = yf; pt[2] = zf;
 
+      pt[0] = xf; pt[1] = yf; pt[2] = zf;
       ind = globalKdt->getClosest(pt); // closest pt
       dx = xt[ind]-xf; dy = yt[ind]-yf; dz = zt[ind]-zf;
+
       E_Float d = dx*dx+dy*dy*dz*dz;
       nptr1[i] = ind+1; nptr2[i] = sqrt(d);
     }

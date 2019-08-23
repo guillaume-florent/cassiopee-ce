@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -211,7 +211,7 @@ void K_CONVERTER::detectEmptyBCrec(
       }
       if (found == 1) break;
     }
-    // detection de ts les pts suivants : arret qd un pt ds une bc 
+    // detection de ts les pts suivants : arret qd un pt ds une bc
     jend = jstart; kend = kstart;
     for (E_Int j = jstart; j < nj; j++)
     {

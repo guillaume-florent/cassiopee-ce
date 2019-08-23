@@ -1,10 +1,11 @@
 import KCore.Dist as Dist
 from KCore.config import *
+EXPRESSION = False
+
 (hdf, hdfIncDir, hdfLibDir) = Dist.checkHdf(additionalLibPaths,
                                             additionalIncludePaths)
 (png, pngIncDir, pngLibDir) = Dist.checkPng(additionalLibPaths,
                                             additionalIncludePaths)
-
 #==============================================================================
 # Fichiers c++
 #==============================================================================
@@ -32,8 +33,11 @@ cpp_srcs =  ['Converter/Converter1.cpp',
              'Converter/convertPyra2Tetra.cpp',
              'Converter/convertNGon2TetraBary.cpp',
              'Converter/convertArray2TetraBary.cpp',
+             'Converter/convertHO2LO.cpp',
+             'Converter/convertLO2HO.cpp',
              'Converter/convertTri2Quad.cpp',
              'Converter/convertQuad2Tri.cpp',
+             'Converter/convertMix2BE.cpp',
              'Converter/center2Node.cpp',
              'Converter/node2Center.cpp',
              'Converter/node2ExtCenter.cpp',
@@ -41,6 +45,7 @@ cpp_srcs =  ['Converter/Converter1.cpp',
              'Converter/center2ExtCenter.cpp',
              'Converter/convertFilePyTree.cpp',
              'Converter/setPartialFields.cpp',
+             'Converter/filterPartialFields.cpp',
              'Converter/IO/DynArrayIO.cpp',
              'Converter/IO/GenIO.cpp',
              'Converter/IO/GenIO_endian.cpp',
@@ -93,11 +98,13 @@ cpp_srcs =  ['Converter/Converter1.cpp',
              'Converter/identifySolutions.cpp',
              'Converter/hook.cpp',
              'Converter/globalHook.cpp',
+             'Converter/globalIndex.cpp',
              'Converter/ADF/ADF_interface.cpp',
              'Converter/ADF/ADF_internals.cpp',
              'Converter/ADF/cgns_io.cpp',
              'Converter/addGhostCellsNGon.cpp',
              'Converter/rmGhostCellsNGon.cpp',
+             'Converter/extractBCMatch.cpp',
              'Converter/Adapter/adaptPE2NFace.cpp',
              'Converter/Adapter/adaptNFace2PE.cpp',
              'Converter/Adapter/adaptBCFace2BCC.cpp',
@@ -106,16 +113,30 @@ cpp_srcs =  ['Converter/Converter1.cpp',
              'Converter/Adapter/adaptNFace2Index.cpp',
              'Converter/Adapter/adapt2FastP.cpp',
              'Converter/Adapter/createElsaHybrid.cpp',
+             'Converter/Adapter/pointList2Ranges.cpp',
+             'Converter/Adapter/pointList2SPL.cpp',
+             'Converter/Adapter/range2PointList.cpp',
              'Converter/Adapter/diffIndex.cpp',
              'Converter/setBCDataInGhostCells.cpp',
              'Converter/extrapInterior2BCFace.cpp',
-             'Converter/nullifyVectorAtBCFace.cpp'
-             ]
+             'Converter/nullifyVectorAtBCFace.cpp',
+             'Converter/nuga_ghost.cpp',
+             'Converter/extractBCFields.cpp']
 cpp_srcs += ['Converter/IO/GenIO_adfcgns.cpp']
 
 #import glob
 #h5files = glob.glob('Converter/HDF/*.c')
 #cpp_srcs += h5files
+
+if EXPRESSION:
+   cpp_srcs += ['Converter/Expression/ast.cpp',
+                'Converter/Expression/function.cpp',
+                'Converter/Expression/lexer.cpp',
+                'Converter/Expression/math_function.cpp',
+                'Converter/Expression/parser.cpp',
+                'Converter/Expression/symbol_table.cpp',
+                'Converter/Expression/simd_vector_wrapper.cpp'
+               ]
 
 if hdf:
     cpp_srcs += ['Converter/IO/GenIO_hdfcgns.cpp']
@@ -137,7 +158,3 @@ for_srcs = ['Converter/Fortran/WriteBCFileF.for',
             'Converter/Fortran/WriteIBFileF.for',
             'Converter/Fortran/WriteFFDFileF.for']
 
-#==============================================================================
-# Module pyx
-#==============================================================================
-#pyx_srcs = ['Converter/Layout/dummy.pyx']

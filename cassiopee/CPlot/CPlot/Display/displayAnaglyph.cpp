@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -176,7 +176,7 @@ void Data::displayAnaglyph()
 #ifdef __SHADERS__
   // Update du frame buffer pour les shaders le necessitant
   // Je pense qu'il faudrait le faire tout le temps
-  if (_shaders.currentShader() == 3)
+  if (_shaders.currentShader() == _shaders.shader_id(3))
   {
      int w = _view.w;
      int h = _view.h;

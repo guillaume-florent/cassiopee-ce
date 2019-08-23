@@ -20,13 +20,13 @@ m2 = G.cart((10,0,0), (10./(ni-1),10./(nj-1),1), (ni,nj,2)); m2[0] = 'cart2'
 varsN = ['Density','MomentumX','centers:cellN']
 varsP = ['density','velocity_x','centers:ichim']
 for v in varsP: m1 = C.addVars(m, v)
-m1 = C.addVars(m1,'ichim')
-m2 = C.addVars(m2,'density')
-m2 = C.initVars(m2,'centers:ichim=1.')
-t = C.newPyTree(['Base']); t[2][1][2] = [m1,m2]
+C._addVars(m1,'ichim')
+C._addVars(m2,'density')
+C._initVars(m2,'centers:ichim', 1.)
+t = C.newPyTree(['Base',m1,m2])
 t = P.renameVars(t, varsP, varsN)
 test.testT(t,2)
-#
-t = C.newPyTree(['Base']); t[2][1][2] = [m1,m2]
+
+t = C.newPyTree(['Base',m1,m2])
 P._renameVars(t, varsP, varsN)
 test.testT(t,3)

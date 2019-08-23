@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -17,7 +17,7 @@
     along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Transformations of mesh coordinates ( homothety, contract, symetrize)
+// Transformations of mesh coordinates (homothety, contract, deformPoints)
 
 # include "transform.h"
 
@@ -47,7 +47,6 @@ PyObject* K_TRANSFORM::homothety(PyObject* self, PyObject* args)
   E_Float xc, yc, zc;
   E_Float alpha;
   PyObject* array;
-
   if (!PYPARSETUPLEF(args,
                     "O(ddd)d", "O(fff)f",
                     &array, &xc, &yc, &zc, &alpha))
@@ -59,53 +58,37 @@ PyObject* K_TRANSFORM::homothety(PyObject* self, PyObject* args)
   E_Int nil, njl, nkl;
   FldArrayF* f; FldArrayI* cn;
   char* varString; char* eltType;
-  E_Int res;
+  E_Int res = 
+    K_ARRAY::getFromArray2(array, varString, f, nil, njl, nkl, cn, eltType);
 
-  res = 
-    K_ARRAY::getFromArray(array, varString, f, nil, njl, nkl, cn, eltType);
-
-  if (res == 1 || res == 2)
-  {
-    E_Int posx = K_ARRAY::isCoordinateXPresent(varString);
-    E_Int posy = K_ARRAY::isCoordinateYPresent(varString);
-    E_Int posz = K_ARRAY::isCoordinateZPresent(varString);
-    if (posx == -1 || posy == -1 || posz == -1)
-    {
-      delete f;
-      if (res == 2) delete cn;
-      PyErr_SetString(PyExc_TypeError,
-                      "homothety: can't find coordinates in array.");
-      return NULL;
-    }
-    posx++; posy++; posz++;
-   
-    E_Int npts = f->getSize();
-    // Homothety
-    k6homothety_(npts,
-                 f->begin(posx), f->begin(posy), f->begin(posz),
-                 xc, yc, zc, alpha,
-                 f->begin(posx), f->begin(posy), f->begin(posz));
-    
-    // Build array
-    PyObject* tpl;
-    if (res == 1) //structured
-    {
-      tpl = K_ARRAY::buildArray(*f, varString, nil, njl, nkl);
-      delete f;
-    } 
-    else //unstructured 
-    {
-      tpl = K_ARRAY::buildArray(*f, varString, *cn, -1, eltType);
-      delete f; delete cn;
-    }
-    return tpl;
-  }
-  else
+  if (res != 1 && res != 2)
   {
     PyErr_SetString(PyExc_TypeError,
                     "homothety: not a valid array.");
     return NULL;
-  }            
+  }
+
+  E_Int posx = K_ARRAY::isCoordinateXPresent(varString);
+  E_Int posy = K_ARRAY::isCoordinateYPresent(varString);
+  E_Int posz = K_ARRAY::isCoordinateZPresent(varString);
+  if (posx == -1 || posy == -1 || posz == -1)
+  {
+    RELEASESHAREDB(res, array, f, cn);
+    PyErr_SetString(PyExc_TypeError,
+                    "homothety: can't find coordinates in array.");
+    return NULL;
+  }
+  posx++; posy++; posz++;
+   
+  E_Int npts = f->getSize();
+  // Homothety
+  k6homothety_(npts,
+               f->begin(posx), f->begin(posy), f->begin(posz),
+               xc, yc, zc, alpha,
+               f->begin(posx), f->begin(posy), f->begin(posz));
+  RELEASESHAREDB(res, array, f, cn);
+  Py_INCREF(Py_None);
+  return Py_None;
 }
 
 // ============================================================================
@@ -131,199 +114,76 @@ PyObject* K_TRANSFORM::contract(PyObject* self, PyObject* args)
   E_Int nil, njl, nkl;
   FldArrayF* f; FldArrayI* cn;
   char* varString; char* eltType;
-  E_Int res;
-  E_Float norm;
+  E_Int res = 
+    K_ARRAY::getFromArray2(array, varString, f, nil, njl, nkl, cn, eltType); 
 
-  res = 
-    K_ARRAY::getFromArray(array, varString, f, nil, njl, nkl, cn, eltType); 
-
-  if (res == 1 || res == 2)
+  if (res != 1 && res != 2)
   {
-    E_Int posx = K_ARRAY::isCoordinateXPresent( varString);
-    E_Int posy = K_ARRAY::isCoordinateYPresent( varString);
-    E_Int posz = K_ARRAY::isCoordinateZPresent( varString);
-    if (posx == -1 || posy == -1 || posz == -1)
-    {
-      delete f;
-      if (res == 2) delete cn;
-      PyErr_SetString(PyExc_TypeError,
-                      "contract: can't find coordinates in array.");
-      return NULL;     
-    }
-    
-    posx++; posy++; posz++;
+    PyErr_SetString(PyExc_TypeError,
+                    "contract: not a valid array.");
+    return NULL;
+  }
+  
+  E_Int posx = K_ARRAY::isCoordinateXPresent( varString);
+  E_Int posy = K_ARRAY::isCoordinateYPresent( varString);
+  E_Int posz = K_ARRAY::isCoordinateZPresent( varString);
+  if (posx == -1 || posy == -1 || posz == -1)
+  {
+    RELEASESHAREDB(res, array, f, cn);
+    PyErr_SetString(PyExc_TypeError,
+                    "contract: can't find coordinates in array.");
+    return NULL;
+  }
+  posx++; posy++; posz++;
 
-    E_Int npts = f->getSize();
+  E_Int npts = f->getSize();
 
-    // Normalisation des vecteurs du plan
-    norm = sqrt(dir1x*dir1x + dir1y*dir1y + dir1z*dir1z);
-    dir1x = dir1x / norm; 
-    dir1y = dir1y / norm; 
-    dir1z = dir1z / norm; 
-    norm = sqrt(dir2x*dir2x + dir2y*dir2y + dir2z*dir2z);
-    dir2x = dir2x / norm; 
-    dir2y = dir2y / norm; 
-    dir2z = dir2z / norm; 
+  // Normalisation des vecteurs du plan
+  E_Float norm;
+  norm = sqrt(dir1x*dir1x + dir1y*dir1y + dir1z*dir1z);
+  dir1x = dir1x / norm; 
+  dir1y = dir1y / norm; 
+  dir1z = dir1z / norm; 
+  norm = sqrt(dir2x*dir2x + dir2y*dir2y + dir2z*dir2z);
+  dir2x = dir2x / norm;
+  dir2y = dir2y / norm; 
+  dir2z = dir2z / norm; 
 
-    // 3 points du plan
-    E_Float p1[3];
-    E_Float p2[3];
-    E_Float p3[3];
-    E_Float p[3];
-    p1[0] = xc;       p1[1] = yc;       p1[2] = zc;
-    p2[0] = xc+dir1x; p2[1] = yc+dir1y; p2[2] = zc+dir1z;
-    p3[0] = xc+dir2x; p3[1] = yc+dir2y; p3[2] = zc+dir2z;
-    E_Float xint, yint, zint;
-    E_Float* xp = f->begin(posx);
-    E_Float* yp = f->begin(posy);
-    E_Float* zp = f->begin(posz);
+  // 3 points du plan
+  E_Float p1[3]; E_Float p2[3]; E_Float p3[3];
+  p1[0] = xc;       p1[1] = yc;       p1[2] = zc;
+  p2[0] = xc+dir1x; p2[1] = yc+dir1y; p2[2] = zc+dir1z;
+  p3[0] = xc+dir2x; p3[1] = yc+dir2y; p3[2] = zc+dir2z;
+  E_Float* xp = f->begin(posx);
+  E_Float* yp = f->begin(posy);
+  E_Float* zp = f->begin(posz);
+  E_Boolean in;
+
+  // Contraction
+#pragma omp parallel default(shared)
+  {
     E_Float sigma1, sigma0, dist2;
-    E_Boolean in;
-
-    // Contraction
+    E_Float xint, yint, zint;
+    E_Float p[3];
+    #pragma omp for
     for (E_Int i = 0; i < npts; i++)
     {
       p[0] = xp[i]; p[1] = yp[i]; p[2] = zp[i];
       K_COMPGEOM::distanceToTriangle(p1, p2, p3, p, 0,
-				     dist2, in, xint, yint, zint,
-				     sigma0, sigma1);
+                                     dist2, in, xint, yint, zint,
+                                     sigma0, sigma1);
     
       xp[i] = xint + alpha*(xp[i]-xint); 
       yp[i] = yint + alpha*(yp[i]-yint); 
       zp[i] = zint + alpha*(zp[i]-zint);
     }
-
-    // Build array 
-    PyObject* tpl;
-    if (res == 1) // structured
-    {
-      tpl = K_ARRAY::buildArray(*f, varString, 
-                                nil, njl, nkl);
-      delete f;
-    } 
-    else // unstructured 
-    {
-      tpl = K_ARRAY::buildArray(*f, varString,
-                                *cn, -1, eltType);
-      delete f; delete cn;
-    }
-    return tpl;
   }
-  else
-  {
-    PyErr_SetString(PyExc_TypeError,
-                    "contract: not a valid array.");
-    return NULL;
-  }             
+
+  RELEASESHAREDB(res, array, f, cn);
+  Py_INCREF(Py_None);
+  return Py_None;
 }
 
-// ============================================================================
-/* Symetry */
-/* make a symetric mesh considering the plane passing */
-/* by (x0,y0,z0) and of director vectors (v1x,v1y,v1z) */
-/* and (v2x,v2y,v2z). */
-// ============================================================================
-PyObject* K_TRANSFORM::symetrize(PyObject* self, PyObject* args)
-{
-  E_Float x0, y0, z0;
-  E_Float v1x, v1y, v1z;
-  E_Float v2x, v2y, v2z;
-  PyObject* array;
-  
-  if (!PYPARSETUPLEF(args,
-                    "O(ddd)(ddd)(ddd)", "O(fff)(fff)(fff)",
-                    &array, &x0, &y0, &z0, &v1x, &v1y, &v1z, &v2x, &v2y, &v2z))
-  {
-      return NULL;
-  }
-  // Check array
-  E_Int nil, njl, nkl;
-  FldArrayF* f; FldArrayI* cn;
-  char* varString; char* eltType;
-  E_Int res;
-  E_Float norm;
-
-  res = 
-    K_ARRAY::getFromArray(array, varString, f, nil, njl, nkl, cn, eltType); 
-  
-  if (res == 1 || res == 2)
-  {
-    E_Int posx = K_ARRAY::isCoordinateXPresent( varString );
-    E_Int posy = K_ARRAY::isCoordinateYPresent( varString );
-    E_Int posz = K_ARRAY::isCoordinateZPresent( varString );
-    if (posx == -1 || posy == -1 || posz == -1)
-    {
-      delete f;
-      if (res == 2) delete cn;
-      PyErr_SetString(PyExc_TypeError,
-                      "symetrize: can't find coordinates in array.");
-      return NULL;
-    }
-    posx++; posy++; posz++;
-   
-    E_Int npts = f->getSize();
-
-    // Normalisation des vecteurs du plan
-    norm = sqrt(v1x*v1x + v1y*v1y + v1z*v1z);
-    v1x = v1x / norm; 
-    v1y = v1y / norm; 
-    v1z = v1z / norm; 
-    norm = sqrt(v2x*v2x + v2y*v2y + v2z*v2z);
-    v2x = v2x / norm; 
-    v2y = v2y / norm;
-    v2z = v2z / norm;
-   
-    // 3 points du plan
-    E_Float p1[3];
-    E_Float p2[3];
-    E_Float p3[3];
-    E_Float p[3];
-    p1[0] = x0; p1[1] = y0; p1[2] = z0;
-    p2[0] = x0+v1x; p2[1] = y0+v1y; p2[2] = z0+v1z;
-    p3[0] = x0+v2x; p3[1] = y0+v2y; p3[2] = z0+v2z;
-    E_Float xint, yint, zint;
-    E_Float* xp = f->begin(posx);
-    E_Float* yp = f->begin(posy);
-    E_Float* zp = f->begin(posz);
-    E_Float sigma1, sigma0, dist2;
-    E_Boolean in;
-
-    // Symetry
-    for (E_Int i = 0; i < npts; i++)
-    {
-      p[0] = xp[i]; p[1] = yp[i]; p[2] = zp[i];
-      K_COMPGEOM::distanceToTriangle(p1, p2, p3, p, 0,
-				     dist2, in, xint, yint, zint,
-				     sigma0, sigma1);
-    
-      xp[i] = 2*xint - xp[i]; 
-      yp[i] = 2*yint - yp[i];
-      zp[i] = 2*zint - zp[i];
-    }
-
-    // Build array 
-    PyObject* tpl;
-    if (res == 1) //structured
-    {
-      tpl = K_ARRAY::buildArray(*f, varString, 
-                                nil, njl, nkl);
-      delete f;
-    } 
-    else //unstructured 
-    {
-      tpl = K_ARRAY::buildArray(*f, varString,
-                                *cn, -1, eltType);
-      delete f; delete cn;
-    }
-    return tpl;
-  }
-  else
-  {
-    PyErr_SetString(PyExc_TypeError, 
-                    "symetrize: not a valid array.");
-    return NULL;
-  }
-}
 
 // ============================================================================
 /* 
@@ -337,7 +197,6 @@ PyObject* K_TRANSFORM::deformPoint(PyObject* self, PyObject* args)
   E_Float depth;
   E_Float width;
   PyObject* array;
-
   if (!PYPARSETUPLEF(args,
                     "O(ddd)(ddd)dd", "O(fff)(fff)ff",
                     &array, &xi, &yi, &zi, &dx, &dy, &dz, &depth, &width))

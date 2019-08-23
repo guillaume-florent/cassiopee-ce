@@ -1,4 +1,4 @@
-import os, sys
+import os
 from distutils.core import setup, Extension
 import KCore.config
 
@@ -87,7 +87,7 @@ extensions = [
 # Setup ======================================================================
 setup(
     name="CPlot",
-    version="2.5",
+    version="2.9",
     description="A plotter for *Cassiopee* Modules.",
     author="Onera",
     package_dir={"":"."},
@@ -99,6 +99,8 @@ setup(
 os.system("cp CPlot/Shaders/*.vert %s/CPlot/"%KCore.installPath.installPath)
 os.system("cp CPlot/Shaders/*.frag %s/CPlot/"%KCore.installPath.installPath)
 os.system("cp CPlot/Shaders/*.geom %s/CPlot/"%KCore.installPath.installPath)
+os.system("cp CPlot/Shaders/*.tcs %s/CPlot/"%KCore.installPath.installPath)
+os.system("cp CPlot/Shaders/*.tes %s/CPlot/"%KCore.installPath.installPath)
 os.system("cp CPlot/Textures/*.png %s/CPlot/"%KCore.installPath.installPath)
 
 # Check PYTHONPATH ===========================================================

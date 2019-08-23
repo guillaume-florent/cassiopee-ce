@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -26,6 +26,10 @@
 //=============================================================================
 void DataDL::createGPUUMeshZone(UnstructZone* zonep, int zone, int zonet)
 {
+  if (zonep->_is_high_order == true) {
+    createGPUUMeshZone_ho(zonep, zone, zonet);
+    return;
+  }
   int i, n1, n2, ret1, ret2;
   ZoneImplDL* zImpl = static_cast<ZoneImplDL*>(zonep->ptr_impl);
 

@@ -16,6 +16,6 @@
       ro_vec[noind]       = roext;
       mu_vec[noind]       = muext;
       alpha_vec[noind]    = alpha;
-
+      tcible_vec[noind]   = text;
 #     include "IBC/logf_vec.h"
       // out= utau  et err 

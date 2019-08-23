@@ -1,6 +1,6 @@
 # - readPyTreeFromPaths (pyTree) -
 import Converter.PyTree as C
-import Converter.converter as converter
+import Converter.Filter as Filter
 import Converter.Internal as Internal
 import Generator.PyTree as G
 
@@ -10,7 +10,9 @@ b = G.cart((12,0,0), (1,1,1), (10,10,10))
 t = C.newPyTree(['Base',a,b])
 C.convertPyTree2File(t, 'test.hdf')
 
+t = Filter.convertFile2SkeletonTree('test.hdf', maxDepth=3)
 
-# Relit les noeuds par leur paths
-nodes = converter.readPyTreeFromPaths('test.hdf', ['/Base/cart/GridCoordinates'], 'bin_hdf')
-Internal.printTree(nodes)
+# Complete t par leur paths
+Filter._readPyTreeFromPaths(t, 'test.hdf', ['/Base/cart/GridCoordinates', 'Base/cart.0/GridCoordinates'])
+Internal.printTree(t)
+C.convertPyTree2File(t, 'out.hdf')

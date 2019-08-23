@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -37,9 +37,8 @@ PyObject* K_CONVERTER::getArgMin(PyObject* self, PyObject* args)
   E_Int im, jm, km;
   char* varString; char* eltType;
   FldArrayF* f; FldArrayI* cn;
-  
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, im, jm, km, 
-                                    cn, eltType, true);
+  E_Int res = K_ARRAY::getFromArray2(array, varString, f, im, jm, km, 
+                                     cn, eltType);
 
   E_Int posvar = -1;
   if (res == 1 || res == 2)
@@ -122,8 +121,8 @@ PyObject* K_CONVERTER::getArgMax(PyObject* self, PyObject* args)
   E_Int im, jm, km;
   char* varString; char* eltType;
   FldArrayF* f; FldArrayI* cn;
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, im, jm, km, 
-                                    cn, eltType, true);
+  E_Int res = K_ARRAY::getFromArray2(array, varString, f, im, jm, km, 
+                                     cn, eltType);
 
   E_Int posvar = -1;
   if (res == 1 || res == 2)
@@ -198,16 +197,15 @@ PyObject* K_CONVERTER::getArgMax(PyObject* self, PyObject* args)
 //=============================================================================
 PyObject* K_CONVERTER::getMeanValue(PyObject* self, PyObject* args)
 {
-  PyObject* array;
-  char* varName;
+  PyObject* array; char* varName;
   if (!PyArg_ParseTuple(args, "Os", &array, &varName)) return NULL;
 
   // Check array
   E_Int im, jm, km;
   char* varString; char* eltType;
   FldArrayF* f; FldArrayI* cn;
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, im, jm, km, 
-                                    cn, eltType, true);
+  E_Int res = K_ARRAY::getFromArray2(array, varString, f, im, jm, km, 
+                                     cn, eltType);
 
   E_Int posvar = -1;
   if (res == 1 || res == 2)
@@ -262,8 +260,8 @@ PyObject* K_CONVERTER::getMeanRangeValue(PyObject* self, PyObject* args)
   E_Int im, jm, km;
   char* varString; char* eltType;
   FldArrayF* f; FldArrayI* cn;
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, im, jm, km, 
-                                    cn, eltType, true);
+  E_Int res = K_ARRAY::getFromArray2(array, varString, f, im, jm, km, 
+                                     cn, eltType);
 
   E_Int posvar = -1;
   if (res == 1 || res == 2)

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -181,6 +181,9 @@ Design
 
     /// Multiplies two DynArrays. Do the job on the common dimensions.
     const self_type operator*(const self_type& rhs) const;
+    
+    /// 
+    self_type& operator*=(T factor) ;
     
     /// Check equality
     bool operator==(const self_type& rhs) const;
@@ -594,6 +597,17 @@ DynArray<T>::pushBack(const self_type& a){
             result(i,j) += (*this)(i,k) * rhs(k,j);
 
       return result;
+  }
+  
+  /// Multiplies two DynArrays. Do the job on the common dimensions.
+  template <typename T>
+  DynArray<T>& DynArray<T>::operator*=(T factor) {
+      
+      for (size_type i = 0; i < _rows; ++i)
+        for (size_type j = 0; j < _cols; ++j)
+            (*this)(i,j) *= factor;
+
+      return *this;
   }
   
   /// Checks equality

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -46,7 +46,6 @@ PyObject* K_CONNECTOR::getExtrapAbsCoefs(PyObject* self, PyObject* args)
                     "getExtrapCoefs: 1st arg must be a numpy of integers.");
     return NULL;
   }
-
   /*---------------------------------------*/
   /* Extraction des indices des extrapoles */
   /*---------------------------------------*/
@@ -78,7 +77,9 @@ PyObject* K_CONNECTOR::getExtrapAbsCoefs(PyObject* self, PyObject* args)
   /* Extraction des coefs  */
   /*-----------------------*/
   FldArrayF* donorCoefsF;
-  res = K_NUMPY::getFromNumpyArray(pyArrayCoefs, donorCoefsF, true);
+  E_Boolean shared=true;
+  E_Boolean inverse = false;
+  res = K_NUMPY::getFromNumpyArray(pyArrayCoefs, donorCoefsF, shared, inverse);
   if (res == 0) 
   {
     RELEASESHAREDN(pyIndRcv, rcvPtsI);
@@ -88,7 +89,6 @@ PyObject* K_CONNECTOR::getExtrapAbsCoefs(PyObject* self, PyObject* args)
                     "getExtrapCoefs: 4th arg must be a numpy of floats.");
     return NULL;
   }
-  
   E_Int sizecoefs = 0;
   // Types valides: 2, 3, 4, 5, 102
   E_Float* ptrCoefs = donorCoefsF->begin();
@@ -117,11 +117,28 @@ PyObject* K_CONNECTOR::getExtrapAbsCoefs(PyObject* self, PyObject* args)
     E_Float sum = 0.;
     switch (type)
     {
-      case 2: // Structure Lineaire O2 par tetra
+      case 22: // Structure Lineaire O2 par tetra
+        sizecoefs = 4; sum = 0.; 
+        for (E_Int ii=0; ii<4; ii++)
+        {sum += K_FUNC::E_abs(ptrCoefs[ii]);}    
+        sumCfp[noe] = sum;
+        break;
+
+      case 1: // 1 seul coeff
+        sumCfp[noe] = K_FUNC::E_abs(ptrCoefs[0]);
+        break;
+
       case 100: //setInterpolations
       case 102: //setInterpolations
       case 103: //setInterpolations
+        sizecoefs = 8; sum = 0.;  
+        for (E_Int ii=1; ii<=8; ii++)
+        {sum += K_FUNC::E_abs((*donorCoefsF)(noind,ii));}    
+        sumCfp[noe] = sum;
+        break;
 
+  
+      case 2: // Structure Lineaire O2 par tetra
         sizecoefs = 8; sum = 0.; 
         for (E_Int ii=0; ii<8; ii++)
         {sum += K_FUNC::E_abs(ptrCoefs[ii]);}    
@@ -158,8 +175,9 @@ PyObject* K_CONNECTOR::getExtrapAbsCoefs(PyObject* self, PyObject* args)
         RELEASESHAREDN(pyIndExtrap, extrapPtsI);
         RELEASESHAREDN(pyArrayTypes, typesI);
         RELEASESHAREDN(pyArrayCoefs, donorCoefsF);
+        //printf("Interpolation type = %d \n", type);
         PyErr_SetString(PyExc_TypeError, 
-                        "getExtrapCoefs: not a valid type.");
+                        "getExtrapCoefs: not a valid interpolation type.");
         return NULL;
     }
     ptrCoefs += sizecoefs;

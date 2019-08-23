@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -85,22 +85,16 @@ E_Int K_IO::GenIO::gmshread(
     res = readDouble(ptrFile, t, -1); f3[i] = t;
     //printf("%f %f %f\n", f(i,1), f(i,2), f(i,3));
   }
-  res = readGivenKeyword(ptrFile, "$ENDNODES");
+  //res = readGivenKeyword(ptrFile, "$ENDNODES"); // pas obligatoire?
 
   /* Elements by zone type */
   res = readGivenKeyword(ptrFile, "$ELEMENTS");
   res = readInt(ptrFile, ti, -1);
   E_Int ne = E_Int(ti); // Global
-  //printf("Number of elements %d\n", ne);
+  printf("Number of elements %d\n", ne);
   FldArrayI indirElements(ne);
-  E_Int nNODE = 0; FldArrayI* indNODE = NULL; // type = 15
-  E_Int nBAR = 0; FldArrayI* cnBAR = NULL; // type = 1
-  E_Int nTRI = 0; FldArrayI* cnTRI = NULL; // type = 2
-  E_Int nQUAD = 0; FldArrayI* cnQUAD = NULL; // type = 3
-  E_Int nTETRA = 0; FldArrayI* cnTETRA = NULL; // type = 4
-  E_Int nHEXA = 0; FldArrayI* cnHEXA = NULL; // type = 5
-  E_Int nPENTA = 0; FldArrayI* cnPENTA = NULL; // type = 6
-  E_Int nPYRA = 0; FldArrayI* cnPYRA = NULL; // type = 7
+  // declarations
+#include "GenIO_gmsh3.h"
   E_Int nDiscard = 0;
 
   E_Int tagl, ind;
@@ -108,94 +102,21 @@ E_Int K_IO::GenIO::gmshread(
   E_LONG pos = KFTELL(ptrFile);
 #define READI readInt(ptrFile, ti, -1)
 #include "GenIO_gmsh1.h"
-  //printf("Elements BAR=%d TRI=%d QUAD=%d TETRA=%d HEXA=%d NODES=%d\n", 
-  //       nBAR, nTRI, nQUAD, nTETRA, nHEXA, nNODE);
+printf("Elements BAR=%d TRI=%d QUAD=%d TETRA=%d HEXA=%d PENTA=%d PYRA=%d NODES=%d\n", 
+       nBAR, nTRI, nQUAD, nTETRA, nHEXA, nPENTA, nPYRA, nNODE);
+printf("Elements BAR_3=%d TRI_6=%d QUAD_9=%d TETRA_10=%d HEXA_27=%d PENTA_18=%d PYRA_14=%d\n",
+       nBAR_3, nTRI_6, nQUAD_9, nTETRA_10, nHEXA_27, nPENTA_18, nPYRA_14);
 
   /* Allocations */
-  if (nBAR > 0) {
-    cnBAR = new FldArrayI(nBAR, 2);
-    connect.push_back(cnBAR);
-    eltType.push_back(1); nBAR = 0; }
-  if (nTRI > 0) {
-    cnTRI = new FldArrayI(nTRI, 3);
-    connect.push_back(cnTRI);
-    eltType.push_back(2); nTRI = 0; }
-  if (nQUAD > 0) {
-    cnQUAD = new FldArrayI(nQUAD, 4);
-    connect.push_back(cnQUAD);
-    eltType.push_back(3); nQUAD = 0; }
-  if (nTETRA > 0) {
-    cnTETRA = new FldArrayI(nTETRA, 4);
-    connect.push_back(cnTETRA);
-    eltType.push_back(4); nTETRA = 0; }
-  if (nHEXA > 0) {
-    cnHEXA = new FldArrayI(nHEXA, 8);
-    connect.push_back(cnHEXA);
-    eltType.push_back(7); nHEXA = 0; }
-  if (nPENTA > 0) {
-    cnPENTA = new FldArrayI(nPENTA, 6);
-    connect.push_back(cnPENTA);
-    eltType.push_back(6); nPENTA = 0; }
-  if (nPYRA > 0) {
-    cnPYRA = new FldArrayI(nPYRA, 5);
-    connect.push_back(cnPYRA);
-    eltType.push_back(5); nPYRA = 0; }
-  if (nNODE > 0) {
-    indNODE = new FldArrayI(nNODE);
-    connect.push_back(new FldArrayI());
-    eltType.push_back(0);
-    nNODE = 0; }
-
+  E_Boolean fo = true;
+#include "GenIO_gmsh4.h"
+  
   /* Lecture reelle des elements par type */
   KFSEEK(ptrFile, pos, SEEK_SET);
 #include "GenIO_gmsh2.h"
 
   /* Nodes duplications */
-  if (nBAR > 0)
-  {
-    FldArrayF* an = new FldArrayF(f);
-    unstructField.push_back(an);
-  }
-  if (nTRI > 0)
-  {
-    FldArrayF* an = new FldArrayF(f);
-    unstructField.push_back(an);
-  }
-  if (nQUAD > 0)
-  {
-    FldArrayF* an = new FldArrayF(f);
-    unstructField.push_back(an);
-  }
-  if (nTETRA > 0)
-  {
-    FldArrayF* an = new FldArrayF(f);
-    unstructField.push_back(an);
-  }
-  if (nHEXA > 0)
-  {
-    FldArrayF* an = new FldArrayF(f);
-    unstructField.push_back(an);
-  }
-  if (nPENTA > 0)
-  {
-    FldArrayF* an = new FldArrayF(f);
-    unstructField.push_back(an);
-  }
-  if (nPYRA > 0)
-  {
-    FldArrayF* an = new FldArrayF(f);
-    unstructField.push_back(an);
-  }
-  //printf("node %d\n", nNODE);
-  if (nNODE > 0)
-  {
-    FldArrayF* an = new FldArrayF(nNODE,3);
-    for (E_Int i = 0; i < nNODE; i++) 
-    { ind = (*indNODE)[i]-1; ind = indirNodes[ind]-1;
-      (*an)(i,1) = f1[ind]; (*an)(i,2) = f2[ind]; (*an)(i,3) = f3[ind]; }
-    unstructField.push_back(an);
-    delete indNODE;
-  }
+#include "GenIO_gmsh5.h"
 
   // Cree le nom des zones
   //printf("Number of zones %d\n", unstructField.size());

@@ -9,20 +9,20 @@ def F(x, y, z):
     else: return False
     
 # CAS 1D
-a = G.cart( (0,0,0), (1,1,1), (30,1,1) )
-a = C.addVars(a, 'Density'); a = C.addVars(a, 'centers:cellN')
+a = G.cart((0,0,0), (1,1,1), (30,1,1) )
+C._addVars(a, 'Density'); C._addVars(a, 'centers:cellN')
 a = P.selectCells(a, F, ['CoordinateX', 'CoordinateY', 'CoordinateZ'])
 test.testT(a,1)
 
 # CAS 2D
-a = G.cart( (0,0,0), (1,1,1), (11,11,1) )
-a = C.addVars(a, 'Density'); a = C.addVars(a, 'centers:cellN')
+a = G.cart((0,0,0), (1,1,1), (11,11,1) )
+C._addVars(a, 'Density'); C._addVars(a, 'centers:cellN')
 a = C.addBC2Zone(a, 'wall', 'BCWall', 'imin')
 a = P.selectCells(a, F, ['CoordinateX', 'CoordinateY', 'CoordinateZ'])
 test.testT(a,2)
 
 # CAS 3D
-a = G.cart( (0,0,0), (1,1,1), (11,11,11) )
-a = C.addVars(a,'Density'); a = C.addVars(a, 'centers:cellN')
+a = G.cart((0,0,0), (1,1,1), (11,11,11) )
+C._addVars(a,'Density'); C._addVars(a, 'centers:cellN')
 a = P.selectCells(a, F, ['CoordinateX', 'CoordinateY', 'CoordinateZ'])
 test.testT(a,3)

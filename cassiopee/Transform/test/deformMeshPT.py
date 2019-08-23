@@ -1,5 +1,4 @@
 # - deformMesh (pyTree) -
-import Generator.PyTree as G
 import Transform.PyTree as T
 import Converter.PyTree as C
 import Geom.PyTree as D
@@ -12,7 +11,7 @@ delta = C.diffArrays(a2,a1)
 deltax = C.getField('DCoordinateX',delta)
 deltay = C.getField('DCoordinateY',delta)
 deltaz = C.getField('DCoordinateZ',delta)
-for noz in xrange(len(deltax)):
+for noz in range(len(deltax)):
     deltax[noz][0] = 'dx'
     deltay[noz][0] = 'dy'
     deltaz[noz][0] = 'dz'

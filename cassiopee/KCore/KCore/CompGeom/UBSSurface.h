@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -57,6 +57,16 @@ public:
 
   /// Triangulate using the spline value at knots.
   void triangulate(K_FLD::FloatArray& pos, K_FLD::IntArray& connectT3);
+  
+  /// Checks whether input parameters are in the bounds for this surface
+  inline bool in_bounds(E_Float u, E_Float v) const
+  {
+    if (u < _Umin) return false;
+    if (u > _Umax) return false;
+    if (v < _Vmin) return false;
+    if (v > _Vmax) return false;
+    return true;
+  }
 
 private:
 

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -27,8 +27,7 @@ PyObject* K_CONNECTOR::gatherMatchingNGon(PyObject* self, PyObject* args)
 {
   // INPUT: arrays of tag1 (number of the opposite zone)
   //                  tag2 (number of the opposite element)
-  //        list of indices for all exterior faces 
-
+  //        list of indices for all exterior faces
   PyObject* AllTags;
   PyObject* OriginalExteriorFaceIndices;
   if (!PyArg_ParseTuple(args, "OO",
@@ -70,11 +69,12 @@ PyObject* K_CONNECTOR::gatherMatchingNGon(PyObject* self, PyObject* args)
       }
       return NULL;
     } 
-    post1.push_back(postag1); post2.push_back(postag2); 
+    post1.push_back(postag1); post2.push_back(postag2);
   }
 
   // Original face numbering in volume mesh : extract numpys
   vector<FldArrayI*> vectOfOrigIndicesFaces;
+  vector<PyObject*> vectOfIndicesObjects;
   int sizeOfOrigIndices = 0;
   if (PyList_Check(OriginalExteriorFaceIndices) != 0)
   {   
@@ -83,8 +83,9 @@ PyObject* K_CONNECTOR::gatherMatchingNGon(PyObject* self, PyObject* args)
     {
       PyObject* tpl = PyList_GetItem(OriginalExteriorFaceIndices, i);
       FldArrayI* indicesFacesL;
-      K_NUMPY::getFromNumpyArray(tpl, indicesFacesL);
+      K_NUMPY::getFromNumpyArray(tpl, indicesFacesL, true);
       vectOfOrigIndicesFaces.push_back(indicesFacesL);
+      vectOfIndicesObjects.push_back(tpl);
     }
   }
   
@@ -94,6 +95,7 @@ PyObject* K_CONNECTOR::gatherMatchingNGon(PyObject* self, PyObject* args)
                     "gatherMatchingNGon: 1st and 2nd args must be of same length.");
     for (E_Int is = 0; is < nzones; is++)
       RELEASESHAREDU(objutt[is], unstrFt[is], cntt[is]);
+    return NULL;
   }
   // Parcours des tags
   E_Int nfacesExt, nozopp, nofopp, nofaceorig, nofaceorigopp;
@@ -119,8 +121,8 @@ PyObject* K_CONNECTOR::gatherMatchingNGon(PyObject* self, PyObject* args)
       if (nozopp>-1 && nofopp>-1)
       {
         nofaceorig = origFaces[nof];
-        vector<E_Int> origFacesRL = origFacesR[nozopp];
-        vector<E_Int> origFacesDL = origFacesD[nozopp];
+        //vector<E_Int> origFacesRL = origFacesR[nozopp];
+        //vector<E_Int> origFacesDL = origFacesD[nozopp];
         E_Int* origFacesOpp = vectOfOrigIndicesFaces[nozopp]->begin();
         nofaceorigopp = origFacesOpp[nofopp];
         origFacesR[nozopp].push_back(nofaceorig);
@@ -173,9 +175,14 @@ PyObject* K_CONNECTOR::gatherMatchingNGon(PyObject* self, PyObject* args)
   {
     RELEASESHAREDU(objutt[is], unstrFt[is], cntt[is]);
   }
+  for (size_t i = 0; i < vectOfOrigIndicesFaces.size(); i++)
+  {
+    RELEASESHAREDN(vectOfIndicesObjects[i], vectOfOrigIndicesFaces[i]);
+  }
 
   // Sortie
   PyObject* tpl = Py_BuildValue("[OOOO]", allPyZonesR, allPyZonesD, allPyOrigFacesR, allPyOrigFacesD);
   Py_DECREF(allPyZonesD); Py_DECREF(allPyZonesR); Py_DECREF(allPyOrigFacesR);Py_DECREF(allPyOrigFacesD);  
   return tpl;
 }
+ 

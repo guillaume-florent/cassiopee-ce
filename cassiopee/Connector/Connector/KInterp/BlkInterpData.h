@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -175,9 +175,9 @@ class BlkInterpData
     virtual 
     short getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
                                        E_Int ic, E_Int jc, E_Int kc,
-                                       FldArrayF& cf,
+                                       FldArrayF& cf, E_Float cfMax,
                                        BlkInterpData::InterpolationType interpType,
-                                       BlkInterpData::InterpMeshType interpMeshType = EXT_CENTERS) = 0;
+                                       BlkInterpData::InterpMeshType interpMeshType=EXT_CENTERS) = 0;
 
     virtual 
     short getExtrapolationCoeffForCell(E_Float x, E_Float y, E_Float z,
@@ -185,9 +185,9 @@ class BlkInterpData
                                        FldArrayF& cf,
                                        const FldArrayI& cellNatureField,
                                        E_Int testNature, E_Int order,
-                                       E_Int& is, E_Int& js, E_Int& ks,
+                                       E_Int& is, E_Int& js, E_Int& ks, E_Float cfMax,
                                        BlkInterpData::InterpolationType interpType,
-                                       BlkInterpData::InterpMeshType interpMeshType = EXT_CENTERS) = 0;
+                                       BlkInterpData::InterpMeshType interpMeshType=EXT_CENTERS) = 0;
 
     /** Find the extrapolation cell (ic,jc,kc) for point (x,y,z) for structured meshes 
         (nearest boundary cell) */
@@ -197,8 +197,10 @@ class BlkInterpData
                                FldArrayF& cf,
                                const FldArrayI& cellNatureField, 
                                E_Int testNature,
+                               E_Float& test,
                                BlkInterpData::InterpolationType interpType,
-                               BlkInterpData::InterpMeshType interpMeshType = EXT_CENTERS) = 0;
+                               BlkInterpData::InterpMeshType interpMeshType=EXT_CENTERS,
+                               E_Float cfMax=30.) = 0;
     /** Find the extrapolation elt for point (x,y,z) for unstructured meshes */
     virtual 
     short getExtrapolationCellUnstr(E_Float x, E_Float y, E_Float z,
@@ -212,7 +214,7 @@ class BlkInterpData
     virtual short getExtrapolationCellStruct(E_Float x, E_Float y, E_Float z,
                                              FldArrayI& indi,
                                              FldArrayF& cf,
-                                             E_Int order,
+                                             E_Int order, E_Float cfMax,
                                              const FldArrayF& cellNatureField,
                                              InterpolationType interpType) = 0;
    

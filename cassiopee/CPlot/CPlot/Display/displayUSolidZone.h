@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -610,31 +610,45 @@
     {
       // Faces des elements 3D
       c = 2;
+      glBegin(GL_TRIANGLES);
       for (i = 0; i < nf; i++)
       {
-        nd = connect[c]; // nbre de noeuds de la face
+        nd = connect[c]; 
         if (nd == 3) // TRI
         {
           f = i;
           n1 = connect[c+1]-1;
           n2 = connect[c+2]-1;
           n3 = connect[c+3]-1;
-          glBegin(GL_TRIANGLES);
           PLOTTRI2;
-          glEnd();
         }
-        else if (nd == 4) // QUAD
+        c += nd+1;
+      }
+      glEnd();
+
+      c = 2;
+      glBegin(GL_QUADS);
+      for (i = 0; i < nf; i++)
+      {
+        nd = connect[c]; 
+        if (nd == 4) // QUAD
         {
           f = i;
           n1 = connect[c+1]-1;
           n2 = connect[c+2]-1;
           n3 = connect[c+3]-1;
           n4 = connect[c+4]-1;
-          glBegin(GL_QUADS);
           PLOTQUAD2;
-          glEnd();
         }
-        else if (nd > 4) // Elt 3D
+        c += nd+1;
+      }
+      glEnd();
+
+      c = 2;
+      for (i = 0; i < nf; i++)
+      {
+        nd = connect[c]; 
+        if (nd > 4) // Elt 3D
         {
           glNormal3f(surfx[i], surfy[i], surfz[i]);
           glBegin(GL_POLYGON);
@@ -699,31 +713,45 @@
     {
       // Faces des elements 3D
       c = 2;
+      glBegin(GL_TRIANGLES);
       for (i = 0; i < nf; i++)
       {
-        nd = connect[c]; // nbre de noeuds de la face
+        nd = connect[c]; 
         if (nd == 3) // TRI
         {
           f = i;
           n1 = connect[c+1]-1;
           n2 = connect[c+2]-1;
           n3 = connect[c+3]-1;
-          glBegin(GL_TRIANGLES);
           PLOTTRI2B;
-          glEnd();
         }
-        else if (nd == 4) // QUAD
+        c += nd+1;
+      }
+      glEnd();
+
+      c = 2;
+      glBegin(GL_QUADS);
+      for (i = 0; i < nf; i++)
+      {
+        nd = connect[c]; 
+        if (nd == 4) // QUAD
         {
           f = i;
           n1 = connect[c+1]-1;
           n2 = connect[c+2]-1;
           n3 = connect[c+3]-1;
           n4 = connect[c+4]-1;
-          glBegin(GL_QUADS);
           PLOTQUAD2B;
-          glEnd();
         }
-        else if (nd > 4) // elt 3D
+        c += nd+1;
+      }
+      glEnd();
+
+      c = 2;
+      for (i = 0; i < nf; i++)
+      {
+        nd = connect[c]; 
+        if (nd > 4) // elt 3D
         {
           int blank = 0;
           for (l = 0; l < nd; l++)
@@ -812,7 +840,6 @@
   // Pour les BAR
   if (zonep->eltType == 1)
   {
-    //glLineWidth(3.);
     glPolygonOffset(-1.,-10.); // force offset
     glBegin(GL_LINES);
     if (zonep->blank == 0)
@@ -842,13 +869,11 @@
       }
     }
     glEnd();
-    //glLineWidth(1.);
   }
 
   // Pour les NGONS 1D
   if (zonep->eltType == 10 && zonep->nelts1D > 0)
   {
-    //glLineWidth(3.);
     glBegin(GL_LINES);
     if (zonep->blank == 0)
     {
@@ -888,5 +913,4 @@
       }
     }
     glEnd();
-    //glLineWidth(1.);
   }

@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -19,6 +19,7 @@
 #ifndef _CPLOT_ZONEIMPL_H_
 #define _CPLOT_ZONEIMPL_H_
 #include "CPlotState.h"
+#include "Shaders/shaders_id.h"
 
 struct ZoneImpl {
     ZoneImpl( ) : _GPUResUse( 1 ) {}

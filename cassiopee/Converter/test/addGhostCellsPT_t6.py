@@ -17,16 +17,16 @@ for b in Internal.getNodesFromName(a, 'wall*'):
     d1 = Internal.newDataArray('Density', value=nfaces*[1.*nobc], parent=d)
     d2 = Internal.newDataArray('G', value=nfaces*[-1.*nobc], parent=d)
     nobc+=1
-C._initVars(a,'centers:Density=2.')
-C._initVars(a,'centers:G=2.')
+C._initVars(a,'centers:Density',2.)
+C._initVars(a,'centers:G', 2.)
 t = C.newPyTree(['Base',a,dim])
 t = Internal.addGhostCells(t,t,2)
 test.testT(t,1)
 #
 N = 10; dim = 3
 a = G.cart((0,0,0), (1,1,1), (N,N,N))
-a = C.addBC2Zone(a, 'wall', 'BCWall', 'imin')
-a = C.addBC2Zone(a, 'wall', 'BCWall', 'jmax')
+C._addBC2Zone(a, 'wall', 'BCWall', 'imin')
+C._addBC2Zone(a, 'wall', 'BCWall', 'jmax')
 nobc = 1
 for b in Internal.getNodesFromName(a, 'wall*'):
     d = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
@@ -37,8 +37,8 @@ for b in Internal.getNodesFromName(a, 'wall*'):
     d1 = Internal.newDataArray('Density', value=nfaces*[1.*nobc], parent=d)
     d2 = Internal.newDataArray('G', value=nfaces*[-1.*nobc], parent=d)
     nobc+=1
-C._initVars(a,'centers:Density=2.')
-C._initVars(a,'centers:G=2.')
+C._initVars(a,'centers:Density',2.)
+C._initVars(a,'centers:G', 2.)
 t = C.newPyTree(['Base',a,dim])
 t = Internal.addGhostCells(t,t,2)
 test.testT(t,2)
@@ -47,15 +47,15 @@ test.testT(t,2)
 #
 N = 10; dim = 3
 a = G.cart((0,0,0), (1,1,1), (N,N,N))
-a = C.addBC2Zone(a, 'wall', 'BCWall', 'imin')
+C._addBC2Zone(a, 'wall', 'BCWall', 'imin')
 b = Internal.getNodeFromName(a, 'wall')
 d = Internal.newBCDataSet(name='BCDataSet', value='UserDefined',
                           gridLocation='Vertex', parent=b)
 d = Internal.newBCData('BCNeumann', parent=d)
 d1 = Internal.newDataArray('Density', value=nfaces*[1.*nobc], parent=d)
 nobc+=1
-C._initVars(a,'centers:Density={centers:CoordinateX}')
-C._initVars(a,'centers:G=2.')
+C._initVars(a,'{centers:Density}={centers:CoordinateX}')
+C._initVars(a,'centers:G', 2.)
 t = C.newPyTree(['Base',a,dim])
 t = Internal.addGhostCells(t,t,2)
 test.testT(t,3)

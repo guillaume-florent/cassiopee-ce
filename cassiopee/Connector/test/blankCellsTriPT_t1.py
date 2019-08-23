@@ -6,11 +6,6 @@ import Geom.PyTree as D
 import Post.PyTree as P
 import KCore.test as test
 import Transform.PyTree as T
-import sys
-
-import time, datetime
-
-tdebut = time.time()
 
 # Test 1
 # Tet mask
@@ -23,7 +18,7 @@ m = T.reorder(m, (-1,))
 a = G.cart((-5.,-5.,-5.), (0.5,0.5,0.5), (100,100,100))
 t = C.newPyTree(['Cart',a])
 # celln init
-t = C.initVars(t, 'nodes:cellN', 1.)
+C._initVars(t, 'nodes:cellN', 1.)
 #C.convertPyTree2File(t, 'b.plt')
 # Blanking
 t = X.blankCellsTri(t, [[m]], [], blankingType="node_in", tol=1.e-12)
@@ -41,7 +36,7 @@ a = G.cart((-5.,-5.,-5.), (0.5,0.5,0.5), (100,100,100))
 #C.convertPyTree2File(a, 'bgm.plt')
 t = C.newPyTree(['Cart',a])
 # celln init
-t = C.initVars(t, 'centers:cellN', 1.)
+C._initVars(t, 'centers:cellN', 1.)
 # Blanking
 t = X.blankCellsTri(t, [[m]], [], blankingType="center_in", tol=1.e-12)
 #C.convertPyTree2File(t, 'out2t.cgns')
@@ -57,7 +52,7 @@ m = T.reorder(m, (-1,))
 a = G.cart((-5.,-5.,-5.), (0.5,0.5,0.5), (100,100,100))
 t = C.newPyTree(['Cart',a])
 # celln init
-t = C.initVars(t, 'centers:cellN', 1.)
+C._initVars(t, 'centers:cellN', 1.)
 #C.convertPyTree2File(t, 'b.plt')
 # Blanking
 t = X.blankCellsTri(t, [[m]], [], blankingType="cell_intersect", tol=1.e-12)
@@ -76,7 +71,7 @@ m= G.close(m) ## IMPORTANT : sinon des triangles degeneres sont engendres aux po
 a = G.cart((-5.,-5.,-5.), (0.5,0.5,0.5), (100,100,100))
 t = C.newPyTree(['Cart',a])
 # celln init
-t = C.initVars(t, 'nodes:cellN', 1.)
+C._initVars(t, 'nodes:cellN', 1.)
 #C.convertPyTree2File(t, 'b.plt')
 # Blanking
 t = X.blankCellsTri(t, [[m]], [], blankingType="node_in", tol=1.e-12)
@@ -93,7 +88,7 @@ m= G.close(m) ## IMPORTANT : sinon des triangles degeneres sont engendres aux po
 a = G.cart((-5.,-5.,-5.), (0.5,0.5,0.5), (100,100,100))
 t = C.newPyTree(['Cart',a])
 # celln init
-t = C.initVars(t, 'centers:cellN', 1.)
+C._initVars(t, 'centers:cellN', 1.)
 # Blanking
 t = X.blankCellsTri(t, [[m]], [], blankingType="center_in", tol=1.e-12)
 #C.convertPyTree2File(t, 'out5t.cgns')
@@ -105,11 +100,8 @@ a = G.cart((-5.,-5.,-5.), (0.5,0.5,0.5), (100,100,100))
 t = C.newPyTree(['Cart',a])
 #C.convertPyTree2File(t, 'bgm.plt')
 # celln init
-t = C.initVars(t, 'centers:cellN', 1.)
+C._initVars(t, 'centers:cellN', 1.)
 # Blanking
 t = X.blankCellsTri(t, [[m]], [], blankingType="cell_intersect", tol=1.e-12)
 #C.convertPyTree2File(t, 'out6t.cgns')
 test.testT(t,6)
-
-tfin = time.time()
-print "duree : ", tfin-tdebut, "s"

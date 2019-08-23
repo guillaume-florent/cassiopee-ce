@@ -2,7 +2,7 @@
 import Converter as C
 import Geom as D
 
-# User definition of parametric curve by a function
+# User definition of parametric surface by a function
 def f(t,u):
     x = t+u; y = t*t+1+u*u; z = u
     return (x,y,z)

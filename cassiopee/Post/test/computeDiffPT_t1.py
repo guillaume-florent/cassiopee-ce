@@ -6,12 +6,12 @@ import Connector.PyTree as X
 import KCore.test as test
 
 def F(x):
-    if ( x > 5. ): return True
+    if x > 5.: return True
     else: return False
 def F2(x):
     return x
 def celln(y):
-    if ( y > 5. ): return True
+    if y > 5.: return True
     else: return False
 
 #---------------------

@@ -1,5 +1,5 @@
 /*
-    Copyrindcellght 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -55,7 +55,7 @@ PyObject* K_POST::computeGrad2NGon(PyObject* self, PyObject* args)
   if (res != 1 && res != 2)
   {
     PyErr_SetString(PyExc_TypeError,
-                    "computeGrad2: invalindcelld array.");
+                    "computeGrad2: invalid array.");
     return NULL;
   }
   if (res == 1 || strcmp(eltType, "NGON") != 0)
@@ -116,6 +116,7 @@ PyObject* K_POST::computeGrad2NGon(PyObject* self, PyObject* args)
     delete [] varStrings[i];
   }
   pt--; *pt = '\0';
+  for (size_t i = 0; i < vars.size(); i++) delete [] vars[i];
 
   // Calcul FE
   FldArrayI cFE;
@@ -146,6 +147,7 @@ PyObject* K_POST::computeGrad2NGon(PyObject* self, PyObject* args)
   }
 
   // Replace DataSet
+
   FldArrayI* inds=NULL; FldArrayF* bfield=NULL;
   if (indices != Py_None && field != Py_None)
   {
@@ -157,14 +159,17 @@ PyObject* K_POST::computeGrad2NGon(PyObject* self, PyObject* args)
     E_Float* pf = bfield->begin();
     E_Float* fp = faceField.begin(1);
     E_Int ind;
-    //printf("in: %d %d\n", n, bfield->getSize());
+    // printf("in: %d %d\n", n, bfield->getSize());
 
     for (E_Int i = 0; i < n; i++)
     {
-      ind = pind[i]-1;
+      ind     = pind[i]-1;
       fp[ind] = pf[i];
+
       //if (ind < 0 || ind > nfaces-1) printf("%d %f\n", ind, fp[ind]);
     }
+    RELEASESHAREDN(indices, inds);
+    RELEASESHAREDN(field, bfield);
   }
 
   // Build
@@ -182,14 +187,9 @@ PyObject* K_POST::computeGrad2NGon(PyObject* self, PyObject* args)
   E_Float* syp = surf.begin(2);
   E_Float* szp = surf.begin(3);
   E_Float* snp = surf.begin(4);
-  FldArrayF vol(nelts);
-  E_Float* volp = vol.begin(1);
   K_METRIC::compNGonFacesSurf(f->begin(posx), f->begin(posy),
                               f->begin(posz), *cn,
                               sxp, syp, szp, snp, &cFE);
-  K_METRIC::CompNGonVol(f->begin(posx), f->begin(posy),
-                        f->begin(posz), *cn, volp);
-
   // gradient
   E_Float ff;
   for (E_Int n = 0; n < nfld; n++)
@@ -217,6 +217,12 @@ PyObject* K_POST::computeGrad2NGon(PyObject* self, PyObject* args)
       }
     }
   }
+  surf.malloc(0); faceField.malloc(0);
+
+  FldArrayF vol(nelts);
+  E_Float* volp = vol.begin(1);
+  K_METRIC::CompNGonVol(f->begin(posx), f->begin(posy),
+                        f->begin(posz), *cn, volp);
 
   E_Float voli;
   for (E_Int n = 0; n < nfld; n++)
@@ -234,14 +240,9 @@ PyObject* K_POST::computeGrad2NGon(PyObject* self, PyObject* args)
     }
   }
 
-  if (indices != Py_None && field != Py_None)
-  {
-    RELEASESHAREDN(indices, inds);
-    RELEASESHAREDN(field, bfield);
-  }
-
   RELEASESHAREDB(res,array,f,cn);
   RELEASESHAREDB(res,arrayc,fc,cnc);
+
   delete [] varStringOut;
   return tpl;
 }
@@ -268,14 +269,14 @@ PyObject* K_POST::computeGrad2Struct(PyObject* self, PyObject* args)
   {
     if ( res == 2) RELEASESHAREDB(res,array,f,cn);
     PyErr_SetString(PyExc_TypeError,
-                    "computeGrad2: invalindcelld array.");
+                    "computeGrad2: invalid array.");
     return NULL;
   }
   E_Int dimPb = 3;
-  if (nk == 1) 
+  if (nk == 1)
   {
-    if (nj > 1) dimPb = 2; 
-    else 
+    if (nj > 1) dimPb = 2;
+    else
     {
       PyErr_SetString(PyExc_TypeError,
                       "computeGrad2: not valid for 1D structured arrays.");
@@ -330,6 +331,7 @@ PyObject* K_POST::computeGrad2Struct(PyObject* self, PyObject* args)
     delete [] varStrings[i];
   }
   pt--; *pt = '\0';
+  for (size_t i = 0; i < vars.size(); i++) delete [] vars[i];
 
   E_Int nicnjc = nic*njc;
   E_Int ninjc = ni*njc;
@@ -346,11 +348,11 @@ PyObject* K_POST::computeGrad2Struct(PyObject* self, PyObject* args)
   E_Int* cellG = voisins.begin(1);
   E_Int* cellD = voisins.begin(2);
   PyObject* tpl;
-  if ( dimPb == 2) 
-    tpl = computeGrad2Struct2D(ni, nj, nic, njc, varStringOut, f->begin(posx),  f->begin(posy), f->begin(posz), 
+  if (dimPb == 2)
+    tpl = computeGrad2Struct2D(ni, nj, nic, njc, varStringOut, f->begin(posx),  f->begin(posy), f->begin(posz),
                                *fc, faceField, cellG, cellD, indices, field);
   else if (dimPb == 3)
-    tpl = computeGrad2Struct3D(ni, nj, nk, nic, njc, nkc, varStringOut, f->begin(posx), f->begin(posy), f->begin(posz), 
+    tpl = computeGrad2Struct3D(ni, nj, nk, nic, njc, nkc, varStringOut, f->begin(posx), f->begin(posy), f->begin(posz),
                                *fc, faceField, cellG, cellD, indices, field);
   delete [] varStringOut;
   RELEASESHAREDS(array,f);
@@ -359,12 +361,12 @@ PyObject* K_POST::computeGrad2Struct(PyObject* self, PyObject* args)
 }
 
 //=============================================================================
-PyObject* K_POST::computeGrad2Struct3D(E_Int ni, E_Int nj, E_Int nk, 
-                                       E_Int nic, E_Int njc, E_Int nkc, 
-                                       const char* varStringOut, 
+PyObject* K_POST::computeGrad2Struct3D(E_Int ni, E_Int nj, E_Int nk,
+                                       E_Int nic, E_Int njc, E_Int nkc,
+                                       const char* varStringOut,
                                        E_Float* xt, E_Float* yt, E_Float* zt,
                                        FldArrayF& fc, FldArrayF& faceField,
-                                       E_Int* cellG, E_Int* cellD, 
+                                       E_Int* cellG, E_Int* cellD,
                                        PyObject* indices, PyObject* field)
 {
   E_Int indint, indcellg, indcelld;
@@ -419,26 +421,23 @@ PyObject* K_POST::computeGrad2Struct3D(E_Int ni, E_Int nj, E_Int nk,
           cellG[indint] = indcellg; cellD[indint] = indcelld;
           fintp[indint] = 0.5*(fcn[indcellg]+fcn[indcelld]);
         }
-    //bords des faces en j
+    // bords des faces en j
     for (E_Int k = 0; k < nkc; k++)
       for (E_Int i = 0; i < nic; i++)
       {
         E_Int j = 0;
-
         indint = i+j*nic+k*nicnj+nbIntI;
-        indcellg = i+(j-1)*nic+k*nicnjc;
-        indcelld = indcellg+nic;
+        indcelld = i+j*nic+k*nicnjc;
         cellG[indint] = -1; cellD[indint] = indcelld;
-        fintp[indint] = fcn[indcelld];//extrapolation de l interieur
+        fintp[indint] = fcn[indcelld];//extrapolation de l'interieur
 
         j = njc;
         indint = i+j*nic+k*nicnj+nbIntI;
         indcellg = i+(j-1)*nic+k*nicnjc;
-        indcelld = indcellg+nic;
         cellG[indint] = indcellg; cellD[indint] = -1;
-        fintp[indint] = fcn[indcellg];//extrapolation de l interieur
+        fintp[indint] = fcn[indcellg]; //extrapolation de l'interieur
       }
-      
+
     //faces en k
     for (E_Int k = 1; k < nkc; k++)
       for (E_Int j = 0; j < njc; j++)
@@ -455,15 +454,13 @@ PyObject* K_POST::computeGrad2Struct3D(E_Int ni, E_Int nj, E_Int nk,
       {
         E_Int k = 0;
         indint = i+j*nic+k*nicnjc + nbIntIJ;
-        indcellg = i+j*nic+(k-1)*nicnjc;
-        indcelld = indcellg + nicnjc;
-        fintp[indint] = fcn[indcelld];
+        indcelld = i+j*nic+k*nicnjc;;
         cellG[indint] = -1; cellD[indint] = indcelld;
-          
+        fintp[indint] = fcn[indcelld];
+
         k = nkc;
         indint = i+j*nic+k*nicnjc + nbIntIJ;
         indcellg = i+j*nic+(k-1)*nicnjc;
-        indcelld = indcellg + nicnjc;
         cellG[indint] = indcellg; cellD[indint] = -1;
         fintp[indint] = fcn[indcellg];
       }
@@ -544,8 +541,8 @@ PyObject* K_POST::computeGrad2Struct3D(E_Int ni, E_Int nj, E_Int nk,
   return tpl;
 }
 //=============================================================================
-PyObject* K_POST::computeGrad2Struct2D(E_Int ni, E_Int nj, E_Int nic, E_Int njc, 
-                                       const char* varStringOut, 
+PyObject* K_POST::computeGrad2Struct2D(E_Int ni, E_Int nj, E_Int nic, E_Int njc,
+                                       const char* varStringOut,
                                        E_Float* xt, E_Float* yt, E_Float* zt,
                                        FldArrayF& fc, FldArrayF& faceField,
                                        E_Int* cellG, E_Int* cellD,
@@ -567,30 +564,47 @@ PyObject* K_POST::computeGrad2Struct2D(E_Int ni, E_Int nj, E_Int nic, E_Int njc,
   E_Float* syint = sint.begin(2);
   E_Float* szint = sint.begin(3);
   //calcul des longueurs des faces
+  E_Float d13x, d13y, d13z, d24x, d24y, d24z;
+
   indint = 0;
   for (E_Int j = 0; j < njc; j++)
     for (E_Int i = 0; i < ni; i++)
     {
-      indm = (i-1)+j*ni; indp = indm+ni;
-      sxint[indint] = xt[indp]-xt[indm];
-      syint[indint] = yt[indp]-yt[indm];
-      szint[indint] = zt[indp]-zt[indm];
+      indm = i+j*ni; indp = indm+ni;
+      d13x = xt[indp]-xt[indm];
+      d13y = yt[indp]-yt[indm];
+      d13z = 1;
+      d24x = xt[indm]-xt[indp];
+      d24y = yt[indm]-yt[indp];
+      d24z = 1;
+
+      sxint[indint] = 0.5*(d13y*d24z-d13z*d24y);
+      syint[indint] = 0.5*(d13z*d24x-d13x*d24z);
+      szint[indint] = 0.5*(d13x*d24y-d13y*d24x);
       indint+=1;
-    } 
+    }
   for (E_Int j = 0; j < nj; j++)
     for (E_Int i = 0; i < nic; i++)
     {
-      indm = (i-1)+j*ni; indp = indm+1;
-      sxint[indint] = xt[indp]-xt[indm];
-      syint[indint] = yt[indp]-yt[indm];
-      szint[indint] = zt[indp]-zt[indm];
+      indm = i+j*ni; indp = indm+1;
+      d13x = xt[indp]-xt[indm];
+      d13y = yt[indp]-yt[indm];
+      d13z = 1;
+      d24x = xt[indp]-xt[indm];
+      d24y = yt[indp]-yt[indm];
+      d24z = -1;
+
+      sxint[indint] = 0.5*(d13y*d24z-d13z*d24y);
+      syint[indint] = 0.5*(d13z*d24x-d13x*d24z);
+      szint[indint] = 0.5*(d13x*d24y-d13y*d24x);
       indint+=1;
-    } 
+    }
+
   for (E_Int eq = 0; eq < nfld; eq++)
   {
     E_Float* fcn = fc.begin(eq+1);
     E_Float* fintp = faceField.begin(eq+1);
-    //faces en i
+    //faces en i internes
     for (E_Int j = 0; j < njc; j++)
       for (E_Int i = 1; i < nic; i++)
       {
@@ -604,18 +618,20 @@ PyObject* K_POST::computeGrad2Struct2D(E_Int ni, E_Int nj, E_Int nic, E_Int njc,
     //bords des faces en i
     for (E_Int j = 0; j < njc; j++)
     {
-      E_Int i = 0;
-      indint = i+j*ni;
-      indcelld = i + j*nic;
+      //faces i = 0
+      indint = j*ni;
+      indcelld = j*nic;
       fintp[indint] = fcn[indcelld];//extrapolation de l interieur
       cellG[indint] = -1; cellD[indint] = indcelld;
-      i = nic;
-      indint = i+j*ni;
-      indcellg = (i-1) + j*nic;
+
+      //faces i=ni
+      indint = (ni-1)+j*ni;
+      indcellg = (nic-1) + j*nic;
       fintp[indint] = fcn[indcellg];//extrapolation de l interieur
       cellG[indint] = indcellg; cellD[indint] = -1;
     }
-    //faces en j
+
+    //faces en j interieures
     for (E_Int j = 1; j < njc; j++)
       for (E_Int i = 0; i < nic; i++)
       {
@@ -628,17 +644,15 @@ PyObject* K_POST::computeGrad2Struct2D(E_Int ni, E_Int nj, E_Int nic, E_Int njc,
     //bords des faces en j
     for (E_Int i = 0; i < nic; i++)
     {
-      E_Int j = 0;
-      indint = i+j*nic+nbIntI;
-      indcellg = i+(j-1)*nic;
-      indcelld = indcellg+nic;
+      //faces j=0
+      indint = i+nbIntI;
+      indcelld = i;
       cellG[indint] = -1; cellD[indint] = indcelld;
       fintp[indint] = fcn[indcelld];//extrapolation de l interieur
-      
-      j = njc;
-      indint = i+j*nic+nbIntI;
-      indcellg = i+(j-1)*nic;
-      indcelld = indcellg+nic;
+
+      //faces j=jmax
+      indint = i+njc*nic+nbIntI;
+      indcellg = i+(njc-1)*nic;
       cellG[indint] = indcellg; cellD[indint] = -1;
       fintp[indint] = fcn[indcellg];//extrapolation de l interieur
     }
@@ -695,11 +709,11 @@ PyObject* K_POST::computeGrad2Struct2D(E_Int ni, E_Int nj, E_Int nic, E_Int njc,
         gpz[indcelld] -= ff*szint[indint];
       }
     }
-    for (E_Int i = 0; i < ncells; i++)
+    for (E_Int iicell = 0; iicell < ncells; iicell++)
     {
-      voli =  K_METRIC::compVolOfStructCell2D(ni, nj, i, xt, yt, zt); 
+      voli =  K_METRIC::compVolOfStructCell2D(ni, nj, xt, yt, zt, iicell, -1);
       voli = 1./K_FUNC::E_max(voli, 1.e-12);
-      gpx[i] *= voli; gpy[i] *= voli; gpz[i] *= voli;
+      gpx[iicell] *= voli; gpy[iicell] *= voli; gpz[iicell] *= voli;
     }
   }
   return tpl;

@@ -25,6 +25,7 @@ for(E_Int nos = 0; nos < nbodies; nos++)
                 dist2 = distl;
                 xsav = xw0; ysav = yw0; zsav = zw0;            
                 ok = 1;//one projection found
+                noibctype = nos;
             }
         } 
     }

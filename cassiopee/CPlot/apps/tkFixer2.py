@@ -1,5 +1,6 @@
 # - Fix holes in meshes -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -48,7 +49,7 @@ def fixGap():
           p = G.fittingPlaster(contour, bumpFactor=factor)
           b = G.gapfixer(contour, p)
           out.append(b)
-        except Exception, e:
+        except Exception as e:
           fail = True
           Panels.displayErrors([0,str(e)], header='Error: gapfixer on %s.'%contour[0])
   
@@ -60,7 +61,7 @@ def fixGap():
        CTK.add(CTK.t, nob, -1, b)
        #CTK.add(CTK.t, nob, -1, p)
     if not fail:
-       CTK.t = C.fillMissingVariables(CTK.t)
+       #C._fillMissingVariables(CTK.t)
        CTK.TXT.insert('START', 'Gap fixed.\n')
     else:
       CTK.TXT.insert('START', 'Gap fixing fails.\n')
@@ -104,7 +105,7 @@ def fixGaps():
     CTK.t = CPlot.deleteSelection(CTK.t, CTK.Nb, CTK.Nz, nzs)
     CTK.t[2][nob0][2] += b
     
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'Gaps fixed.\n')    
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
@@ -152,7 +153,7 @@ def conformUnstr():
             z = XOR.conformUnstr(z, tol=tol, itermax=1)
             CTK.replace(CTK.t, nob, noz, z)
     
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'Surface conformized.\n')
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -166,7 +167,7 @@ def createApp(win):
                            text='tkFixer2', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Fix holes in surfaces.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=2)
@@ -232,7 +233,7 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

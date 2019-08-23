@@ -1,13 +1,12 @@
 # - newDimensionalUnits (pyTree) -
 import Converter.Internal as Internal
+import numpy
 
 # Create a DimensionalUnits node
-n = Internal.newDimensionalUnits(massUnit='Kilogram', lengthUnit='Meter', timeUnit='Second', temperatureUnit='Kelvin', angleUnit='Radian')
+n = Internal.newDimensionalUnits(massUnit='Kilogram')
 Internal.printTree(n)
-#>> ['DimensionalUnits',array(shape=(5,),dtype='object',order='F'),[1 son],'DimensionalUnits_t']
-#>>   |_['AdditionalUnits',array('NullNullNullNullNull',dtype='|S1'),[0 son],'AdditionalUnits_t']
+#>> ['DimensionalUnits',array(shape=(32, 5),dtype='|S1',order='F'),[0 son],'DimensionalUnit_t']
 
 # Attach it to a parent node
-d = Internal.newGridCoordinates()
-Internal.newDataClass('Dimensional', parent=d)
-Internal.newDimensionalUnits('Kilogram', 'Meter', 'Second', 'Kelvin', 'Radian', parent=d)
+d = Internal.newDataArray('CoordinateX', numpy.zeros(10))
+Internal.newDimensionalUnits(lengthUnit='Meter', parent=d)

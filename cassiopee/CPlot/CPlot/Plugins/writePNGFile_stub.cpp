@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -27,4 +27,9 @@ void writePNGFile(Data* d, char *filename, char* buffer,
                   int width, int height, int mode)
 {
   return;
+}
+//
+void writeDPNGFile(Data* d, char *filename, char* buffer, 
+                   int width, int height, int mode)
+{
 }

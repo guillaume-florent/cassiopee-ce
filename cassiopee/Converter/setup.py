@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
-import os, sys
+import os
 
 #=============================================================================
 # Converter requires:
@@ -39,10 +39,9 @@ from KCore.config import *
 
 # Compilation des fortrans ====================================================
 if f77compiler == "None":
-    print "Error: a fortran 77 compiler is required for compiling Converter."
+    print("Error: a fortran 77 compiler is required for compiling Converter.")
 args = Dist.getForArgs(); opt = ''
-for c in xrange(len(args)):
-    opt += 'FOPT'+str(c)+'='+args[c]+' '
+for c, v in enumerate(args): opt += 'FOPT'+str(c)+'='+v+' '
 os.system("make -e FC="+f77compiler+" WDIR=Converter/Fortran "+opt)
 prod = os.getenv("ELSAPROD")
 if prod is None: prod = 'xx'
@@ -70,7 +69,9 @@ if mpi: libraries.append('mpi')
 (ok, libs, paths) = Dist.checkFortranLibs([], additionalLibPaths)
 libraryDirs += paths; libraries += libs
 (ok, libs, paths) = Dist.checkCppLibs([], additionalLibPaths)
-libraryDirs += paths; libraries += libs    
+libraryDirs += paths; libraries += libs
+
+ADDITIONALCPPFLAGS = ['-DUSE_C_REGEX'] # for old gcc < 5.0
 
 # Extensions ==================================================================
 import srcs
@@ -83,12 +84,19 @@ listExtensions.append(
               libraries=libraries+additionalLibs,
               extra_compile_args=Dist.getCppArgs()+ADDITIONALCPPFLAGS,
               extra_link_args=Dist.getLinkArgs()
-              ) )
-    
+              ))
+listExtensions.append(
+    Extension('Converter.expression',
+              sources=['Converter/Expression/Expression.cpp']+srcs.cpp_srcs,
+              include_dirs=["Converter"]+additionalIncludePaths+includeDirs,
+              library_dirs=additionalLibPaths+libraryDirs,
+              libraries=libraries+additionalLibs,
+              extra_compile_args=Dist.getCppArgs()+ADDITIONALCPPFLAGS,
+              extra_link_args=Dist.getLinkArgs() ) )
 # setup ======================================================================
 setup(
     name="Converter",
-    version="2.5",
+    version="2.9",
     description="Converter for *Cassiopee* modules.",
     author="Onera",
     package_dir={"":"."},

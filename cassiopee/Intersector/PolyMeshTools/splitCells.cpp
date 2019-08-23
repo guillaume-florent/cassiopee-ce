@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -18,17 +18,8 @@
 */
 
 
-# include <string>
-# include <sstream> 
 # include "intersector.h"
-# include "Fld/ngon_t.hxx"
-# include "Nuga/Delaunay/Triangulator.h"
-# include "Nuga/Boolean/Splitter.h"
-
-//#include <iostream>
-
-using namespace std;
-using namespace NUGA;
+# include "stub.h"
 
 
 //=============================================================================
@@ -36,38 +27,26 @@ using namespace NUGA;
 //=============================================================================
 PyObject* K_INTERSECTOR::splitNonStarCells(PyObject* self, PyObject* args)
 {
-  PyObject *arr(0);
-  E_Float PH_conc_threshold(1./3.);
-  E_Float PH_cvx_threshold(0.05);
-  E_Float PG_cvx_threshold(1.e-8);
+  PyErr_SetString(PyExc_NotImplementedError, STUBMSG);
+  return NULL;
+}
 
-  if (!PYPARSETUPLEF(args, "Oddd", "Offf", &arr, &PH_conc_threshold, &PH_cvx_threshold, &PG_cvx_threshold)) return NULL;
+//=============================================================================
+/* Agglomerate superfuous faces (overdefined polyhedra) */
+//=============================================================================
+PyObject* K_INTERSECTOR::adaptCells(PyObject* self, PyObject* args)
+{
+  PyErr_SetString(PyExc_NotImplementedError, STUBMSG);
+  return NULL;
+}
 
-  K_FLD::FloatArray* f(0);
-  K_FLD::IntArray* cn(0);
-  char* varString, *eltType;
-  // Check array # 1
-  E_Int err = check_is_NGON(arr, f, cn, varString, eltType);
-  if (err) return NULL;
-    
-  K_FLD::FloatArray & crd = *f;
-  K_FLD::IntArray & cnt = *cn;
-  
-  //~ std::cout << "crd : " << crd.cols() << "/" << crd.rows() << std::endl;
-  //~ std::cout << "cnt : " << cnt.cols() << "/" << cnt.rows() << std::endl;
-  
-  typedef ngon_t<K_FLD::IntArray> ngon_type;
-  ngon_type ngi(cnt), ngo;
-  
-  NUGA::Splitter::split_non_star_phs<DELAUNAY::Triangulator>(crd, ngi, PH_conc_threshold, PH_cvx_threshold, PG_cvx_threshold, ngo);
-
-  K_FLD::IntArray cnto;
-  ngo.export_to_array(cnto);
-  
-  PyObject* tpl = K_ARRAY::buildArray(crd, varString, cnto, -1, eltType, false);;
-
-  delete f; delete cn;
-  return tpl;
+//=============================================================================
+/* todo */
+//=============================================================================
+PyObject* K_INTERSECTOR::adaptBox(PyObject* self, PyObject* args)
+{
+  PyErr_SetString(PyExc_NotImplementedError, STUBMSG);
+  return NULL;
 }
 
 

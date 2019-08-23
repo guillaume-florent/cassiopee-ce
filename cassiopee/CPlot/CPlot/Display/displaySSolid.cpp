@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -51,7 +51,7 @@ void DataDL::displaySSolid()
         && isInFrustum(zonep, _view) == 1)
     {
       if (ptrState->mode == RENDER && zonep->meshOverlay == 1) 
-        displaySMeshZone(zonep, zone);
+      { noLight(); _shaders.activate((short unsigned int)0); displaySMeshZone(zonep, zone); light(2);}
 
       double alphaSav = ptrState->alpha;
       if (ptrState->mode == RENDER && zonep->blending != -1.)

@@ -1,3 +1,6 @@
+import KCore.Dist as Dist
+from KCore.config import *
+mpi, mpiIndDic, mpiLibDir = Dist.checkMpi(additionalLibPaths, additionalIncludePaths)
 #==============================================================================
 # Fichiers C++
 #==============================================================================
@@ -15,6 +18,7 @@ cpp_srcs = ['Connector/KInterp/BlkInterp.cpp',
             'Connector/maskGen.cpp',
             'Connector/blankCells.cpp',
             'Connector/blankCellsTetra.cpp',
+            'Connector/getIntersectingDomainsAABB.cpp',
             'Connector/changeWall.cpp',
             'Connector/changeWallEX.cpp',
             'Connector/setDoublyDefinedBC.cpp',
@@ -28,8 +32,10 @@ cpp_srcs = ['Connector/KInterp/BlkInterp.cpp',
             'Connector/setInterpTransfers.cpp',
             'Connector/setInterpTransfersD.cpp',
             'Connector/IBC/setIBCTransfersD.cpp',
+            'Connector/IBC/blankClosestTargetCells.cpp',
             'Connector/writeCoefs.cpp',
             'Connector/chimeraTransfer.cpp',
+            'Connector/transferVariables.cpp',
             'Connector/blankIntersectingCells.cpp',
             'Connector/cellN2OversetHoles.cpp',
             'Connector/identifyMatching.cpp',
@@ -47,15 +53,21 @@ cpp_srcs = ['Connector/KInterp/BlkInterp.cpp',
             "Connector/updateNatureForIBM.cpp",
             "Connector/getIBMPtsWithFront.cpp",
             "Connector/getIBMPtsWithoutFront.cpp",
-            "Connector/getIBMPtsBasic.cpp"
-#            "Connector/CMP/src/recv_buffer.cpp", 
-#            "Connector/CMP/src/send_buffer.cpp"
+            "Connector/getIBMPtsBasic.cpp",
+            "Connector/indiceToCoord2.cpp",
+            "Connector/correctCoeffList.cpp"
+             ]
+if mpi is True:
+    cpp_srcs  += [
+            "Connector/CMP/src/recv_buffer.cpp", 
+            "Connector/CMP/src/send_buffer.cpp"
             ]
 
 #==============================================================================
 # Fichiers fortran
 #==============================================================================
-for_srcs = ['Connector/Fortran/CompMotionCentersF.for',
+for_srcs = ['Connector/Fortran/spalart_1d.for',
+            'Connector/Fortran/CompMotionCentersF.for',
             'Connector/Fortran/CompMotionCentersEXF.for',
             'Connector/Fortran/BlkAdjustCellNatureFieldF.for',
             'Connector/Fortran/MaskSearchBlankedNodesXF.for',

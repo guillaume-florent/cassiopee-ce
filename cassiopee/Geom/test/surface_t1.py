@@ -2,7 +2,7 @@
 import Geom as D
 import KCore.test as test
 
-# User definition of parametric curve by function
+# User definition of parametric surface by function
 def f(t,u):
     x = t+u
     y = t*t+1+u*u

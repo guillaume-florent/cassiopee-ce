@@ -14,7 +14,7 @@ tol = -0.5e-3
 m = XOR.booleanMinus(M1, M2, tol, preserve_right=1, solid_right=1, agg_mode=1)
 #C.convertArrays2File([m], 'i.plt')
 
-m=XOR.extractPathologicalCells(m, 0.1, 2) # ask for 2 level of neighgbors
+m=XOR.extractPathologicalCells(m, 2) # ask for 2 level of neighgbors
 
 C.convertArrays2File(m, 'out.plt')
 

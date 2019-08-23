@@ -2,10 +2,8 @@
 import Converter as C
 import Connector as X
 import Generator as G
-import Geom as D
 import Intersector as XOR
 import KCore.test as test
-import sys
 
 # Test 1
 # Mask
@@ -17,12 +15,9 @@ a = C.convertArray2NGon(a)
 
 # celln init
 ca = C.node2Center(a)
-ca = C.initVars(ca, 'cellN', 1.)
+C._initVars(ca, 'cellN', 1.)
 ca = C.extractVars(ca, ['cellN'])
 
 # Blanking
 celln = XOR.XcellN([a], [ca], masking)
 test.testA(celln,1)
-
-
-

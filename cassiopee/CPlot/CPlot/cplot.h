@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -23,7 +23,6 @@
 #define KFAILED 0
 #define KSUCCESS 1
 
-#include "Python.h"
 #include "kcore.h"
 #include "Zone.h"
 #include <vector>
@@ -70,6 +69,7 @@ PyObject* setActiveZones(PyObject* self, PyObject* args);
 PyObject* setZoneNames(PyObject* self, PyObject* args);
 PyObject* lookFor(PyObject* self, PyObject* args);
 PyObject* fitView(PyObject* self, PyObject* args);
+PyObject* isDisplayRunning(PyObject* self, PyObject* args);
 PyObject* finalizeExport(PyObject* self, PyObject* args);
 PyObject* hide(PyObject* self, PyObject* args);
 PyObject* show(PyObject* self, PyObject* args);

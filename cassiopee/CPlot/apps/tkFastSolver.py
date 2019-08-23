@@ -1,17 +1,16 @@
 # - Fast solvers app -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
 import Converter.Internal as Internal
-import FastS.PyTree as FastS
 import Fast.PyTree as Fast
 import CPlot.iconics as iconics
 import os, math, os.path
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def setData():
@@ -22,6 +21,9 @@ def setData():
     scheme = VARS[4].get()
     time_step = VARS[5].get()
     snear = VARS[6].get()
+    ibctype = VARS[7].get()
+    dfar = VARS[8].get()
+
     numb = {'temporal_scheme':temporal_scheme,
             'ss_iteration':ss_iteration}
     numz = {'scheme':scheme, 'time_step':time_step}
@@ -35,6 +37,9 @@ def setData():
         for z in zones:
             n = Internal.createUniqueChild(z, '.Solver#define', 'UserDefinedData_t')
             Internal.createUniqueChild(n, 'snear', 'DataArray_t', value=snear)
+            Internal.createUniqueChild(n, 'ibctype', 'DataArray_t', value=ibctype)
+            Internal.createUniqueChild(n, 'dfar', 'DataArray_t', value=dfar)
+
     else:
         for nz in nzs:
             nob = CTK.Nb[nz]+1
@@ -45,6 +50,8 @@ def setData():
             Fast._setNum2Zones(z, numz)
             n = Internal.createUniqueChild(z, '.Solver#define', 'UserDefinedData_t')
             Internal.createUniqueChild(n, 'snear', 'DataArray_t', snear)
+            Internal.createUniqueChild(n, 'ibctype', 'DataArray_t', ibctype)
+            Internal.createUniqueChild(n, 'dfar', 'DataArray_t', value=dfar)
 
     CTK.TXT.insert('START', 'Solver data set.\n')
     
@@ -68,6 +75,15 @@ def getData():
         if n is not None:
             val = Internal.getValue(n)
             VARS[6].set(val)
+        n = Internal.getNodeFromPath(zone, '.Solver#define/ibctype')
+        if n is not None:
+            val = Internal.getValue(n)
+            VARS[7].set(val)
+        n = Internal.getNodeFromPath(zone, '.Solver#define/dfar')
+        if n is not None:
+            val = Internal.getValue(n)
+            VARS[8].set(val)
+
         d, c = Internal.getParentOfNode(CTK.t, zone)
         n = Internal.getNodeFromPath(d, '.Solver#define/temporal_scheme')
         if n is not None:
@@ -95,9 +111,9 @@ def writeSetupFile():
     nodes = Internal.getNodesFromName(CTK.t, 'GoverningEquations')
     if nodes != []:
         equations = Internal.getValue(nodes[0])
-        if (equations == 'Euler'): model = 'euler'
-        if (equations == 'NSLaminar'): model = 'nslam'
-        if (equations == 'NSTurbulent'): model = 'nstur'
+        if equations == 'Euler': model = 'euler'
+        if equations == 'NSLaminar': model = 'nslam'
+        if equations == 'NSTurbulent': model = 'nstur'
     else:
         CTK.TXT.insert('START', 'GoverningEquations is missing (tkState).\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -106,11 +122,11 @@ def writeSetupFile():
     # Turbulence model
     if model == 'nstur':
         nodes = Internal.getNodesFromName(CTK.t, 'TurbulenceModel')
-        if (nodes != []):
+        if nodes != []:
             tm = Internal.getValue(nodes[0])
-            if (tm == 'OneEquation_SpalartAllmaras'): model += '_sa'
-            elif (tm == 'TwoEquation_Wilcox'): model += '_kw'
-            elif (tm == 'TwoEquation_MenterSST'): model += '_kw'
+            if tm == 'OneEquation_SpalartAllmaras': model += '_sa'
+            elif tm == 'TwoEquation_Wilcox': model += '_kw'
+            elif tm == 'TwoEquation_MenterSST': model += '_kw'
             else:
                 CTK.TXT.insert('START', 'This turbulence model is not accepted by Cassiopee solver.\n')
                 CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -118,7 +134,7 @@ def writeSetupFile():
     
     # ReferenceState
     nodes = Internal.getNodesFromName(CTK.t, 'ReferenceState')
-    if (nodes == []):
+    if nodes == []:
         CTK.TXT.insert('START', 'Reference state is missing (tkState).\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
         return
@@ -134,13 +150,13 @@ def writeSetupFile():
     
     # Reynolds
     nodes = Internal.getNodesFromName(state, 'Reynolds')
-    if (nodes != []): Reynolds = Internal.getValue(nodes[0])
-    elif (equations == 'NSLaminar' or equations == 'NSTurbulent'):
+    if nodes != []: Reynolds = Internal.getValue(nodes[0])
+    elif equations == 'NSLaminar' or equations == 'NSTurbulent':
         CTK.TXT.insert('START', 'Reynolds is missing (tkState).\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
         return
     else: Reynolds = 1.
-    if (Reynolds <= 0.): Reynolds = 1.
+    if Reynolds <= 0.: Reynolds = 1.
     
     # Incidences
     node = Internal.getNodeFromName(state, 'VelocityX')
@@ -200,7 +216,7 @@ def createApp(win):
                            text='tkFastSolver', font=CTK.FRAMEFONT, 
                            takefocus=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=0)
     Frame.columnconfigure(1, weight=1)
@@ -228,6 +244,11 @@ def createApp(win):
     V = TK.DoubleVar(win); V.set(0.002); VARS.append(V)
     # -6- Snear -
     V = TK.DoubleVar(win); V.set(0.01); VARS.append(V)
+    # -7- IBC type -
+    V = TK.StringVar(win); V.set('Musker'); VARS.append(V)
+    # -8- dfar local -
+    V = TK.DoubleVar(win); V.set(-1.); VARS.append(V)
+
 
     # - temporal scheme -
     B = TTK.Label(Frame, text="temporal_scheme")
@@ -253,8 +274,7 @@ def createApp(win):
     # - time_step -
     B = TTK.Label(Frame, text="time_step")
     B.grid(row=3, column=0, sticky=TK.EW)
-    BB = CTK.infoBulle(parent=B,
-                       text='Time step.')
+    BB = CTK.infoBulle(parent=B, text='Time step.')
     B = TTK.Entry(Frame, textvariable=VARS[5])
     B.grid(row=3, column=1, columnspan=2, sticky=TK.EW)
     
@@ -263,15 +283,28 @@ def createApp(win):
     B.grid(row=4, column=0, sticky=TK.EW)
     B = TTK.Entry(Frame, textvariable=VARS[6])
     B.grid(row=4, column=1, columnspan=2, sticky=TK.EW)
+    
+    #- dfar settings  -
+    B = TTK.Label(Frame, text="dfar")
+    B.grid(row=5, column=0, sticky=TK.EW)
+    B = TTK.Entry(Frame, textvariable=VARS[8])
+    B.grid(row=5, column=1, columnspan=2, sticky=TK.EW)
+
+    # - IBC type -
+    B = TTK.Label(Frame, text="IBC type")
+    B.grid(row=6, column=0, sticky=TK.EW)
+    BB = CTK.infoBulle(parent=B, text='Type of IBC.')
+    B = TTK.OptionMenu(Frame, VARS[7], 'slip', 'noslip', 'Log', 'Musker', 'outpress', 'inj', 'TBLE')
+    B.grid(row=6, column=1, columnspan=2, sticky=TK.EW)
 
     # - Set data -
     B = TTK.Button(Frame, text="Set data", command=setData)
     BB = CTK.infoBulle(parent=B, text='Set data into selected zone.')
-    B.grid(row=5, column=0, columnspan=2, sticky=TK.EW)
-    B = TK.Button(Frame, command=getData,
-                  image=iconics.PHOTO[8], padx=0, pady=0, compound=TK.RIGHT)
+    B.grid(row=7, column=0, columnspan=2, sticky=TK.EW)
+    B = TTK.Button(Frame, command=getData,
+                   image=iconics.PHOTO[8], padx=0, pady=0, compound=TK.RIGHT)
     BB = CTK.infoBulle(parent=B, text='Get data from selected zone.')
-    B.grid(row=5, column=2, sticky=TK.EW)
+    B.grid(row=7, column=2, sticky=TK.EW)
 
 #==============================================================================
 # Called to display widgets

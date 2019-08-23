@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -20,7 +20,6 @@
 # ifndef _DIST2WALLS_DIST2WALLS_H_
 # define _DIST2WALLS_DIST2WALLS_H_
 
-# include "Python.h"
 # include "kcore.h"
 
 namespace K_DIST2WALLS

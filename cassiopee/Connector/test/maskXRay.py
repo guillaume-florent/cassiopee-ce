@@ -1,7 +1,6 @@
 # - maskXRay (array) -
 import Converter as C
 import Connector as X
-import Generator as G
 import Geom as D
 import Transform as T
 

@@ -1,6 +1,5 @@
 # test maskXRay : points de percage (pyTree)
 import Connector.PyTree as X
-import Generator.PyTree as G
 import Geom.PyTree as D
 import Transform.PyTree as T
 import Converter.PyTree as C

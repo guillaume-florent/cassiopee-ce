@@ -1,6 +1,5 @@
 # - merge (array) -
 import Converter as C
-import Generator as G
 import Transform as T
 import Geom as D
 def f(t,u):

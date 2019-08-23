@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -27,7 +27,7 @@
 # include "Def/DefTypes.h"
 # include "Fld/FldArray.h"
 # include "Def/DefCplusPlusConst.h"
-# include "Python.h"
+# include "kPython.h"
 
 // Define ftell and fseek (long return)
 #ifdef _WIN64
@@ -465,7 +465,7 @@ class GenIO
       std::vector<FldArrayF*>& unstructField,
       std::vector<FldArrayI*>& connectivity,
       std::vector<E_Int>& eltType, std::vector<char*>& zoneNames);
-    /** pngwrite (stub) */
+    /** pngwrite */
     E_Int pngwrite(
       char* file, char* dataFmt, char* varString,
       std::vector<E_Int>& ni, std::vector<E_Int>& nj, std::vector<E_Int>& nk,
@@ -607,32 +607,39 @@ class GenIO
     /* Ecriture d'un arbre */
     E_Int adfcgnswrite(char* file, PyObject* tree);
     /* Lecture a partir de chemins donnes (base/zone) */
-    PyObject* adfcgnsReadFromPaths(char* file, PyObject* paths);
+    PyObject* adfcgnsReadFromPaths(char* file, PyObject* paths, 
+                                   E_Int maxFloatSize=1.e6, E_Int maxDepth=-1);
     /* Ecrit des parties d'un arbre python */
-    E_Int adfcgnsWritePaths(char* file, PyObject* nodeList, PyObject* paths);
-    void getABFromPath(char* path, char*& A, char*& B);
+    E_Int adfcgnsWritePaths(char* file, PyObject* nodeList, PyObject* paths, E_Int maxDepth=-1, E_Int mode=0);
+    void getABFromPath(char* path, std::vector<char*>& pelts);
+    /* Efface un chemin d'un fichier */
+    E_Int adfcgnsDeletePaths(char* file, PyObject* paths);
     ///-
 
     ///+ HDF functions
     /* Lecture dans un arbre */
-    E_Int hdfcgnsread(char* file, PyObject*& tree, PyObject* dataShape, 
-                      int skeleton=0, int maxFloatSize=5, int maxDepth=-1);
+    E_Int hdfcgnsread(char* file, PyObject*& tree, PyObject* dataShape, PyObject* links, 
+                      int skeleton=0, int maxFloatSize=5, int maxDepth=-1, PyObject* skipTypes=NULL);
     /* Ecriture d'un arbre */
     E_Int hdfcgnswrite(char* file, PyObject* tree, PyObject* links=NULL);
 
     /* Lecture a partir de chemins donnes */
-    PyObject* hdfcgnsReadFromPaths(char* file, PyObject* paths);
+    PyObject* hdfcgnsReadFromPaths(char* file, PyObject* paths,
+                                   E_Int maxFloatSize=1.e6, E_Int maxDepth=-1,
+                                   PyObject* skipTypes=NULL);
     PyObject* hdfcgnsReadFromPathsPartial(char* file, PyObject* Filters,
-                                                      void* comm=NULL);
+                                          void* comm=NULL);
     /* Ecrit des parties d'un arbre python */
-    E_Int hdfcgnsWritePaths(char* file, PyObject* nodeList, PyObject* paths);
+    E_Int hdfcgnsWritePaths(char* file, PyObject* nodeList, PyObject* paths, PyObject* links=NULL, 
+                            E_Int maxDepth=-1, E_Int mode=0);
     E_Int hdfcgnsWritePathsPartial(char* file, PyObject* tree,
                                    PyObject* Filter,
                                    int skeleton=0,
                                    void* comm=NULL);
+    E_Int hdfcgnsDeletePaths(char* file, PyObject* paths);
     void ripEndOfPath(char* path, char*& startPath);
     void getEndOfPath(char* path, char*& startPath);
-    ///-
+    ///-char* file, PyObject* tree,
 
     ///+ CPlot functions
     /* Create the socket for communications */
@@ -741,6 +748,8 @@ class GenIO
                   E_Boolean convertEndian,
                   E_Int sizeInt, E_Int sizeLong);
     E_Int readIntTuple(FILE* ptrFile, E_Int& value);
+    E_Int readIntTuple2(FILE* ptrFile, E_Int& value1, E_Int& value2);
+    E_Int readIntTuple3(FILE* ptrFile, E_Int& value1, E_Int& value2, E_Int& value3);
 
     E_Int convertString2Int(char* str);
 
@@ -779,6 +788,7 @@ class GenIO
       E_Boolean convertEndian, E_Boolean writeConservative);
     E_Int readWord(FILE* ptrFile, char* buf);
     E_Int readGivenKeyword(FILE* ptrFile, const char* keyword);
+    E_Int readGivenKeyword(FILE* ptrFile, const char* keyword1, const char* keyword2);
     E_Int readKeyword(FILE* ptrFile, char* buf);
     E_Int readDataAndKeyword(
       FILE* ptrFile, char* buf,

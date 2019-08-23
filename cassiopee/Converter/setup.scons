@@ -59,7 +59,12 @@ if mpi and mpi4py:
     ADDITIONALCPPFLAGS = ['-D_MPI']
 if hdf: libraries.append('hdf5')
 if png: libraries.append('png')
-if mpi: libraries.append('mpi')
+if mpi:
+    if Dist.getSystem()[0] == 'mingw':
+        libraries.append('msmpi')
+    else: 
+        libraries.append('mpi')
+
 (ok, libs, paths) = Dist.checkFortranLibs([], additionalLibPaths)
 libraryDirs += paths; libraries += libs
 (ok, libs, paths) = Dist.checkCppLibs([], additionalLibPaths)
@@ -68,28 +73,38 @@ libraryDirs += paths; libraries += libs
 # Env =========================================================================
 import srcs
 if Dist.getSystem()[0] == 'mingw': tools = ['mingw']
-else: tools = None
+else: tools = None; ADDITIONALCPPFLAGS += ['-DUSE_C_REGEX'] # for old gcc < 5.0
+
 AR = Dist.getAR()
-env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CCFLAGS=[], CXXFLAGS=[],
+env = Environment(tools=tools, CC=cc, CXX=cxx, AR=AR, CPPFLAGS=[],
                   FORTRAN=f77compiler,
                   LIBPATH=additionalLibPaths+libraryDirs,
                   LIBS=libraries+additionalLibs,
                   SHLIBSUFFIX=so_ext, SHLIBPREFIX='',
                   LINKFLAGS=Dist.getLinkArgs(),
-                  ENV = {'PATH': Dist.getenv('PATH'),
-                         'LD_LIBRARY_PATH': Dist.getenv('LD_LIBRARY_PATH'),
-                         'LM_LICENSE_FILE': Dist.getenv('LM_LICENSE_FILE')})
+                  ENV=Dist.getEnvForScons())
 env.Replace(CPPPATH=["Converter"]+additionalIncludePaths+includeDirs)
-env.Replace(CPPFLAGS=Dist.getCppArgs()+ADDITIONALCPPFLAGS)
-
+env.Replace(CXXFLAGS=Dist.getCppArgs()+ADDITIONALCPPFLAGS)
+env.Replace(CFLAGS=Dist.getCArgs()+ADDITIONALCPPFLAGS)
 env = Dist.createFortranBuilder(env, [kcoreIncDir])
 ppf = Dist.createFortranFiles(env, srcs)
 
-#env = Dist.createCythonBuilder(env)
-#cff = Dist.createCythonFiles(env, srcs) # add cff to alias install
-
 #==============================================================================
-
+# Modification pour compiler certains fichiers specifiquement
+cppOpts = Dist.getCppArgs()
+if Cppcompiler.find('icc') == 0 or Cppcompiler.find('icpc') == 0:
+    flags = ''
+    for i in cppOpts:
+        if i[0:2] != '-O' and i[0:9] != '-fp-model': flags += i+' '
+    flags += '-fp-model=strict -O2'
+    for i, v in enumerate(srcs.cpp_srcs):
+        if v == "Converter/hook.cpp":
+            srcs.cpp_srcs[i] = env.Object("Converter/hook.cpp", CXXFLAGS=flags)
+        if v == "Converter/identify.cpp": 
+            srcs.cpp_srcs[i] = env.Object("Converter/identify.cpp", CXXFLAGS=flags)
+        if v == "Converter/nearest.cpp":
+            srcs.cpp_srcs[i] = env.Object("Converter/nearest.cpp", CXXFLAGS=flags)
+            
 myMod = env.StaticLibrary('converter', srcs.cpp_srcs+ppf)
 modDir = installPath+'/Converter/'
 dp1 = env.Install(modDir, myMod)

@@ -1,5 +1,6 @@
 # - tetraMesher -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -9,8 +10,7 @@ import Generator.PyTree as G
 import Converter.Internal as Internal
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def tetraMesher():
@@ -41,11 +41,11 @@ def tetraMesher():
         nob = C.getNobOfBase(bases[0], CTK.t)
         CTK.add(CTK.t, nob, -1, mesh)
         CTK.TXT.insert('START', 'Tetra mesh created.\n')
-        CTK.t = C.fillMissingVariables(CTK.t)
+        #C._fillMissingVariables(CTK.t)
         (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
         CTK.TKTREE.updateApp()
         CPlot.render()
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: TetraMesher')
         CTK.TXT.insert('START', 'Tetra mesh failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -58,7 +58,7 @@ def createApp(win):
     Frame = TTK.LabelFrame(win, borderwidth=2, relief=CTK.FRAMESTYLE,
                            text='tkTetraMesher', font=CTK.FRAMEFONT, takefocus=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -76,7 +76,7 @@ def createApp(win):
     # - VARS -
     # -0- Mesher type -
     V = TK.StringVar(win); V.set('tetgen'); VARS.append(V)
-    if CTK.PREFS.has_key('tkTetraMesherType'): V.set(CTK.PREFS['tkTetraMesherType'])
+    if 'tkTetraMesherType' in CTK.PREFS: V.set(CTK.PREFS['tkTetraMesherType'])
 
     # - mesher menu -
     B = TTK.OptionMenu(Frame, VARS[0], 'netgen', 'tetgen')
@@ -122,7 +122,7 @@ def displayFrameMenu(event=None):
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

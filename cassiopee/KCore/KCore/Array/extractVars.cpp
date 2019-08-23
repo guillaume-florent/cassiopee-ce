@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -28,8 +28,7 @@ using namespace std;
 // IN: varString: de type "x,y,z,ro"
 // OUT: un vector <"x", "y", "z", "ro">
 //=============================================================================
-void K_ARRAY::extractVars(char* varString, 
-                          vector<char*>& vars)
+void K_ARRAY::extractVars(char* varString, vector<char*>& vars)
 {
   E_Int l = strlen(varString);
   E_Int c = 0;
@@ -45,7 +44,7 @@ void K_ARRAY::extractVars(char* varString,
       {
         char* m = new char[VARNAMELENGTH];
         temp[p] = '\0';
-        strcpy(m, temp);
+        for (E_Int i = 0; i <= p; i++) m[i] = temp[i];
         vars.push_back(m);
         n++; p = 0;
       }
@@ -61,7 +60,7 @@ void K_ARRAY::extractVars(char* varString,
   {
     char* m = new char[VARNAMELENGTH];
     temp[p] = '\0';
-    strcpy(m, temp);
+    for (E_Int i = 0; i <= p; i++) m[i] = temp[i];  
     vars.push_back(m);
   }
 

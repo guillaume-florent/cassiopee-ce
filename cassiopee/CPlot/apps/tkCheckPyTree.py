@@ -1,5 +1,6 @@
 # - check pyTree integrity -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -8,35 +9,34 @@ import CPlot.Panels as Panels
 import Converter.Internal as Internal
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
     
 #==============================================================================
 def runCheckPyTree():
     if CTK.t == []: return
     errors = []
     v = VARS[3].get()
-    if (v == 'All conformity' or v == ' > Node conformity'):
+    if v == 'All conformity' or v == ' > Node conformity':
         errors += Internal.checkPyTree(CTK.t, level=1)
-    if (v == 'All conformity' or v == ' > Unique base name'):
+    if v == 'All conformity' or v == ' > Unique base name':
         errors += Internal.checkPyTree(CTK.t, level=2)
-    if (v == 'All conformity' or v == ' > Unique zone name'):
+    if v == 'All conformity' or v == ' > Unique zone name':
         errors += Internal.checkPyTree(CTK.t, level=3)
-    if (v == 'All conformity' or v == ' > Unique BC name'):
+    if v == 'All conformity' or v == ' > Unique BC name':
         errors += Internal.checkPyTree(CTK.t, level=4)
-    if (v == 'All conformity' or v == ' > BC ranges'):
+    if v == 'All conformity' or v == ' > Valid BC ranges':
         errors += Internal.checkPyTree(CTK.t, level=5)
-    if (v == 'All conformity' or v == ' > BC match'):
+    if v == 'All conformity' or v == ' > Valid BC match':
         errors += Internal.checkPyTree(CTK.t, level=6)
-    if (v == 'All conformity' or v == ' > Referenced families'):
+    if v == 'All conformity' or v == ' > Referenced families':
         errors += Internal.checkPyTree(CTK.t, level=7)
-    if (v == 'All conformity' or v == ' > Valid CGNS types'):
+    if v == 'All conformity' or v == ' > Valid CGNS types':
         errors += Internal.checkPyTree(CTK.t, level=8)
-    if (v == 'All conformity' or v == ' > Valid element nodes'):
+    if v == 'All conformity' or v == ' > Valid element nodes':
         errors += Internal.checkPyTree(CTK.t, level=9)
-    if (v == 'All conformity' or v == ' > Valid CGNS flowfield name'):
+    if v == 'All conformity' or v == ' > Valid CGNS flowfield name':
         errors += Internal.checkPyTree(CTK.t, level=10)
-    if (v == 'Multigrid compatibility'):
+    if v == 'Multigrid compatibility':
         MGlevel = CTK.varsFromWidget(VARS[2].get(), type=2)
         minBlk = CTK.varsFromWidget(VARS[0].get(), type=2)
         minBC = CTK.varsFromWidget(VARS[1].get(), type=2)
@@ -63,27 +63,27 @@ def correctPyTree():
         CTK.TXT.insert('START', 'Can not correct for maximum number of nodes.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     
-    if (v == 'All conformity' or v == ' > Node conformity'):
+    if v == 'All conformity' or v == ' > Node conformity':
         Internal._correctPyTree(CTK.t, level=1)
-    if (v == 'All conformity' or v == ' > Unique base name'):
+    if v == 'All conformity' or v == ' > Unique base name':
         Internal._correctPyTree(CTK.t, level=2)
-    if (v == 'All conformity' or v == ' > Unique zone name'):
+    if v == 'All conformity' or v == ' > Unique zone name':
         Internal._correctPyTree(CTK.t, level=3)
-    if (v == 'All conformity' or v == ' > Unique BC name'):
+    if v == 'All conformity' or v == ' > Unique BC name':
         Internal._correctPyTree(CTK.t, level=4)
-    if (v == 'All conformity' or v == ' > BC ranges'):
+    if v == 'All conformity' or v == ' > Valid BC ranges':
         Internal._correctPyTree(CTK.t, level=5)
-    if (v == 'All conformity' or v == ' > BC match'):
+    if v == 'All conformity' or v == ' > Valid BC match':
         Internal._correctPyTree(CTK.t, level=6)
-    if (v == 'All conformity' or v == ' > Referenced families'):
+    if v == 'All conformity' or v == ' > Referenced families':
         Internal._correctPyTree(CTK.t, level=7)
-    if (v == 'All conformity' or v == ' > Valid CGNS types'):
+    if v == 'All conformity' or v == ' > Valid CGNS types':
         Internal._correctPyTree(CTK.t, level=8)
-    if (v == 'All conformity' or v == ' > Valid element nodes'):
+    if v == 'All conformity' or v == ' > Valid element nodes':
         Internal._correctPyTree(CTK.t, level=9)
-    if (v == 'All conformity' or v == ' > Valid CGNS flowfield name'):
+    if v == 'All conformity' or v == ' > Valid CGNS flowfield name':
         Internal.correctPyTree(CTK.t, level=10)
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
@@ -98,7 +98,7 @@ def createApp(win):
                            text='tkCheckPyTree', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Check your pyTree.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -119,13 +119,13 @@ def createApp(win):
     # - VARS -
     # -0- MinPtsPerCoarseGrid -
     V = TK.StringVar(win); V.set('5'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCheckPyTree0'): V.set(CTK.PREFS['tkCheckPyTree0'])
+    if 'tkCheckPyTree0' in CTK.PREFS: V.set(CTK.PREFS['tkCheckPyTree0'])
     # -1- MinPtsPerCoarseWin -
     V = TK.StringVar(win); V.set('3'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCheckPyTree1'): V.set(CTK.PREFS['tkCheckPyTree1'])
+    if 'tkCheckPyTree1' in CTK.PREFS: V.set(CTK.PREFS['tkCheckPyTree1'])
     # -2- Multigrid level
     V = TK.StringVar(win); V.set('1'); VARS.append(V)
-    if CTK.PREFS.has_key('tkCheckPyTree2'): V.set(CTK.PREFS['tkCheckPyTree2'])
+    if 'tkCheckPyTree2' in CTK.PREFS: V.set(CTK.PREFS['tkCheckPyTree2'])
     # -3- global option menu -> things to check
     V = TK.StringVar(win); V.set('All conformity'); VARS.append(V)
 
@@ -147,7 +147,7 @@ def createApp(win):
     
     # Option menu
     B = TTK.OptionMenu(Frame, VARS[3], 'All conformity', ' > Node conformity', ' > Unique base name', ' > Unique zone name', ' > Unique BC name', 
-                       ' > BC ranges', ' > BC match', ' > Referenced families', ' > Valid CGNS types', ' > Valid element nodes',
+                       ' > Valid BC ranges', ' > Valid BC match', ' > Referenced families', ' > Valid CGNS types', ' > Valid element nodes',
                        ' > Valid CGNS flowfield name', 'Multigrid compatibility', 'Maximum number of nodes')
     B.grid(row=1, column=0, columnspan=8, sticky=TK.EW)
 

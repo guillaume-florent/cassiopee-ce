@@ -34,7 +34,8 @@ if [ $? -eq 0 ]; then
     fi
     scons install prefix="$INSTALLPATH" "$SCONSOPT"
     [ $? != 0 ] && exit;
-    touch RigidMotion/rigidMotion.cpp
+    #touch RigidMotion/rigidMotion.cpp
+    rm -f build/lib.*/RigidMotion/rigidMotion.*
     python setupScons.py install --prefix="$INSTALLPATH"
 else
     python setup.py install --prefix="$INSTALLPATH"

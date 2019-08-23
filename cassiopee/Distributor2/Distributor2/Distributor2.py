@@ -1,11 +1,11 @@
 """Distribution module for Cassiopee package.
 """
-__version__ = '2.5'
+__version__ = '2.9'
 __author__ = "Christophe Benoit, Xavier Juvigny, Stephanie Peron, Pascal Raud"
 # 
 # Python Interface for block distribution over processors
 #
-import distributor2
+from . import distributor2
 import numpy
 
 #==============================================================================
@@ -27,24 +27,38 @@ import numpy
 # IN: nghost: nbre de couches de ghost cells
 #==============================================================================
 def distribute(arrays, NProc, prescribed=[], perfo=[], weight=[], com=[],
-               algorithm='gradient0', nghost=0):
-    """Distribute a over processors.
+               algorithm='graph', mode='nodes', nghost=0):
+    """Distribute zones over NProc processors.
     Usage: distribute(A, NProc, prescribed, perfo, weight, com, algorithm)"""
     if NProc <= 0: 
         raise ValueError("distribute: can not distribute on %d (<=0) processors."%NProc)
 
     # Liste du nombre de points pour chaque arrays
+    # mode: equilibre le nbre de pts ou de cellules suivant 'nodes','cells'
     nbPts = []
     for a in arrays:
         c = 0
-        if len(a) == 5: 
-            c = max(a[2]-nghost,1)*max(a[3]-nghost,1)*max(a[4]-nghost,1)
-        elif len(a) == 4: c = a[1].shape[1] 
+        if len(a) == 5:
+            if mode == 'cells':
+                c = max(a[2]-1-nghost,1)*max(a[3]-1-nghost,1)*max(a[4]-1-nghost,1)
+            else: # nodes
+                c = max(a[2]-nghost,1)*max(a[3]-nghost,1)*max(a[4]-nghost,1)
+        elif len(a) == 4:
+            if mode == 'cells':
+                if isinstance(a[1], list):
+                    if a[3] == 'NGON' or a[3] == 'NGON*':
+                        c = a[2][3].size
+                else: c = a[2][0].shape[0]
+            else: # nodes
+                if a[3][-1] != '*': 
+                    if isinstance(a[1], list): c = a[1][0].size
+                    else: c = a[1].shape[1]
+                else: c = 0 # don't know
         nbPts.append(c)
-    
+
     # Liste des arrays deja distribues
     if prescribed == []: # nothing set
-        setArrays = [-1 for x in xrange(len(arrays))]
+        setArrays = [-1]*len(arrays)
     else: setArrays = prescribed
     
     # Liste des alpha, beta, gamma pour chaque processeur
@@ -55,15 +69,15 @@ def distribute(arrays, NProc, prescribed=[], perfo=[], weight=[], com=[],
         beta = 1.e-2
         # Poids de la vitesse de com pour une unite de volume de com
         gamma = 0.1
-        perfProcs = [(alpha,beta,gamma) for x in xrange(NProc)]
+        perfProcs = [(alpha,beta,gamma)]*NProc
     elif isinstance(perfo, tuple):
-        perfProcs = [perfo for x in xrange(NProc)]
+        perfProcs = [perfo]*NProc
     else:
         perfProcs = perfo
 
     # Liste des poids du solveur pour chaque bloc
     Nb = len(arrays)
-    if weight == []: weight = [1 for x in xrange(Nb)]
+    if weight == []: weight = [1]*Nb
         
     # Matrice du volume des coms
     if com == []: volCom = numpy.zeros((Nb, Nb), numpy.int32)

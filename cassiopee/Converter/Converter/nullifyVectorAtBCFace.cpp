@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -59,9 +59,9 @@ PyObject* K_CONVERTER::nullifyVectorAtBCFaceStruct(PyObject* self, PyObject* arg
   char* varString; char* eltType;
   vector<E_Float*> fields; vector<E_Int> locs;
   vector<E_Int*> cn;
-  E_Int res = K_PYTREE::getFromZone(zone, 1, Loc, varString, fields, locs, im, jm, km, 
-                                    cn, cnSize, cnNfld, eltType, hook, GridCoordinates, 
-                                    FlowSolutionNodes, FlowSolutionCenters);
+  K_PYTREE::getFromZone(zone, 1, Loc, varString, fields, locs, im, jm, km, 
+                        cn, cnSize, cnNfld, eltType, hook, GridCoordinates, 
+                        FlowSolutionNodes, FlowSolutionCenters);
   E_Int posx = K_ARRAY::isCoordinateXPresent(varString);
   E_Int posy = K_ARRAY::isCoordinateYPresent(varString);
   E_Int posz = K_ARRAY::isCoordinateZPresent(varString);

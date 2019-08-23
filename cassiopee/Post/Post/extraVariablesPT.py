@@ -1,6 +1,6 @@
 # Calcul des autres variables de computeVariables
 
-import PyTree as P
+from . import PyTree as P
 import Converter.PyTree as C
 import Converter.Internal as Internal
 
@@ -58,7 +58,7 @@ def computeQCriterion(t):
             t2 = P.computeGrad(t2, 'VelocityZ')
 
     if presvx == -1: t2 = C.rmVars(t2, ['VelocityX','VelocityY','VelocityZ'])
-    t2 = C.initVars(t2, 'centers:QCriterion = -0.5*({centers:gradxVelocityX}*{centers:gradxVelocityX}+{centers:gradyVelocityY}*{centers:gradyVelocityY}+{centers:gradzVelocityZ}*{centers:gradzVelocityZ}+2*{centers:gradyVelocityX}*{centers:gradxVelocityY}+2*{centers:gradzVelocityX}*{centers:gradxVelocityZ}+2*{centers:gradzVelocityY}*{centers:gradyVelocityZ})')
+    t2 = C.initVars(t2, '{centers:QCriterion} = -0.5*({centers:gradxVelocityX}*{centers:gradxVelocityX}+{centers:gradyVelocityY}*{centers:gradyVelocityY}+{centers:gradzVelocityZ}*{centers:gradzVelocityZ}+2*{centers:gradyVelocityX}*{centers:gradxVelocityY}+2*{centers:gradzVelocityX}*{centers:gradxVelocityZ}+2*{centers:gradzVelocityY}*{centers:gradyVelocityZ})')
     if presgx == -1: t2 = C.rmVars(t2, vars0)
     return t2
 
@@ -110,12 +110,12 @@ def computeShearStress(t, gamma=1.4, rgp=287.053,
                 if presvxc == -1: t2 = C.rmVars(t2, ['centers:VelocityX','centers:VelocityY','centers:VelocityZ'])
 
 
-    t2 = C.initVars(t2, 'centers:ShearStressXX=-2./3.*{centers:ViscosityMolecular}*({centers:gradxVelocityX}+{centers:gradyVelocityY}+{centers:gradzVelocityZ})+2.*{centers:ViscosityMolecular}*{centers:gradxVelocityX}')
-    t2 = C.initVars(t2, 'centers:ShearStressYY=-2./3.*{centers:ViscosityMolecular}*({centers:gradxVelocityX}+{centers:gradyVelocityY}+{centers:gradzVelocityZ})+2.*{centers:ViscosityMolecular}*{centers:gradyVelocityY}')
-    t2 = C.initVars(t2, 'centers:ShearStressZZ=-2./3.*{centers:ViscosityMolecular}*({centers:gradxVelocityX}+{centers:gradyVelocityY}+{centers:gradzVelocityZ})+2.*{centers:ViscosityMolecular}*{centers:gradzVelocityZ}')
-    t2 = C.initVars(t2, 'centers:ShearStressXY={centers:ViscosityMolecular}*({centers:gradyVelocityX}+{centers:gradxVelocityY})')
-    t2 = C.initVars(t2, 'centers:ShearStressXZ={centers:ViscosityMolecular}*({centers:gradzVelocityX}+{centers:gradxVelocityZ})')
-    t2 = C.initVars(t2, 'centers:ShearStressYZ={centers:ViscosityMolecular}*({centers:gradzVelocityY}+{centers:gradyVelocityZ})')
+    t2 = C.initVars(t2, '{centers:ShearStressXX}=-2./3.*{centers:ViscosityMolecular}*({centers:gradxVelocityX}+{centers:gradyVelocityY}+{centers:gradzVelocityZ})+2.*{centers:ViscosityMolecular}*{centers:gradxVelocityX}')
+    t2 = C.initVars(t2, '{centers:ShearStressYY}=-2./3.*{centers:ViscosityMolecular}*({centers:gradxVelocityX}+{centers:gradyVelocityY}+{centers:gradzVelocityZ})+2.*{centers:ViscosityMolecular}*{centers:gradyVelocityY}')
+    t2 = C.initVars(t2, '{centers:ShearStressZZ}=-2./3.*{centers:ViscosityMolecular}*({centers:gradxVelocityX}+{centers:gradyVelocityY}+{centers:gradzVelocityZ})+2.*{centers:ViscosityMolecular}*{centers:gradzVelocityZ}')
+    t2 = C.initVars(t2, '{centers:ShearStressXY}={centers:ViscosityMolecular}*({centers:gradyVelocityX}+{centers:gradxVelocityY})')
+    t2 = C.initVars(t2, '{centers:ShearStressXZ}={centers:ViscosityMolecular}*({centers:gradzVelocityX}+{centers:gradxVelocityZ})')
+    t2 = C.initVars(t2, '{centers:ShearStressYZ}={centers:ViscosityMolecular}*({centers:gradzVelocityY}+{centers:gradyVelocityZ})')
 
     if presmuc==-1: t2 = C.rmVars(t2, ['centers:ViscosityMolecular'])
     if presgx ==-1: t2 = C.rmVars(t2,vars1)
@@ -144,7 +144,7 @@ def _computeWallShearStress(t):
         if presgx == 1: loc = 'centers'
         else:
            raise ValueError('gradxVelocity is required in tree.')
-        for nov in xrange(len(vars1)): 
+        for nov in range(len(vars1)): 
             vars1[nov]='centers:'+vars1[nov]
 
     [RoInf, RouInf, RovInf, RowInf, RoeInf, PInf, TInf, cvInf, MInf, ReInf, Cs, Gamma, RokInf, RoomegaInf, RonutildeInf, Mus, Cs, Ts, Pr] = C.getState(t)
@@ -164,21 +164,21 @@ def _computeWallShearStress(t):
                 varsRM += ['centers:Temperature']
                 P._computeVariables(t,['centers:Temperature'])
 
-            C._initVars(t,'centers:ViscosityMolecular=%5.12f*sqrt({centers:Temperature})/(1.+%5.12f/{centers:Temperature})'%(betas,Cs))
+            C._initVars(t,'{centers:ViscosityMolecular}=%5.12f*sqrt({centers:Temperature})/(1.+%5.12f/{centers:Temperature})'%(betas,Cs))
         # ShearStress tensor
         if dimPb == 3:
-            C._initVars(t,'centers:dummy={centers:gradxVelocityX}+{centers:gradyVelocityY}+{centers:gradzVelocityZ}')# du/dx+dv/dy+dw/dz
-            C._initVars(t, 'centers:ShearStressXX={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradxVelocityX})')
-            C._initVars(t, 'centers:ShearStressYY={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradyVelocityY})')
-            C._initVars(t, 'centers:ShearStressZZ={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradzVelocityZ})')
-            C._initVars(t, 'centers:ShearStressXY={centers:ViscosityMolecular}*({centers:gradyVelocityX}+{centers:gradxVelocityY})')
-            C._initVars(t, 'centers:ShearStressXZ={centers:ViscosityMolecular}*({centers:gradxVelocityZ}+{centers:gradzVelocityX})')
-            C._initVars(t, 'centers:ShearStressYZ={centers:ViscosityMolecular}*({centers:gradzVelocityY}+{centers:gradyVelocityZ})')
+            C._initVars(t,'{centers:dummy}={centers:gradxVelocityX}+{centers:gradyVelocityY}+{centers:gradzVelocityZ}')# du/dx+dv/dy+dw/dz
+            C._initVars(t, '{centers:ShearStressXX}={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradxVelocityX})')
+            C._initVars(t, '{centers:ShearStressYY}={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradyVelocityY})')
+            C._initVars(t, '{centers:ShearStressZZ}={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradzVelocityZ})')
+            C._initVars(t, '{centers:ShearStressXY}={centers:ViscosityMolecular}*({centers:gradyVelocityX}+{centers:gradxVelocityY})')
+            C._initVars(t, '{centers:ShearStressXZ}={centers:ViscosityMolecular}*({centers:gradxVelocityZ}+{centers:gradzVelocityX})')
+            C._initVars(t, '{centers:ShearStressYZ}={centers:ViscosityMolecular}*({centers:gradzVelocityY}+{centers:gradyVelocityZ})')
         else:
-            C._initVars(t,'centers:dummy={centers:gradxVelocityX}+{centers:gradyVelocityY}')# du/dx+dv/dy+dw/dz
-            C._initVars(t, 'centers:ShearStressXX={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradxVelocityX})')
-            C._initVars(t, 'centers:ShearStressYY={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradyVelocityY})')
-            C._initVars(t, 'centers:ShearStressXY={centers:ViscosityMolecular}*({centers:gradyVelocityX}+{centers:gradxVelocityY})')
+            C._initVars(t,'{centers:dummy}={centers:gradxVelocityX}+{centers:gradyVelocityY}')# du/dx+dv/dy+dw/dz
+            C._initVars(t, '{centers:ShearStressXX}={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradxVelocityX})')
+            C._initVars(t, '{centers:ShearStressYY}={centers:ViscosityMolecular}*(-2./3.*{centers:dummy}+2.*{centers:gradyVelocityY})')
+            C._initVars(t, '{centers:ShearStressXY}={centers:ViscosityMolecular}*({centers:gradyVelocityX}+{centers:gradxVelocityY})')
 
         if presgx == -1: varsRM+=vars1
             
@@ -192,21 +192,21 @@ def _computeWallShearStress(t):
             if prestemp == -1:
                 varsRM+=['Temperature']
                 P._computeVariables(t,['Temperature'])
-            C._initVars(t,'ViscosityMolecular=%5.12f*sqrt({Temperature})/(1.+%5.12f/{Temperature})'%(betas,Cs))
+            C._initVars(t,'{ViscosityMolecular}=%5.12f*sqrt({Temperature})/(1.+%5.12f/{Temperature})'%(betas,Cs))
         # ShearStress tensor
         if dimPb == 3:
-            C._initVars(t,'dummy={gradxVelocityX}+{gradyVelocityY}+{gradzVelocityZ}')# du/dx+dv/dy+dw/dz
-            C._initVars(t, 'ShearStressXX={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradxVelocityX})')
-            C._initVars(t, 'ShearStressYY={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradyVelocityY})')
-            C._initVars(t, 'ShearStressZZ={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradzVelocityZ})')
-            C._initVars(t, 'ShearStressXY={ViscosityMolecular}*({gradyVelocityX}+{gradxVelocityY})')
-            C._initVars(t, 'ShearStressXZ={ViscosityMolecular}*({gradxVelocityZ}+{gradzVelocityX})')
-            C._initVars(t, 'ShearStressYZ={ViscosityMolecular}*({gradzVelocityY}+{gradyVelocityZ})')
+            C._initVars(t,'{dummy}={gradxVelocityX}+{gradyVelocityY}+{gradzVelocityZ}')# du/dx+dv/dy+dw/dz
+            C._initVars(t, '{ShearStressXX}={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradxVelocityX})')
+            C._initVars(t, '{ShearStressYY}={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradyVelocityY})')
+            C._initVars(t, '{ShearStressZZ}={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradzVelocityZ})')
+            C._initVars(t, '{ShearStressXY}={ViscosityMolecular}*({gradyVelocityX}+{gradxVelocityY})')
+            C._initVars(t, '{ShearStressXZ}={ViscosityMolecular}*({gradxVelocityZ}+{gradzVelocityX})')
+            C._initVars(t, '{ShearStressYZ}={ViscosityMolecular}*({gradzVelocityY}+{gradyVelocityZ})')
         else:
-            C._initVars(t,'dummy={gradxVelocityX}+{gradyVelocityY}')# du/dx+dv/dy+dw/dz
-            C._initVars(t, 'ShearStressXX={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradxVelocityX})')
-            C._initVars(t, 'ShearStressYY={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradyVelocityY})')
-            C._initVars(t, 'ShearStressXY={ViscosityMolecular}*({gradyVelocityX}+{gradxVelocityY})')
+            C._initVars(t,'{dummy}={gradxVelocityX}+{gradyVelocityY}')# du/dx+dv/dy+dw/dz
+            C._initVars(t, '{ShearStressXX}={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradxVelocityX})')
+            C._initVars(t, '{ShearStressYY}={ViscosityMolecular}*(-2./3.*{dummy}+2.*{gradyVelocityY})')
+            C._initVars(t, '{ShearStressXY}={ViscosityMolecular}*({gradyVelocityX}+{gradxVelocityY})')
 
         if presgx  ==-1: varsRM+=vars1
     # end of shear stress tensor
@@ -217,7 +217,7 @@ def _computeWallShearStress(t):
 # Skin friction: input t must be a 2D mesh (skin)
 #==============================================================================
 def computeSkinFriction(t, centers=0, tangent=0):
-    try: import Generator.PyTree as G ; import KCore
+    try: import Generator.PyTree as G
     except: raise ImportError("computeExtraVariable: skinFriction requires Generator module.")
     t2 = Internal.copyRef(t)
     dimPb = Internal.getNodeFromName(t,'EquationDimension')
@@ -228,9 +228,9 @@ def computeSkinFriction(t, centers=0, tangent=0):
     centersShear = C.isNamePresent(t2, 'centers:ShearStressXX')
     if centersShear == 1: # centers
         if dimPb == 2:
-            C._initVars(t2, "centers:ShearStressXZ=0.")
-            C._initVars(t2, "centers:ShearStressYZ=0.")
-            C._initVars(t2, "centers:ShearStressZZ=0.")
+            C._initVars(t2, "centers:ShearStressXZ", 0.)
+            C._initVars(t2, "centers:ShearStressYZ", 0.)
+            C._initVars(t2, "centers:ShearStressZZ", 0.)
 
         # normal vector for faces
         pres1 = C.isNamePresent(t2, 'centers:sx')
@@ -245,9 +245,9 @@ def computeSkinFriction(t, centers=0, tangent=0):
             pres2n = C.isNamePresent(t2, 'SkinFrictionX')
             if pres2n > -1: t2 = C.node2Center(t2,['SkinFrictionX','SkinFrictionY','SkinFrictionZ'])     
             else:
-                t2 = C.initVars(t2, 'centers:SkinFrictionX={centers:ShearStressXX}*{centers:sx}+{centers:ShearStressXY}*{centers:sy}+{centers:ShearStressXZ}*{centers:sz}')
-                t2 = C.initVars(t2, 'centers:SkinFrictionY={centers:ShearStressXY}*{centers:sx}+{centers:ShearStressYY}*{centers:sy}+{centers:ShearStressYZ}*{centers:sz}')
-                t2 = C.initVars(t2, 'centers:SkinFrictionZ={centers:ShearStressXZ}*{centers:sx}+{centers:ShearStressYZ}*{centers:sy}+{centers:ShearStressZZ}*{centers:sz}')
+                t2 = C.initVars(t2, '{centers:SkinFrictionX}={centers:ShearStressXX}*{centers:sx}+{centers:ShearStressXY}*{centers:sy}+{centers:ShearStressXZ}*{centers:sz}')
+                t2 = C.initVars(t2, '{centers:SkinFrictionY}={centers:ShearStressXY}*{centers:sx}+{centers:ShearStressYY}*{centers:sy}+{centers:ShearStressYZ}*{centers:sz}')
+                t2 = C.initVars(t2, '{centers:SkinFrictionZ}={centers:ShearStressXZ}*{centers:sx}+{centers:ShearStressYZ}*{centers:sy}+{centers:ShearStressZZ}*{centers:sz}')
 
         if tangent == 1:
             pres3 = C.isNamePresent(t2, 'centers:SkinFrictionTangentialX')
@@ -256,9 +256,9 @@ def computeSkinFriction(t, centers=0, tangent=0):
                 if pres3n > -1:
                     t2 = C.node2Center(t2,['SkinFrictionTangentialX','SkinFrictionTangentialY','SkinFrictionTangentialZ'])   
                 else:
-                    t2 = C.initVars(t2, 'centers:SkinFrictionTangentialX={centers:SkinFrictionX} - {centers:sx}*({centers:SkinFrictionX}*{centers:sx}+{centers:SkinFrictionY}*{centers:sy}+{centers:SkinFrictionZ}*{centers:sz})')
-                    t2 = C.initVars(t2, 'centers:SkinFrictionTangentialY={centers:SkinFrictionY} - {centers:sy}*({centers:SkinFrictionX}*{centers:sx}+{centers:SkinFrictionY}*{centers:sy}+{centers:SkinFrictionZ}*{centers:sz})')
-                    t2 = C.initVars(t2, 'centers:SkinFrictionTangentialZ={centers:SkinFrictionZ} - {centers:sz}*({centers:SkinFrictionX}*{centers:sx}+{centers:SkinFrictionY}*{centers:sy}+{centers:SkinFrictionZ}*{centers:sz})')
+                    t2 = C.initVars(t2, '{centers:SkinFrictionTangentialX}={centers:SkinFrictionX} - {centers:sx}*({centers:SkinFrictionX}*{centers:sx}+{centers:SkinFrictionY}*{centers:sy}+{centers:SkinFrictionZ}*{centers:sz})')
+                    t2 = C.initVars(t2, '{centers:SkinFrictionTangentialY}={centers:SkinFrictionY} - {centers:sy}*({centers:SkinFrictionX}*{centers:sx}+{centers:SkinFrictionY}*{centers:sy}+{centers:SkinFrictionZ}*{centers:sz})')
+                    t2 = C.initVars(t2, '{centers:SkinFrictionTangentialZ}={centers:SkinFrictionZ} - {centers:sz}*({centers:SkinFrictionX}*{centers:sx}+{centers:SkinFrictionY}*{centers:sy}+{centers:SkinFrictionZ}*{centers:sz})')
 
             if pres2 == -1: t2 = C.rmVars(t2, ['centers:SkinFrictionX', 'centers:SkinFrictionY', 'centers:SkinFrictionZ'])
         if pres1 == -1: t2 = C.rmVars(t2, ['centers:sx', 'centers:sy', 'centers:sz'])
@@ -276,9 +276,9 @@ def computeSkinFriction(t, centers=0, tangent=0):
 
     else: # node
         if dimPb == 2:
-            C._initVars(t2, 'ShearStressXZ=0.')
-            C._initVars(t2, 'ShearStressYZ=0.')
-            C._initVars(t2, 'ShearStressZZ=0.')
+            C._initVars(t2, 'ShearStressXZ', 0.)
+            C._initVars(t2, 'ShearStressYZ', 0.)
+            C._initVars(t2, 'ShearStressZZ', 0.)
 
         pres3 = C.isNamePresent(t2, 'sx')
         if pres3 == -1:
@@ -295,14 +295,14 @@ def computeSkinFriction(t, centers=0, tangent=0):
             if pres2n > -1:
                 t2 = C.center2Node(t2, ['centers:SkinFrictionX','centers:SkinFrictionY','centers:SkinFrictionZ'])
             else:
-                t2=C.initVars(t2, 'SkinFrictionX={ShearStressXX}*{sx}+{ShearStressXY}*{sy}+{ShearStressXZ}*{sz}')
-                t2=C.initVars(t2, 'SkinFrictionY={ShearStressXY}*{sx}+{ShearStressYY}*{sy}+{ShearStressYZ}*{sz}')
-                t2=C.initVars(t2, 'SkinFrictionZ={ShearStressXZ}*{sx}+{ShearStressYZ}*{sy}+{ShearStressZZ}*{sz}')
+                t2=C.initVars(t2, '{SkinFrictionX}={ShearStressXX}*{sx}+{ShearStressXY}*{sy}+{ShearStressXZ}*{sz}')
+                t2=C.initVars(t2, '{SkinFrictionY}={ShearStressXY}*{sx}+{ShearStressYY}*{sy}+{ShearStressYZ}*{sz}')
+                t2=C.initVars(t2, '{SkinFrictionZ}={ShearStressXZ}*{sx}+{ShearStressYZ}*{sy}+{ShearStressZZ}*{sz}')
         
         if tangent == 1:
-            t2 = C.initVars(t2, 'SkinFrictionTangentialX={SkinFrictionX} - {sx}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
-            t2 = C.initVars(t2, 'SkinFrictionTangentialY={SkinFrictionY} - {sy}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
-            t2 = C.initVars(t2, 'SkinFrictionTangentialZ={SkinFrictionZ} - {sz}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
+            t2 = C.initVars(t2, '{SkinFrictionTangentialX}={SkinFrictionX} - {sx}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
+            t2 = C.initVars(t2, '{SkinFrictionTangentialY}={SkinFrictionY} - {sy}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
+            t2 = C.initVars(t2, '{SkinFrictionTangentialZ}={SkinFrictionZ} - {sz}*({SkinFrictionX}*{sx}+{SkinFrictionY}*{sy}+{SkinFrictionZ}*{sz})')
             if pres2 == -1:
                 t2 = C.rmVars(t2, ['SkinFrictionX', 'SkinFrictionY', 'SkinFrictionZ'])
         if pres3 == -1: t2 = C.rmVars(t2, ['sx', 'sy', 'sz'])

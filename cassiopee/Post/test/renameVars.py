@@ -10,4 +10,4 @@ m = C.initVars(m, 'rou', 1.)
 
 # Rename a list of variables
 m2 = P.renameVars(m, ['ro','rou'], ['Density','MomentumX'])
-C.convertArrays2File([m2], "out.plt")
+C.convertArrays2File(m2, "out.plt")

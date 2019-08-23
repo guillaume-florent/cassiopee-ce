@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -38,6 +38,17 @@ ngon_unit::ngon_unit(const E_Int* begin):_dirty(true)
 }
 
 ///
+ngon_unit::ngon_unit(const E_Int* begin, E_Int sz, E_Int nbe):_dirty(true)
+{
+  const E_Int* end = begin+sz;
+  _NGON.clear();
+  _NGON.resize(2, 0);
+  _NGON.insert(_NGON.end(), begin, end);
+  _NGON[0]=nbe;
+  _NGON[1]=sz;         
+}
+
+///
 void ngon_unit::updateFacets() const
 {
   if (_dirty && !_NGON.empty())
@@ -67,13 +78,29 @@ ngon_unit::ngon_unit(const ngon_unit& ngin)
 }
 
 ///
-bool ngon_unit::is_consistent() const
+bool ngon_unit::attributes_are_consistent() const
 {
   if (!_type.empty() && _type.size() != _facet.size())
     return false;
   if (_ancEs.cols() != 0 && _ancEs.cols() != (E_Int)_facet.size())
     return false;
   return true;
+}
+
+void ngon_unit::get_stride_extrema(E_Int& mins, E_Int& maxs) const
+{
+  updateFacets();
+
+  E_Int nb_pg(size());
+  maxs = -1;
+  mins = -1;
+  // Loop through the elements and increment face_count
+  for (E_Int i = 0; i < nb_pg; ++i)
+  {
+    E_Int s = stride(i);
+    mins = (mins == -1 || s < mins) ? s : mins;
+    maxs = (maxs < s) ? s : maxs;
+  }
 }
 
 
@@ -144,6 +171,10 @@ void ngon_unit::append(const ngon_unit& cngon_in)
     else
       _dirty=true;
   }
+ 
+#ifdef DEBUG_NGON_UNIT
+  assert(this->attributes_are_consistent());
+#endif
 }
 
 void ngon_unit::append(const ngon_unit& cngon_in, const E_Int* first, E_Int nb_elts)
@@ -155,6 +186,11 @@ void ngon_unit::append(const ngon_unit& cngon_in, const E_Int* first, E_Int nb_e
   
   for (E_Int i=0; i < nb_elts; ++i)
     __add(cngon_in, *(first+i)-1);
+  
+#ifdef DEBUG_NGON_UNIT
+  assert(this->attributes_are_consistent());
+#endif
+  
 }
 
 ///
@@ -228,14 +264,14 @@ E_Int ngon_unit::remove_entities (const Vector_t<E_Int>& to_remove, Vector_t<E_I
   updateFacets();
   
 #ifdef DEBUG_NGON_UNIT
-  assert(this->is_consistent());
+  assert(this->attributes_are_consistent());
 #endif
   
   return sz-size();
 }
 
 ///
-void ngon_unit::remove_facets(const Vector_t<E_Int>& nfacids, Vector_t<E_Int>& nids, E_Int min_facet_nb) //0-based nids
+E_Int ngon_unit::remove_facets(const Vector_t<E_Int>& nfacids, Vector_t<E_Int>& nids, E_Int min_facet_nb) //0-based nids
 {
 
   ngon_unit ngu;
@@ -254,8 +290,13 @@ void ngon_unit::remove_facets(const Vector_t<E_Int>& nfacids, Vector_t<E_Int>& n
   {
     E_Int nb_facets = this->stride(i);
     if (nb_facets == 0) //fixme : required ?
+    {
+#ifdef DEBUG_NGON_UNIT
+      std::cout << i << "-th entity is stored with 0 facet !" << std::endl;
+#endif
       continue;
-    
+    }
+
     const E_Int* facets = this->get_facets_ptr(i);
     
     molecule.clear();
@@ -271,7 +312,7 @@ void ngon_unit::remove_facets(const Vector_t<E_Int>& nfacids, Vector_t<E_Int>& n
         std::cout << "elt : " <<  f << std::endl;
         std::cout << "elt stride : " << nb_facets << std::endl;
         std::cout << "BOUM : " << Fi << std::endl;
-        return ;
+        return 0;
       }
 #endif
       if (nfacids[Fi] == E_IDX_NONE)
@@ -279,7 +320,7 @@ void ngon_unit::remove_facets(const Vector_t<E_Int>& nfacids, Vector_t<E_Int>& n
       molecule.push_back(nfacids[Fi]+1);
     }
     molecule[0] = molecule.size() - 1;
-    if (molecule[0]>min_facet_nb)//i.e has at least one valid face.
+    if (molecule[0]>min_facet_nb)//i.e has at least one valid facet (a PH has at least one PG, a PG has at least 3 nodes).
     {
       ngu.add(molecule);
       nids[i]=++count;
@@ -287,12 +328,15 @@ void ngon_unit::remove_facets(const Vector_t<E_Int>& nfacids, Vector_t<E_Int>& n
     else if (min_facet_nb > 0)
     {
       ++degen;
-      ngu.add(nb_facets, facets);
+
+#ifdef DEBUG_NGON_UNIT
+      std::cout << "degen ! " <<  i << std::endl;
+#endif
     }
 #ifdef DEBUG_NGON_UNIT
     else
     {
-      std::cout << "warning ! " << std::endl;
+      std::cout << "warning ! " <<  i << std::endl;
     }
 #endif
   }
@@ -301,6 +345,12 @@ void ngon_unit::remove_facets(const Vector_t<E_Int>& nfacids, Vector_t<E_Int>& n
   ngu.compact_attributes(*this, nids);
 
   *this = ngu;
+  
+#ifdef DEBUG_NGON_UNIT
+  assert(this->attributes_are_consistent());
+#endif
+
+  return (nb_elts - ngu.size());// the diff tells if some there wer some degen
 }
   
 ///
@@ -377,7 +427,7 @@ void ngon_unit::extract
 void ngon_unit::extract_of_type (E_Int FLAG, ngon_unit& ng_out, Vector_t<E_Int>& oldIds) const
 {
 #ifdef DEBUG_NGON_UNIT
-  assert ( is_consistent());
+  assert ( attributes_are_consistent());
 #endif
   
   Vector_t<E_Int> indices;
@@ -513,6 +563,12 @@ E_Int ngon_unit::remove_duplicated()
   
   *this=ngtmp;
   
+#ifdef DEBUG_NGON_UNIT
+  assert(this->attributes_are_consistent());
+#endif
+  
+  updateFacets();
+  
   return this->_NGON[1] - prev_sz;
 }
 
@@ -576,6 +632,10 @@ E_Int ngon_unit::remove_consecutive_duplicated()
   
   *this=ngtmp;
   
+#ifdef DEBUG_NGON_UNIT
+  assert(this->attributes_are_consistent());
+#endif
+  
   return ngtmp._NGON[1] - prev_sz;
 }
 
@@ -631,7 +691,7 @@ void ngon_unit::change_indices (const Vector_t<E_Int>& nIds, bool zerobased)
   }
 }
 
-bool ngon_unit::is_fixed_stride(E_Int& strd)
+bool ngon_unit::is_fixed_stride(E_Int& strd) const
 {
   updateFacets();
   
@@ -671,6 +731,28 @@ void ngon_unit::convert_fixed_stride_to_ngon_unit(const K_FLD::IntArray&cnt, E_I
   nguo.updateFacets();
 }
 
+void ngon_unit::convert_ngon_unit_to_fixed_stride(const ngon_unit& ngui, E_Int shift, K_FLD::IntArray& cnto)
+{
+  if (ngui.size() == 0) return;
+  //
+  E_Int stride;
+  if (!ngui.is_fixed_stride(stride))
+    return;
+  
+  E_Int nb_elts = ngui.size();
+  
+  cnto.clear();
+  cnto.resize(stride, nb_elts);
+
+  for (E_Int i = 0; i < nb_elts; ++i)
+  {
+    const E_Int* p = ngui.get_facets_ptr(i);
+    
+    for (E_Int j=0; j < stride; ++j)
+      cnto(j,i)=*(p+j)-shift;
+  }
+}
+
 /// transfer attribute (reduction)
 void ngon_unit::compact_attributes(const ngon_unit& ngi, const Vector_t<E_Int>& nids)
 {
@@ -691,7 +773,7 @@ void ngon_unit::compact_attributes(const ngon_unit& ngi, const Vector_t<E_Int>& 
   this->updateFacets();
 
 #ifdef DEBUG_NGON_UNIT
-    assert(is_consistent());
+    assert(attributes_are_consistent());
 #endif
 }
 
@@ -701,7 +783,7 @@ void ngon_unit::compact_attributes(const ngon_unit& ngi, const Vector_t<bool>& k
   if (ngi._type.empty() && (ngi._ancEs.cols() == 0)) return;
   
   //transfer externality
-  K_CONNECT::keep pred(keep);
+  K_CONNECT::keep<bool> pred(keep);
   
   if (!ngi._type.empty())
   {
@@ -717,7 +799,7 @@ void ngon_unit::compact_attributes(const ngon_unit& ngi, const Vector_t<bool>& k
   this->updateFacets();
   
 #ifdef DEBUG_NGON_UNIT
-    assert(is_consistent());
+    assert(attributes_are_consistent());
 #endif
 }
 
@@ -731,8 +813,8 @@ void ngon_unit::spread_attributes(const ngon_unit& ngi, const Vector_t<E_Int>& o
   if (sz == 0) return;
 
 #ifdef DEBUG_NGON_UNIT
-  assert(ngi.is_consistent());
-  assert (is_consistent());
+  assert(ngi.attributes_are_consistent());
+  assert (attributes_are_consistent());
   assert(_facet.size() == sz);
 #endif
 
@@ -756,6 +838,33 @@ void ngon_unit::spread_attributes(const ngon_unit& ngi, const Vector_t<E_Int>& o
   this->updateFacets();
 
 #ifdef DEBUG_NGON_UNIT
-  assert(is_consistent());
+  assert(attributes_are_consistent());
 #endif
+}
+
+void ngon_unit::sort_by_type(Vector_t<E_Int>& nids, Vector_t<E_Int>& oids) const
+{
+  using type_to_oid_t = std::pair<E_Int, E_Int>;
+  
+  size_t sz = _type.size();
+  
+  Vector_t<type_to_oid_t> type_to_oid(sz);
+  
+  for (size_t i=0; i < sz; ++i)
+  {
+    type_to_oid[i].first = _type[i];
+    type_to_oid[i].second = i;
+  }
+  
+  std::sort(type_to_oid.begin(), type_to_oid.end());
+  
+  nids.clear();
+  nids.resize(sz, E_IDX_NONE);
+  oids.clear();
+  oids.resize(sz, E_IDX_NONE);
+  
+  for (size_t i=0; i < sz; ++i){
+    nids[type_to_oid[i].second] = i;
+    oids[i] = type_to_oid[i].second;
+  }
 }

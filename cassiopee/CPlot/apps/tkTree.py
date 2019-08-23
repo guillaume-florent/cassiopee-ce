@@ -1,14 +1,20 @@
 # - tkTree -
 # View a pyTree in a tree widget
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
 import tkTreeOps # for node inspector
 import Converter.Internal as Internal
-import Tkdnd # drag and drop
+try: import Tkdnd # drag and drop
+except: import tkinter.dnd as Tkdnd
 import numpy
+
+from sys import version_info
+try: range = xrange
+except: pass
 
 # local widgets list
 STATUS = 0
@@ -486,7 +492,10 @@ class Node:
             self.PVT_highlight(item)
         elif event.keysym == "Return":
             pid = self.id
+            # Change the node name
             pid[0] = sw.itemcget(item, "text")
+            try: tkTreeOps.updateNode(pid)
+            except: pass
             sw.focus('')
             sw.select_clear()
             sw.delete("highlight")
@@ -565,7 +574,7 @@ class Node:
                         break
                     
             nodes = Internal.getZones(CTK.t)
-            for no in xrange(len(nodes)): activated.append((no, s))
+            for no in range(len(nodes)): activated.append((no, s))
            
             if s == 0: CTK.TXT.insert('START', 'Tree deactivated.\n')
             elif s == 1: CTK.TXT.insert('START', 'Tree activated.\n')
@@ -576,7 +585,7 @@ class Node:
             for b in bases:
                 zones = Internal.getNodesFromType1(b, 'Zone_t')
                 for z in zones:
-                    if (id(z) == id(pid)): ret = b; break
+                    if id(z) == id(pid): ret = b; break
             noz = CPlot.getCPlotNumber(CTK.t, ret[0], pid[0])
             active = CPlot.getActiveStatus(noz)
             if active == 1:
@@ -642,7 +651,8 @@ class Node:
             
     def PVT_displayNode(self, clear=False):
         pid = self.id
-        tkTreeOps.updateNode(pid)
+        try: tkTreeOps.updateNode(pid)
+        except: pass
 
         if pid[3] == 'CGNSLibraryVersion_t':
             v = pid[1]
@@ -673,7 +683,7 @@ class Node:
             nodes = Internal.getZones(CTK.t)
             if clear: CPlot.unselectAllZones(); s = 1 # force select
             selected = []
-            for no in xrange(len(nodes)): selected.append((no, s))
+            for no in range(len(nodes)): selected.append((no, s))
             
             CPlot.setSelectedZones(selected)
             if s == 1: CTK.TXT.insert('START', 'Tree selected.\n')
@@ -764,7 +774,7 @@ class Node:
                 (ret[0][0] == Internal.__FlowSolutionNodes__ or
                  ret[0][0] == Internal.__FlowSolutionCenters__)):
                 field = pid[0]
-                if (ret[0][0] == Internal.__FlowSolutionCenters__):
+                if ret[0][0] == Internal.__FlowSolutionCenters__:
                     field = 'centers:'+field
                 vars = C.getVarNames(CTK.t)[0]
                 ifield = 0; lenvars = 0
@@ -1066,7 +1076,7 @@ tcuom2foARAAyKRSmQAAOw==
                 (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
                 CPlot.delete(deletedZoneNames)
                 CPlot.render()
-        elif (id[3] == 'Zone_t'): # efface une zone
+        elif id[3] == 'Zone_t': # efface une zone
             ret = Internal.getParentOfNode(CTK.t, id)
             deletedZoneNames = [ret[0][0]+Internal.SEP1+id[0]]
             del ret[0][2][ret[1]]
@@ -1086,7 +1096,8 @@ tcuom2foARAAyKRSmQAAOw==
         """Keep track of callback bindings so we can delete them later. I
         shouldn't have to do this!!!!"""
         # pass args to superclass
-        func_id = apply(TK.Canvas.tag_bind, (self, tag, seq)+args, kw_args)
+        aargs = (self, tag, seq)+args
+        func_id = TK.Canvas.tag_bind(*aargs, **kw_args)
         # save references
         self.bindings[tag] = self.bindings.get(tag, [])+[(seq, func_id)]
 
@@ -1120,17 +1131,17 @@ tcuom2foARAAyKRSmQAAOw==
     def add_node(self, name=None, id=None, flag=0, expanded_icon=None,
                  collapsed_icon=None):
         """Add a node during get_contents_callback()"""
-        if (id is not None and len(id) >= 4):
-            if (id[3] == 'Zone_t'): 
+        if id is not None and len(id) >= 4:
+            if id[3] == 'Zone_t': 
                 collapsed_icon = self.collapsed_zone
                 expanded_icon = self.expanded_zone
-            elif (id[3] == 'CGNSBase_t'):
+            elif id[3] == 'CGNSBase_t':
                 collapsed_icon = self.collapsed_base
                 expanded_icon = self.expanded_base
-            elif (id[3] == 'Family_t' or id[3] == 'FamilyName_t'):
+            elif id[3] == 'Family_t' or id[3] == 'FamilyName_t':
                 collapsed_icon = self.collapsed_family
                 expanded_icon = self.expanded_family
-            elif (id[3] == 'UserDefinedData_t' and len(id[2])>0):
+            elif id[3] == 'UserDefinedData_t' and len(id[2])>0:
                 collapsed_icon = self.collapsed_user
                 expanded_icon = self.expanded_user
         self.add_list(self.new_nodes, name, id, flag, expanded_icon,
@@ -1146,7 +1157,8 @@ tcuom2foARAAyKRSmQAAOw==
         
     def see(self, *items):
         """Scroll (in a series of nudges) so items are visible"""
-        x1, y1, x2, y2 = apply(self.bbox, items)
+        x1, y1, x2, y2 = self.bbox(*items)
+        
         while x2 > self.canvasx(0)+self.winfo_width():
             old = self.canvasx(0)
             self.xview('scroll', 1, 'units')
@@ -1243,6 +1255,7 @@ tcuom2foARAAyKRSmQAAOw==
         aw = int(self.cget("width"))+10 # 230
         ah = int(self.cget("height"))+10 # 210
         self.config(width=aw, height=ah)
+
     def shrinkCanvas(self, event=None):
         aw = max(int(self.cget("width"))-10,230) # 230
         ah = max(int(self.cget("height"))-10,210) # 210
@@ -1393,7 +1406,7 @@ def createApp(win):
     # - Frame -
     Frame = TTK.LabelFrame(win, border=2, relief=CTK.FRAMESTYLE,
                            text='tkTree', font=CTK.FRAMEFONT)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.columnconfigure(0, weight=1)
     WIDGETS['frame'] = Frame
 
@@ -1413,8 +1426,8 @@ def createApp(win):
     Frame2.grid(sticky=TK.EW)
 
     aw = 230; ah = 210
-    if CTK.PREFS.has_key('tkTreeWidth'): aw = CTK.PREFS['tkTreeWidth']
-    if CTK.PREFS.has_key('tkTreeHeight'): aw = CTK.PREFS['tkTreeHeight']
+    if 'tkTreeWidth' in CTK.PREFS: aw = CTK.PREFS['tkTreeWidth']
+    if 'tkTreeHeight' in CTK.PREFS: aw = CTK.PREFS['tkTreeHeight']
 
     # - Tree -
     B = Tree(master=Frame2,
@@ -1446,7 +1459,7 @@ def onMouseWheel(event):
     tree = WIDGETS['tree']
     if event.num == 5 or event.delta == -120:
         tree.yview('scroll', +1, 'units')
-    elif (event.num == 4 or event.delta == 120):
+    elif event.num == 4 or event.delta == 120:
         tree.yview('scroll', -1, 'units')
 
 #==============================================================================
@@ -1474,7 +1487,7 @@ def updateApp():
         for c in oldChildren:
             children = c.children()
             if len(children) > 0: OPENBASES[c.get_label()] = 1
-            if (c.widget.pos == c): SELECTED = c.get_label(); LEVSEL = 0 
+            if c.widget.pos == c: SELECTED = c.get_label(); LEVSEL = 0 
             ZONES = {}; NODES = []
             for d in children:
                 children2 = d.children()
@@ -1495,6 +1508,7 @@ def updateApp():
 
         oldTree.clear()
         oldTree.root.widget.delete(oldTree.root.symbol)
+        oldTree.root.id = None
 
         W.root = W.node_class(
             parent_node=None, label='tree',
@@ -1503,34 +1517,35 @@ def updateApp():
             expanded_icon=W.expanded_icon,
             x=W.dist_x, y=W.dist_y,
             parent_widget=W)
+
         newRoot = W.root
         if OPENTREE: newRoot.expand()
         children = newRoot.children()
         bcount = 0
         for c in children: # Bases
-            if OPENBASES.has_key(c.get_label()): c.expand()
-            if (LEVSEL == 0 and c.get_label() == SELECTED): 
+            if c.get_label() in OPENBASES: c.expand()
+            if LEVSEL == 0 and c.get_label() == SELECTED: 
                 c.widget.move_cursor(c)
 
             children2 = c.children()
             zcount = 0
             for d in children2: # Zones
                 dlabel = d.get_label()
-                if OPENZONES[bcount].has_key(dlabel): d.expand()
-                if (LEVSEL == 1 and dlabel == SELECTED): d.widget.move_cursor(d)
+                if dlabel in OPENZONES[bcount]: d.expand()
+                if LEVSEL == 1 and dlabel == SELECTED: d.widget.move_cursor(d)
                 children3 = d.children()
                 for e in children3:
                     elabel = e.get_label()
-                    if OPENNODES[bcount][zcount].has_key(elabel): 
+                    if elabel in OPENNODES[bcount][zcount]: 
                         e.expand()
-                    if (LEVSEL == 2 and elabel == SELECTED): 
+                    if LEVSEL == 2 and elabel == SELECTED: 
                         e.widget.move_cursor(e)
                     children4 = e.children()
                     for f in children4:
-                        if (LEVSEL == 3 and f.get_label() == SELECTED): 
+                        if LEVSEL == 3 and f.get_label() == SELECTED: 
                             f.widget.move_cursor(f)
-                if (len(children3) > 0): zcount += 1
-            if (len(children2) > 0): bcount += 1
+                if len(children3) > 0: zcount += 1
+            if len(children2) > 0: bcount += 1
 
 #==============================================================================
 def saveApp():
@@ -1549,7 +1564,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 # Renvoit le noeud selectionne dans le tktree
 # Retourne le noeud sous forme de l'arbre CGNS
@@ -1579,9 +1594,9 @@ def shrinkCanvas():
     WIDGETS['tree'].shrinkCanvas()
 
 #==============================================================================
-if (__name__ == "__main__"):
+if __name__ == "__main__":
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

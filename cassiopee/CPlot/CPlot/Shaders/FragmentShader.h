@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -27,10 +27,11 @@ namespace CPlot
   {
   public:
     FragmentShader();
-    FragmentShader(const FragmentShader& shader);
+    FragmentShader( const std::string& src );
+    FragmentShader(const FragmentShader& shader) = delete;
     virtual ~FragmentShader();
 
-    const FragmentShader& operator = ( const FragmentShader& shader);
+    const FragmentShader& operator = ( const FragmentShader& shader) = delete;
   };
 }
 

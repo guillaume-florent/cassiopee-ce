@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -71,8 +71,8 @@ PyObject* K_CPLOT::add(PyObject* self, PyObject* args)
   E_Int ni, nj, nk;
   FldArrayF* f; FldArrayI* cn;
   char* varString; char* eltType;
-  E_Int res = K_ARRAY::getFromArray(array, varString, f, 
-                                    ni, nj, nk, cn, eltType, true);
+  E_Int res = K_ARRAY::getFromArray2(array, varString, f, 
+                                     ni, nj, nk, cn, eltType);
 
   if (res != 1 && res != 2) 
   {
@@ -103,7 +103,23 @@ PyObject* K_CPLOT::add(PyObject* self, PyObject* args)
   UnstructZone** uzonesp = d->_uzones;
 
   Zone* referenceZone = NULL;
-  if (numberOfZones > 0) referenceZone = zonesp[0];
+  E_Int referenceNfield = -1;
+  char** referenceVarNames = NULL;
+  if (numberOfZones > 0)
+  {
+    referenceZone = zonesp[0];
+    referenceNfield = referenceZone->nfield;
+    referenceVarNames = new char* [referenceNfield];
+    for (E_Int i = 0; i < referenceNfield; i++) 
+    {
+      referenceVarNames[i] = new char [MAXSTRINGLENGTH];
+      strcpy(referenceVarNames[i], referenceZone->varnames[i]);
+    } 
+  }
+  //printf("referenceNfield=%d\n", referenceNfield);
+  //printf("numberOfZones=%d\n", numberOfZones);
+  //printf("numberOfStructZones=%d\n", numberOfStructZones);
+  //printf("numberOfUnstrZones=%d\n", numberOfUnstructZones);
 
   // malloc nouveaux pointeurs (copie)
   Zone** zones = (Zone**)malloc(numberOfZones*sizeof(Zone*));
@@ -124,7 +140,8 @@ PyObject* K_CPLOT::add(PyObject* self, PyObject* args)
       d->createStructZone(f, varString,
                           posx+1, posy+1, posz+1,
                           ni, nj, nk,
-                          zoneName, zoneTagI, referenceZone);
+                          zoneName, zoneTagI, 
+                          referenceNfield, referenceVarNames, 1);
     insertAfterNz(zonesp, numberOfZones, zones, nzs, zz);
   }
   else // res=2
@@ -140,7 +157,8 @@ PyObject* K_CPLOT::add(PyObject* self, PyObject* args)
       d->createUnstrZone(f, varString,
                          posx+1, posy+1, posz+1,
                          cn, eltType,
-                         zoneName, zoneTagI, referenceZone);
+                         zoneName, zoneTagI, 
+                         referenceNfield, referenceVarNames, 1);
     insertAfterNz(zonesp, numberOfZones, zones, numberOfStructZones+nzu, zz);
   }
 
@@ -194,6 +212,9 @@ PyObject* K_CPLOT::add(PyObject* self, PyObject* args)
 
   // Free the input array
   RELEASESHAREDB(res, array, f, cn);
+
+  for (E_Int i = 0; i < referenceNfield; i++) delete [] referenceVarNames[i];
+  delete [] referenceVarNames;
 
   return Py_BuildValue("i", KSUCCESS);
 }

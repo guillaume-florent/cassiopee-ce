@@ -9,7 +9,7 @@ import KCore.test as test
 ni = 21; nj = 21; nk = 21
 m = G.cart((0,0,0), (1./(ni-1),1./(nj-1),1./(nk-1)), (ni,nj,nk))
 hook = C.createGlobalHook([m],function='nodes')
-sol = C.initVars(m, 'ro={x}')
+sol = C.initVars(m, '{ro}={x}')
 sol = C.extractVars(sol,['ro'])
 
 # RCV Structure
@@ -36,7 +36,7 @@ m[2] = C.convertArray2Tetra(m[2])
 m[10] = C.convertArray2Hexa(m[10])
 m[nzones-1] = C.convertArray2NGon(m[nzones-1])
 hook = C.createGlobalHook(m,function='nodes')
-sol = C.initVars(m, 'ro={x}')
+sol = C.initVars(m, '{ro}={x}')
 sol = C.extractVars(sol,['ro'])
 a = D.sphere((0,0,0),0.1)
 # RCV Structure 

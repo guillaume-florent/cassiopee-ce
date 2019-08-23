@@ -38,7 +38,7 @@
           if      (s0 == 1){ ipt_ndimdxR[nd + nidomR]= d[0]          ; ipt_ndimdxR[nd]= d[3];           }
           else if (s0 == 2){ ipt_ndimdxR[nd + nidomR]= d[0]*d[1]     ; ipt_ndimdxR[nd]= d[3]*d[4];      }
           else if (s0 == 3){ ipt_ndimdxR[nd + nidomR]= d[0]*d[1]*d[2]; ipt_ndimdxR[nd]= d[3]*d[4]*d[5]; }
-
+          
           /*E_Int shift = 0; if(loc == 1) shift =1;
           if      (s0 == 1) { ndimdxR= d[0+shift];          }
           else if (s0 == 2) { ndimdxR= d[0+shift]*d[1+shift];     } 

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -114,10 +114,13 @@ public:
   const std::vector<E_Int>& get_node_history(){return _node_history;}
   ///
   virtual ~Conformizer(){}
+  
+public://fixme
+  bool _split_swap_afterwards; // TRI specific
 
 protected:
   ///
-  Conformizer(bool wnh = false):_absolute_tol(true)/*fixme : no choice yet*/, _with_node_history(wnh), _X0(0){}
+  Conformizer(bool wnh = false): _split_swap_afterwards(false), _absolute_tol(true)/*fixme : no choice yet*/, _with_node_history(wnh), _X0(0) {}
   
   // Methods to override : interface to implement
 protected:
@@ -144,6 +147,9 @@ public:
   /// Hook inside __run to merge toward the intersection line (TRI)
   virtual E_Int __simplify_and_clean(const K_FLD::FloatArray& pos, E_Float tolerance, K_FLD::IntArray& connect,
                                      K_CONT_DEF::int_vector_type& ancestors, K_CONT_DEF::bool_vector_type& xc){return 0;}
+  /// Hook inside __run to merge toward the intersection line (TRI)
+  virtual E_Int __simplify_and_clean2(const K_FLD::FloatArray& pos, E_Float tolerance, K_FLD::IntArray& connect,
+    K_CONT_DEF::int_vector_type& ancestors, K_CONT_DEF::bool_vector_type& xc){return 0;}
   /// Hook inside run after the loop to manage overlapping zones
   virtual void __run_correction_beta(const K_FLD::FloatArray& pos, K_FLD::IntArray& connect,
                                      K_CONT_DEF::int_vector_type& ancestors, 
@@ -237,7 +243,7 @@ public:
   std::vector<E_Int> _node_history;
   E_Int _N0;
   K_FLD::IntArray _connect0;
-  E_Int _X0;// start testing from that id (when 2 valid input mesh, avoid self-X tests)
+  E_Int _X0; // start testing from that id (when 2 valid input mesh, avoid self-X tests)
   E_Int _itermax;
   bool _needs_another_iter;
   bool _one_pass_mode;

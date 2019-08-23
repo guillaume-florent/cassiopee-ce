@@ -34,7 +34,8 @@ if [ $? -eq 0 ]; then
     fi
     scons install prefix="$INSTALLPATH" "$SCONSOPT"
     [ $? != 0 ] && exit;
-    touch CPlot/cplot.cpp
+    #touch CPlot/cplot.cpp
+    rm -f build/lib.*/CPlot/cplot.*
     python setupScons.py install --prefix="$INSTALLPATH"
 else
     python setup.py install --prefix="$INSTALLPATH"
@@ -44,6 +45,7 @@ cp test/cplot.py "$INSTALLPATH"
 # Copie les applications
 cp apps/*.py "$INSTALLPATH"
 cp apps/cassiopee "$INSTALLPATH"
+cp apps/appCassiopee "$INSTALLPATH"
 cp apps/CCC "$INSTALLPATH"
 cp apps/cassiopee.bat "$INSTALLPATH"
 cp apps/cassiopeeRunWin32.bat "$INSTALLPATH"

@@ -19,12 +19,12 @@ sphere = G.close(sphere)
 t = C.newPyTree(['Base']); t[2][1][2] = [a]
 #
 NIT = 10
-for it in xrange(NIT):
+for it in range(NIT):
     T._translate(sphere,(0.1*it,0,0))
     C._initVars(t,"cellN",1.)
     t = X.blankCells(t, [[sphere]], numpy.array([[1]]), blankingType='node_in')
     t = X.setHoleInterpolatedPoints(t,depth=1,loc='nodes')
-    C._initVars(t,'flag=({cellN}>1.)')
+    C._initVars(t,'{flag}=({cellN}>1.)')
     tc = Internal.copyRef(t)
     t = DTW.distance2WallsEikonal(t,sphere,tc=tc,DEPTH=DEPTH,nitmax=10)
 C.convertPyTree2File(t, 'out.cgns')

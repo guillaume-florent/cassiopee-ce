@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -38,7 +38,7 @@ void DataDL::renderGPUUSolidZone(UnstructZone* zonep, int zone, int zonet)
 #include "solidStyles.h"
   
   // Ecrasement si renderTag
-  if (zonep->colorR != -1.)
+  if (zonep->colorR > -0.5)
   {color1[0] = zonep->colorR; 
     color1[1] = zonep->colorG;
     color1[2] = zonep->colorB;}
@@ -54,6 +54,31 @@ void DataDL::renderGPUUSolidZone(UnstructZone* zonep, int zone, int zonet)
   E_Float s = MAX(zonep->xmax-zonep->xmin, zonep->ymax-zonep->ymin);
   s = MAX(s, zonep->zmax-zonep->zmin);
   s = 100./(s+1.e-12);
+
+  // Only for textured rendering, we use vect display =======================
+  if (ptrState->mode == RENDER && zonep->material == 14 && zonep->texu != NULL) // Textured rendering
+  {
+#ifdef __SHADERS__
+      triggerShader(*zonep, zonep->material, s, color1);
+#endif
+      int ff; double offb = 0.;
+      int ret1, ret2, ret3, ret4, i, n1, n2, n3, n4;
+      #undef PLOT
+      double* f1 = zonep->texu;
+      double* f2 = zonep->texv;
+      double* f3 = zonep->texw;
+      double fmin1, fmax1, fmin2, fmax2, fmin3, fmax3;
+      fmax1 = 0.; fmin1 = 1.;
+      fmax2 = 0.; fmin2 = 1.;
+      fmax3 = 0.; fmin3 = 1.;
+      #define GL_QUADS_ARE GL_QUADS
+      #define PLOTQUAD PLOTQUADQ
+      #define PLOTQUAD2 PLOTQUADQ2
+      #include "displayUVectSolidZone.h"
+      glLineWidth(1.);
+      return;
+  }
+  // END Textured rendering ============================================
 
 #ifdef __SHADERS__
   if (ptrState->mode == RENDER)
@@ -72,5 +97,10 @@ void DataDL::renderGPUUSolidZone(UnstructZone* zonep, int zone, int zonet)
 
   ZoneImplDL* zImpl = static_cast<ZoneImplDL*>(zonep->ptr_impl);
   glCallList(zImpl->_DLsolid);
+    GLenum error = glGetError();
+    if ( error != GL_NO_ERROR )
+    {
+        std::cerr << __PRETTY_FUNCTION__ << " : get error n°0x" << std::hex << error << std::dec << std::flush << std::endl;
+    }
   glLineWidth(1.);
 }

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -246,6 +246,10 @@ PyObject* K_CONVERTER::convertFile2Arrays(PyObject* self, PyObject* args)
                                               field, im, jm, km, 
                                               ufield, c, et, zoneNames,
                                               BCFaces, BCNames);
+    // Pour l'instant, on ne peut pas les traiter en elements
+    for (size_t i = 0; i < BCFaces.size(); i++) delete BCFaces[i];
+    for (size_t i = 0; i < BCNames.size(); i++) delete [] BCNames[i];
+    BCFaces.clear(); BCNames.clear();
   }
   else if (K_STRING::cmp(fileFmt, "fmt_cedre") == 0)
   {
@@ -340,7 +344,7 @@ PyObject* K_CONVERTER::convertFile2Arrays(PyObject* self, PyObject* args)
     PyErr_SetString(PyExc_IOError, error);
     return NULL;
   }
-  printf("done.\n");
+  printf("done.\n"); fflush(stdout);
 
   // Building numpy arrays
   PyObject* tpl;
@@ -357,18 +361,20 @@ PyObject* K_CONVERTER::convertFile2Arrays(PyObject* self, PyObject* args)
   for (E_Int i = 0; i < n; i++)
   {
     // Build array
-    tpl = K_ARRAY::buildArray(*field[i], varString, 
-                              im[i], jm[i], km[i]);
+    tpl = K_ARRAY::buildArray2(*field[i], varString,
+                               im[i], jm[i], km[i]);
     delete field[i];
     PyList_Append(l, tpl);
     Py_DECREF(tpl);
-  } 
-    
+  }
+  
   n = ufield.size();    
   for (E_Int i = 0; i < n; i++)
   {
-    tpl = K_ARRAY::buildArray(*ufield[i], varString,
-                              *c[i], et[i]);
+    char eltType[28]; E_Int d;
+    K_ARRAY::typeId2eltString(et[i], 0, eltType, d);
+    tpl = K_ARRAY::buildArray2(*ufield[i], varString,
+                               *c[i], eltType);
     delete ufield[i]; delete c[i];
     PyList_Append(l, tpl);
     Py_DECREF(tpl);
@@ -453,14 +459,21 @@ PyObject* K_CONVERTER::convertArrays2File(PyObject* self, PyObject* args)
   for (int z = 0; z < PyList_Size(zoneNamesO); z++)
   {
     PyObject* tplz = PyList_GetItem(zoneNamesO, z);
-    if (PyString_Check(tplz) == 0)
-    {
-      printf("Warning: convertArrays2File: zone name must be a string. Skipped...\n");
-    }
-    else
+    if (PyString_Check(tplz))
     {
       char* str = PyString_AsString(tplz);
       zoneNames.push_back(str);
+    }
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(tplz))
+    {
+      char* str = PyBytes_AsString(PyUnicode_AsUTF8String(tplz));
+      zoneNames.push_back(str);  
+    }
+#endif  
+    else
+    {
+      printf("Warning: convertArrays2File: zone name must be a string. Skipped...\n");
     }
   }
 
@@ -640,6 +653,16 @@ PyObject* K_CONVERTER::convertArrays2File(PyObject* self, PyObject* args)
       fieldc, fieldu, connectu, elt,
       zoneNames);
   }
+  else if (K_STRING::cmp(fileFmt, "bin_png") == 0) // in png
+  {
+    if (fieldu.size() != 0)
+      printf("Warning: convertArrays2File: unstructured arrays not converted.\n"); 
+    
+    isok = K_IO::GenIO::getInstance()->pngwrite(fileName, dataFmt, varString,
+                                                ni, nj, nk,
+                                                fieldc, fieldu, connectu, elt,
+                                                zoneNames);
+  }
   else if (K_STRING::cmp(fileFmt, "fmt_su2") == 0) // fmt su2
   {
     if (fieldc.size() != 0)
@@ -743,7 +766,7 @@ PyObject* K_CONVERTER::convertArrays2File(PyObject* self, PyObject* args)
                     "convertArrays2File: file not written.");
     return NULL;
   }
-  printf("done.\n");
+  printf("done.\n"); fflush(stdout);
   
   // Deleting fields
   E_Int sizefieldc = fieldc.size();
@@ -820,7 +843,7 @@ E_Int K_CONVERTER::getElementTypeId(const char* eltType)
     return 7;
   if (K_STRING::cmp(eltType, "NGON") == 0)
     return 8;
-  return -1;//unknown
+  return -1; //unknown
 }
 
 //=============================================================================
@@ -830,18 +853,21 @@ E_Int K_CONVERTER::getElementTypeId(const char* eltType)
 //=============================================================================
 PyObject* K_CONVERTER::readPyTreeFromPaths(PyObject* self, PyObject* args)
 {
-  char* fileName; char* format;
-  PyObject* paths;
-  if (!PyArg_ParseTuple(args, "sOs", &fileName, &paths, &format)) return NULL;
+  char* fileName; char* format; E_Int maxFloatSize; E_Int maxDepth; 
+  PyObject* paths; PyObject* skipTypes;
+  if (!PYPARSETUPLEI(args, "sOsllO", "sOsiiO", 
+                     &fileName, &paths, &format, 
+                     &maxFloatSize, &maxDepth, &skipTypes)) return NULL;
   
+  if (skipTypes == Py_None) skipTypes = NULL;
   PyObject* ret = NULL;
-  if (K_STRING::cmp(format, "bin_hdf") == 0)
-    ret = K_IO::GenIO::getInstance()->hdfcgnsReadFromPaths(fileName, paths);
+  if (K_STRING::cmp(format, "bin_cgns") == 0)
+    ret = K_IO::GenIO::getInstance()->hdfcgnsReadFromPaths(fileName, paths, maxFloatSize, maxDepth, skipTypes);
+  else if (K_STRING::cmp(format, "bin_hdf") == 0)
+    ret = K_IO::GenIO::getInstance()->hdfcgnsReadFromPaths(fileName, paths, maxFloatSize, maxDepth, skipTypes);
   else if (K_STRING::cmp(format, "bin_adf") == 0)
-    ret = K_IO::GenIO::getInstance()->adfcgnsReadFromPaths(fileName, paths);
-  else if (K_STRING::cmp(format, "bin_cgns") == 0)
-    ret = K_IO::GenIO::getInstance()->adfcgnsReadFromPaths(fileName, paths);
-  else 
+    ret = K_IO::GenIO::getInstance()->adfcgnsReadFromPaths(fileName, paths, maxFloatSize, maxDepth);
+  else
   {
     PyErr_SetString(PyExc_TypeError, 
                     "readPyTreeFromPaths: unknown file format.");
@@ -855,23 +881,46 @@ PyObject* K_CONVERTER::readPyTreeFromPaths(PyObject* self, PyObject* args)
 //=============================================================================
 PyObject* K_CONVERTER::writePyTreePaths(PyObject* self, PyObject* args)
 {
-  char* fileName; char* format;
-  PyObject* paths; PyObject* nodeList;
-  if (!PyArg_ParseTuple(args, "sOOs", &fileName, &nodeList, &paths, &format)) 
+  char* fileName; char* format; E_Int maxDepth; E_Int mode;
+  PyObject* paths; PyObject* nodeList; PyObject* links;
+  if (!PYPARSETUPLEI(args, "sOOsllO", "sOOsiiO", &fileName, &nodeList, &paths, &format, &maxDepth, &mode, &links))
     return NULL;
   
+  if (links == Py_None) { links = NULL; }
+  
   E_Int ret = 1;
-  if (K_STRING::cmp(format, "bin_adf") == 0)
-    ret = 
-      K_IO::GenIO::getInstance()->adfcgnsWritePaths(fileName, nodeList, paths);
+
+  if (K_STRING::cmp(format, "bin_cgns") == 0)
+    ret = K_IO::GenIO::getInstance()->hdfcgnsWritePaths(fileName, nodeList, paths, links, maxDepth, mode);
   else if (K_STRING::cmp(format, "bin_hdf") == 0)
-    ret = 
-      K_IO::GenIO::getInstance()->hdfcgnsWritePaths(fileName, nodeList, paths);
-  else if (K_STRING::cmp(format, "bin_cgns") == 0)
-    ret = 
-      K_IO::GenIO::getInstance()->adfcgnsWritePaths(fileName, nodeList, paths);
+    ret = K_IO::GenIO::getInstance()->hdfcgnsWritePaths(fileName, nodeList, paths, links, maxDepth, mode);
+  else if (K_STRING::cmp(format, "bin_adf") == 0)
+    ret = K_IO::GenIO::getInstance()->adfcgnsWritePaths(fileName, nodeList, paths, maxDepth, mode);
   if (ret == 1) return NULL; // exceptions deja levees
 
   Py_INCREF(Py_None);
   return Py_None;
 } 
+
+//=============================================================================
+// Delete des paths du fichier (ADF/HDF).
+//=============================================================================
+PyObject* K_CONVERTER::deletePyTreePaths(PyObject* self, PyObject* args)
+{
+  char* fileName; char* format;
+  PyObject* paths;
+  if (!PYPARSETUPLEI(args, "sOs", "sOs", &fileName, &paths, &format))
+    return NULL;
+  
+  E_Int ret = 1;
+  if (K_STRING::cmp(format, "bin_cgns") == 0)
+    ret = K_IO::GenIO::getInstance()->hdfcgnsDeletePaths(fileName, paths);
+  else if (K_STRING::cmp(format, "bin_hdf") == 0)
+    ret = K_IO::GenIO::getInstance()->hdfcgnsDeletePaths(fileName, paths);
+  else if (K_STRING::cmp(format, "bin_adf") == 0)
+    ret = K_IO::GenIO::getInstance()->adfcgnsDeletePaths(fileName, paths);
+  if (ret == 1) return NULL; // exceptions deja levees
+
+  Py_INCREF(Py_None);
+  return Py_None;
+}

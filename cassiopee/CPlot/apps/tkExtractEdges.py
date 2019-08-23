@@ -1,5 +1,6 @@
 # - manipulate edges -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -11,9 +12,11 @@ import Transform.PyTree as T
 import Generator.PyTree as G
 import Intersector.PyTree as XOR
 
+try: range = xrange
+except: pass
+
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def intersection():
@@ -46,7 +49,7 @@ def intersection():
         CTK.TKTREE.updateApp()
         CPlot.render()
         return
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: intersection')
         CTK.TXT.insert('START', 'Intersection failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
@@ -83,7 +86,7 @@ def exteriorFaces():
                 ext = G.close(ext)
                 ext = T.splitConnexity(ext)
                 exts += ext
-            except Exception, e: 
+            except Exception as e: 
                 fail = True; errors += [0,str(e)]
         else:
             ext = P.exteriorFacesStructured(z)
@@ -100,7 +103,7 @@ def exteriorFaces():
         if not fail:
             CTK.TXT.insert('START', 'External edges extracted.\n')
         else:
-            print 'Error: externalEdges: %s.'%str(e)
+            print('Error: externalEdges: %s.'%str(e))
             CTK.TXT.insert('START', 'External edges fails for at least one zone.\n')
             CTK.TXT.insert('START', 'Warning: ', 'Warning')
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
@@ -139,7 +142,7 @@ def silhouette():
         try:
             ext = P.silhouette(z, vector)
             exts += ext
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
 
     if fail: 
@@ -191,7 +194,7 @@ def sharpEdges():
         z = CTK.t[2][nob][2][noz]
         z = G.close(z)
         try: ext = P.sharpEdges(z, alphaRef)
-        except Exception, e:
+        except Exception as e:
             ext = []; fail = True; errors += [0,str(e)]
         sharps += ext
 
@@ -257,10 +260,10 @@ def splitTBranches():
         if (structured == 1): splits = C.convertBAR2Struct(splits)
         n = len(nzs); ns = len(splits)
 
-        for c in xrange(n):
+        for c in range(n):
             nob = CTK.Nb[nzs[c]]+1
             noz = CTK.Nz[nzs[c]]
-            if (c < ns):
+            if c < ns:
                 CTK.replace(CTK.t, nob, noz, splits[c])
             else:
                 baseName = CTK.t[2][nob][0]
@@ -270,28 +273,28 @@ def splitTBranches():
                 CPlot.delete([i])
         for i in splits[n:]: CTK.add(CTK.t, nob, -1, i)
 
-    except Exception, e:
+    except Exception as e:
         fail = True; errors += [0,str(e)]
 
-    if (fail == False):
+    if not fail:
         CTK.TXT.insert('START', 'splitTBranches done.\n')
     else:
         Panels.displayErrors(errors, header='Error: splitTBranches')
         CTK.TXT.insert('START', 'Split T branch fails for at least one zone.\n')
         CTK.TXT.insert('START', 'Warning: ', 'Warning')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
 
 #==============================================================================
 def convertBAR2Struct():
-    if (CTK.t == []): return
-    if (CTK.__MAINTREE__ <= 0):
+    if CTK.t == []: return
+    if CTK.__MAINTREE__ <= 0:
         CTK.TXT.insert('START', 'Fail on a temporary tree.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     nzs = CPlot.getSelectedZones()
-    if (nzs == []):
+    if nzs == []:
         CTK.TXT.insert('START', 'Selection is empty.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     
@@ -305,16 +308,16 @@ def convertBAR2Struct():
         try:
             zp = C.convertBAR2Struct(z)
             CTK.replace(CTK.t, nob, noz, zp)
-        except Exception, e:
+        except Exception as e:
             fail = True; errors += [0,str(e)]
 
-    if (fail == False):
+    if not fail:
         CTK.TXT.insert('START', 'BARS converted to STRUCT.\n')
     else:
         Panels.displayErrors(errors, header='Error: convertBAR2Struct')
         CTK.TXT.insert('START', 'SRUCT conversion fails for at least one zone.\n')
         CTK.TXT.insert('START', 'Warning: ', 'Warning')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CPlot.render()
@@ -329,7 +332,7 @@ def createApp(win):
                            takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Extract edges.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=2)
@@ -346,7 +349,7 @@ def createApp(win):
     # - VARS -
     # -0- Edge split angle -
     V = TK.StringVar(win); V.set('30.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkExtractEdgesSplitAngle'):
+    if 'tkExtractEdgesSplitAngle' in CTK.PREFS:
         V.set(CTK.PREFS['tkExtractEdgesSplitAngle'])
     # -1- Tolerance for T-branches splitting -
     V = TK.StringVar(win); V.set('1.e-8'); VARS.append(V)
@@ -418,7 +421,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+ 
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

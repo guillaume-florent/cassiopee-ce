@@ -23,9 +23,9 @@ b = D.line( (0.1,5.,0.1), (0.1,5.,3.9), N=5 )
 b = C.convertArray2Tetra(b)
 
 # 3D struct
-b = C.addVars(b,'rou')
-b = C.addVars(b,'rov')
-b = C.addVars(b,'row')
+C._addVars(b,'rou')
+C._addVars(b,'rov')
+C._addVars(b,'row')
 
 p = P.streamSurf(m, b,['rou','rov','row'])
 test.testA([p], 1)

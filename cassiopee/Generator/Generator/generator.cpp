@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -110,19 +110,59 @@ static PyMethodDef Pygenerator [] =
   {"netgen1", K_GENERATOR::netgen1, METH_VARARGS},
   {"netgen2", K_GENERATOR::netgen2, METH_VARARGS},
   {"tetgen", K_GENERATOR::tetgen, METH_VARARGS},
+  {"mmgs", K_GENERATOR::mmgs, METH_VARARGS},
+  {"quad2Pyra", K_GENERATOR::quad2Pyra, METH_VARARGS},
   {NULL, NULL}
 };
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+struct module_state {
+    PyObject *error;
+};
+static int myextension_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+static int myextension_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "generator",
+        NULL,
+        sizeof(struct module_state),
+        Pygenerator,
+        NULL,
+        myextension_traverse,
+        myextension_clear,
+        NULL
+};
+#endif
 
 // ============================================================================
 /* Init of module */
 // ============================================================================
 extern "C"
 {
-  void initgenerator();
-  void initgenerator()
+#if PY_MAJOR_VERSION >= 3
+  PyMODINIT_FUNC PyInit_generator();
+  PyMODINIT_FUNC PyInit_generator()
+#else
+  PyMODINIT_FUNC initgenerator();
+  PyMODINIT_FUNC initgenerator()
+#endif
   {
-    __activation__ = K_KCORE::activation();
+    __activation__ = K_KCORE::activation("0");
+#if PY_MAJOR_VERSION >= 3
+    PyObject* module = PyModule_Create(&moduledef);
+#else
     Py_InitModule("generator", Pygenerator);
+#endif
     import_array();
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
   }
 }

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -23,7 +23,7 @@
 class Zipper
 {
 public:
-  enum eMateType {FREE = -9, OVERLAP = -1, UNKNOWN = E_IDX_NONE};
+  enum eMateType {FREE = -9, OVERLAP = -1, UNKNO = E_IDX_NONE};
 
 public:
 

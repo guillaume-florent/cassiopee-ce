@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -19,7 +19,7 @@
 
 #ifndef _KCORE_CONNECT_H
 #define _KCORE_CONNECT_H
-
+# include <utility>
 # include "Def/DefTypes.h"
 # include "Fld/FldArray.h"
 # include "Def/DefFunction.h"
@@ -88,6 +88,14 @@ namespace K_CONNECT
                              K_FLD::FldArrayF& f1, K_FLD::FldArrayF& f2,
                              E_Int& nof1, E_Int& nof2,
                              E_Float eps=1.e-12);
+  // version lente
+  E_Int detectMatchInterface2(E_Int im1, E_Int jm1, E_Int km1, 
+                              E_Int posx1, E_Int posy1, E_Int posz1,
+                              E_Int im2, E_Int jm2, E_Int km2,
+                              E_Int posx2, E_Int posy2, E_Int posz2,
+                              K_FLD::FldArrayF& f1, K_FLD::FldArrayF& f2,
+                              E_Int& nof1, E_Int& nof2,
+                              E_Float eps=1.e-12);
 
   /* Determine le coin coincident de f2 avec le coin (i1,j1,k1) de f1 
      attention: les indices demarrent a 1 en i j et k */
@@ -146,6 +154,14 @@ namespace K_CONNECT
      cVE doit deja etre alloue au nombre de noeuds. */
   void connectEV2VE(K_FLD::FldArrayI& cEV,
                     std::vector< std::vector<E_Int> >& cVE);
+  /* Change a Elts-Vertex connectivity to a Vertex-Elts connectivity.
+     Le format de stockage est de type CSR : le premier vecteur donne à
+     l'indice i la position dans le deuxième tableau de l'indice du 
+     premier element contenant le sommet i.
+     nv est le nombre de sommets definissant le maillage.
+   */
+  std::pair<std::vector<E_Int>,std::vector<E_Int> > 
+  connectEV2VE(K_FLD::FldArrayI& cEV);
 
   /* Change a Elts-Vertex connectivity to a Vertex-Vertex neighbours 
      connectivity.
@@ -180,6 +196,10 @@ namespace K_CONNECT
   */
   void connectEV2VF(K_FLD::FldArrayI& cEV, const char* eltType,
                     std::vector< std::vector<E_Int> >& cVF);
+  /* Change HO EV connectivity to LO EV connectivity.
+     mode=0: sub-select, mode=1: tesselate */
+  E_Int connectHO2LO(const char* eltTypeHO, K_FLD::FldArrayI& cEVHO,
+                     K_FLD::FldArrayI& cEVLO, E_Int mode);
   /* identifyFace */
   E_Int identifyFace(E_Int* inds, E_Int n, 
                      std::vector< std::vector<E_Int> >& cVF);
@@ -236,11 +256,16 @@ namespace K_CONNECT
 
 
   /*
-     Version openmp corse grain de  cleanConnectivityBasic
+     Version openmp corse grain de cleanConnectivityBasic
   */
   void cleanConnectivityBasic_opt(E_Int posx, E_Int posy, E_Int posz, 
-                              E_Float eps, const char* eltType, 
-                              K_FLD::FldArrayF& f, K_FLD::FldArrayI& cEV);
+                                  E_Float eps, const char* eltType, 
+                                  K_FLD::FldArrayF& f, K_FLD::FldArrayI& cEV);
+
+  /* Elimine les vertex non references dans une connectivite basique */
+  void cleanUnreferencedVertexBasic(K_FLD::FldArrayF& f, K_FLD::FldArrayI& cn,
+                                    K_FLD::FldArrayF& fout, K_FLD::FldArrayI& cnout);
+
   /*-----------------------*/
   /* - Connectivite NGon - */
   /*-----------------------*/
@@ -286,6 +311,14 @@ namespace K_CONNECT
      connectivite FE */
   void connectFE2NFace(K_FLD::FldArrayI& cFE, K_FLD::FldArrayI& cNFace, 
                        E_Int& nelts);
+
+  /* Calcul des connectivites elements a partir d'une
+    connectivite mix */
+  void connectMix2EV(K_FLD::FldArrayI& cMIX,
+                     K_FLD::FldArrayI& cBAR, K_FLD::FldArrayI& cTRI,
+                     K_FLD::FldArrayI& cQUAD, K_FLD::FldArrayI& cTETRA,
+                     K_FLD::FldArrayI& cPYRA, K_FLD::FldArrayI& cPENTA,
+                     K_FLD::FldArrayI& cHEXA);
 
   /*
     Calcul la position des faces dans la connectivite generale NGon.
@@ -346,7 +379,7 @@ namespace K_CONNECT
      IN: eps: tolerance pour eliminer les doublons
      IN: f, cNG: array NGON.
   */
-  void cleanConnectivityNGon(E_Int posx,  E_Int posy, E_Int posz, 
+  void cleanConnectivityNGon(E_Int posx, E_Int posy, E_Int posz, 
                              E_Float eps, K_FLD::FldArrayF& f, 
                              K_FLD::FldArrayI& cNG);
 
@@ -371,6 +404,8 @@ namespace K_CONNECT
      OUT: dimElts: tableau donnant pour chaque element sa dimension (1,2 ou 3)
   */
   void getDimElts(K_FLD::FldArrayI& cNG, K_FLD::FldArrayI& posFaces, 
+                  K_FLD::FldArrayI& dimElts);
+  void getDimElts(K_FLD::FldArrayI& cNG, E_Int* indPG, E_Int* indPH, 
                   K_FLD::FldArrayI& dimElts);
 
   /* Pour un element 2D repere par eltPos dans cNG, retourne les indices 

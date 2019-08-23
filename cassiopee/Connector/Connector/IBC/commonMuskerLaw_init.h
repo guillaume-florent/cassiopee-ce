@@ -16,6 +16,6 @@ vt_vec[noind]       = vt;
 wt_vec[noind]       = wt;
 mu_vec[noind]       = muext;
 alpha_vec[noind]    = alpha;
-
+tcible_vec[noind]   = text;
 #  include "IBC/musker_vec.h"
 // out= utau  et err 

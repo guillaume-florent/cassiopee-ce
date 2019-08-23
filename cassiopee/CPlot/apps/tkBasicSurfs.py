@@ -1,5 +1,6 @@
 # - basic surfaces -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -13,8 +14,7 @@ import math
 from Geom.Parametrics import base
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 # Maille un triangle en structure (decoupe en 3 quads)
@@ -41,7 +41,7 @@ def meshTri(P0, P1, P2, N):
     m2 = G.TFI([l1, l2, l3, l4])
     m2 = T.reorder(m2, (-1,2,3))
     
-    l1 = D.line(C, C12, N)   
+    l1 = D.line(C, C12, N)
     l2 = D.line(C12, P2, N)
     l3 = D.line(P2, C02, N)
     l4 = D.line(C02, C, N)
@@ -96,7 +96,7 @@ def generate(event=None):
     surfType = VARS[2].get()
 
     if surfType == 'Sphere':
-        s = D.sphere6( (0,0,0), 0.5, N=N)
+        s = D.sphere6((0,0,0), 0.5, N=N)
         xc = 0; yc = 0; zc = 0
     elif surfType == 'Plane':
         h = 1./(N-1)
@@ -143,12 +143,15 @@ def generate(event=None):
         m1 = T.reorder(m1, (-1,2,3))
         m2 = D.circle( (0,0,-0.5), 0.5, tetas=-45, tetae=-45+360, N=4*N-3)
         l = D.line((0,0,-0.5), (0,0,0.5), N=N)
-        m2 = D.lineGenerate(m2, l)
+        m2 = D.lineDrive(m2, l)
         s = m0 + m1 + [m2]
         xc = 0.; yc = 0.; zc = 0.
+    elif surfType == 'Cone':
+        s = [D.cone((0.,0,0), 1, 0.1, 1, N=N)]
+        (xc, yc, zc) = G.barycenter(s)
     else: # Geom parametrics surfaces
         formula = base[surfType]
-        if (formula.replace('{u}', '') == formula): # curve
+        if formula.replace('{u}', '') == formula: # curve
             s = D.curve(base[surfType], N)
         else:
             s = D.surface(base[surfType], N)
@@ -184,19 +187,19 @@ def generate(event=None):
                  ((-ux,-uy,-uz), (lx,ly,lz), dirCam))
 
     CTK.t = C.addBase2PyTree(CTK.t, 'SURFACES', 2)
-    bases = Internal.getNodesFromName1(CTK.t, 'SURFACES')
+    b = Internal.getNodeFromName1(CTK.t, 'SURFACES')
 
     if eltType == 'TRI' or eltType == 'QUAD':
-        nob = C.getNobOfBase(bases[0], CTK.t)
+        nob = C.getNobOfBase(b, CTK.t)
         CTK.add(CTK.t, nob, -1, s)
     else:
-        nob = C.getNobOfBase(bases[0], CTK.t)
+        nob = C.getNobOfBase(b, CTK.t)
         if CP.__slot__ is None: 
             CTK.t[2][nob][2] += s; CTK.display(CTK.t)
         else:
             for i in s: CTK.add(CTK.t, nob, -1, i)
         
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'Surface created.\n')
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
@@ -213,7 +216,7 @@ def createApp(win):
                            text='tkBasicSurfs', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Create basic surfaces.\nCtrl+c to close applet.', btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(0, weight=1)
@@ -230,15 +233,15 @@ def createApp(win):
     # - VARS -
     # -0- NPts -
     V = TK.StringVar(win); V.set('10'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBasicSurfsNpts'): 
+    if 'tkBasicSurfsNpts' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBasicSurfsNpts'])
     # -1- Type d'elements
     V = TK.StringVar(win); V.set('TRI'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBasicSurfsElts'): 
+    if 'tkBasicSurfsElts' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBasicSurfsElts'])
     # -2- Type de surface
     V = TK.StringVar(win); V.set('Sphere'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBasicSurfsType'): 
+    if 'tkBasicSurfsType' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBasicSurfsType'])
 
     # - Npts -
@@ -253,7 +256,7 @@ def createApp(win):
     BB = CTK.infoBulle(parent=B, text='Surface element type.')
 
     # - Type de surface -
-    SURFTYPES = ['Sphere', 'Cube', 'Tetra', 'Pyramid', 'Cylinder', 'Plane']
+    SURFTYPES = ['Sphere', 'Cube', 'Tetra', 'Pyramid', 'Cylinder', 'Plane', 'Cone']
     SURFTYPES += base.keys()
     if ttk is None:
         B = TK.OptionMenu(Frame, VARS[2], *SURFTYPES)
@@ -303,7 +306,7 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

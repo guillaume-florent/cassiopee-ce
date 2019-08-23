@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -155,6 +155,7 @@ PyObject* K_CONNECTOR::setInterpDataLS(PyObject* self, PyObject* args)
   
   // Construction de l'arbre de recherche par zone donneuse des points de cellN 1
   vector<K_SEARCH::KdTree<FldArrayF>*> vectOfKdTrees;
+  vector<ArrayAccessor<FldArrayF>*> vectOfCoordAcc;
   vector<FldArrayI*> vectOfCorres;
   vector<FldArrayF*> vectOfCellN;
   if (hook == Py_None)
@@ -205,6 +206,7 @@ PyObject* K_CONNECTOR::setInterpDataLS(PyObject* self, PyObject* args)
 
       ArrayAccessor<FldArrayF>* coordAcc = new ArrayAccessor<FldArrayF>(*cellN1pts, 1, 2, 3);   
       K_SEARCH::KdTree<FldArrayF>* kdt = new K_SEARCH::KdTree<FldArrayF>(*coordAcc);
+      vectOfCoordAcc.push_back(coordAcc);
       vectOfKdTrees.push_back(kdt);
       vectOfCorres.push_back(corresF);
       vectOfCellN.push_back(cellN1pts);
@@ -503,6 +505,7 @@ PyObject* K_CONNECTOR::setInterpDataLS(PyObject* self, PyObject* args)
     if (hook == Py_None) 
     {
       delete vectOfKdTrees[no];
+      delete vectOfCoordAcc[no];
       delete vectOfCorres[no];
       delete vectOfCellN[no];
     }

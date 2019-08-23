@@ -3,9 +3,12 @@
 #
 # Python Interface to CFD post-processing using pyTrees
 #
-import Post
-import post
+from . import Post
+from . import post
 __version__ = Post.__version__
+
+try: range = xrange
+except: pass
 
 try:
     import Converter
@@ -15,11 +18,11 @@ try:
 except:
     raise ImportError("Post.PyTree: requires Converter.PyTree module.")
 
+# Extraction de la liste des pts
 def extractPoint(t, Pts, order=2, extrapOrder=1,
-                 constraint=40., tol=1.e-6, hook=None,mode='robust'):
+                 constraint=40., tol=1.e-6, hook=None, mode='robust'):
     """Extract the solution in one point.
-    Usage: extractPoint(t, (x,y,z), order, tol, hook)"""
-    # Extraction de la liste des pts
+    Usage: extractPoint(t, (x,y,z), order, tol, hook, mode)"""
     listOfPts = []
     if not isinstance(Pts, list):
         a = Converter.array('CoordinateX,CoordinateY,CoordinateZ',1,1,1)
@@ -27,26 +30,26 @@ def extractPoint(t, Pts, order=2, extrapOrder=1,
     else:
         npts = len(Pts)
         a = Converter.array('CoordinateX,CoordinateY,CoordinateZ',npts,1,1)
-        for i in xrange(npts):
+        for i in range(npts):
             a[1][0,i] = Pts[i][0]
             a[1][1,i] = Pts[i][1]
             a[1][2,i] = Pts[i][2]
 
     z = C.convertArrays2ZoneNode('extractPt', [a])
     z = C.convertArray2Node(z)
-    _extractMesh(t,z, order, extrapOrder, constraint, tol, hook,mode)
+    _extractMesh(t, z, order, extrapOrder, constraint, tol, hook, mode)
 
     soln = C.getFields(Internal.__FlowSolutionNodes__, z)[0]
     solc = C.getFields(Internal.__FlowSolutionCenters__, z)[0]
     if not isinstance(Pts, list):
         resn = []; resc = []
         solnN = soln[1]
-        for nov in xrange(solnN.shape[0]):
+        for nov in range(solnN.shape[0]):
             resn.append(solnN[nov][0])
 
         if solc != []: # que les noeuds
             solcN = solc[1]
-            for nov in xrange(solcN.shape[0]):
+            for nov in range(solcN.shape[0]):
                 resc.append(solcN[nov][0])
             return [resn,resc]
         else: return resn
@@ -56,9 +59,9 @@ def extractPoint(t, Pts, order=2, extrapOrder=1,
         solnN = soln[1]
         npts = solnN.shape[1]
         nvar = solnN.shape[0]
-        for nop in xrange(npts):
+        for nop in range(npts):
             resn = []
-            for nov in xrange(nvar):
+            for nov in range(nvar):
                 resn.append(solnN[nov][nop])
             allresN.append(resn)
 
@@ -66,22 +69,22 @@ def extractPoint(t, Pts, order=2, extrapOrder=1,
             solcN = solc[1]
             npts = solcN.shape[1]
             nvar = solcN.shape[0]
-            for nop in xrange(npts):
+            for nop in range(npts):
                 resc = []
-                for nov in xrange(nvar):
+                for nov in range(nvar):
                     resc.append(solcN[nov][nop])
                 allresC.append(resc)
 
             return [allresN,allresC]
         else: return allresN
 
-def extractPlane(t, (coefa, coefb, coefc, coefd), order=2, tol=1.e-6):
+def extractPlane(t, T, order=2, tol=1.e-6):
     """Slice solution with a plane.
     Usage: extractPlane(t, (coefa, coefb, coefc, coefd), order)"""
     #t = C.deleteFlowSolutions__(t, 'centers')
     t = C.center2Node(t, Internal.__FlowSolutionCenters__)
-    A = C.getAllFields(t, 'nodes')
-    a = Post.extractPlane(A, (coefa, coefb, coefc, coefd), order, tol)
+    A = C.getAllFields(t, 'nodes')    
+    a = Post.extractPlane(A, T, order, tol)
     return C.convertArrays2ZoneNode('extractedPlane', [a])
 
 def projectCloudSolution(cloud, surf, dim=3):
@@ -89,7 +92,7 @@ def projectCloudSolution(cloud, surf, dim=3):
     surf2 = Internal.copyRef(surf)
     fc = C.getAllFields(cloud, 'nodes')[0]
     zones = Internal.getZones(surf2)
-    for noz in xrange(len(zones)):
+    for noz in range(len(zones)):
         fs = C.getAllFields(zones[noz], 'nodes')[0]
         res = Post.projectCloudSolution(fc,fs,dim=dim)
         C.setFields([res], zones[noz], 'nodes')
@@ -117,7 +120,7 @@ def _extractMesh(t, extractionMesh, order=2, extrapOrder=1,
     else: # accurate: extract les centres sur le maillage en centres
         varsC = C.getVarNames(t, excludeXYZ=True, loc='centers')
         varsN = C.getVarNames(t, excludeXYZ=True, loc='nodes')
-        if (len(varsC) == 0 or len(varsN) == 0): return extractionMesh
+        if len(varsC) == 0 or len(varsN) == 0: return extractionMesh
         varsC = varsC[0]; varsN = varsN[0]
         zones = Internal.getZones(extractionMesh)
         if len(varsN) != 0:
@@ -126,8 +129,8 @@ def _extractMesh(t, extractionMesh, order=2, extrapOrder=1,
             fa = C.getFields(Internal.__FlowSolutionNodes__, t)
             allf = []
             nzones = len(fc)
-            for i in xrange(nzones):
-                if (fc[i] != [] and fa[i] != 0):
+            for i in range(nzones):
+                if fc[i] != [] and fa[i] != 0:
                     allf.append(Converter.addVars([fc[i], fa[i]]))
                 elif fa[i] != []: allf.append(fa[i])
                 elif fc[i] != []: allf.append(fc[i])
@@ -142,16 +145,16 @@ def _extractMesh(t, extractionMesh, order=2, extrapOrder=1,
             ac = Converter.node2Center(an)
             fc = C.getFields(Internal.__GridCoordinates__, tp)
             nzones = len(fc)
-            for i in xrange(len(fc)):
+            for i in range(len(fc)):
                 if len(fc[i]) == 4:
                     try: import Transform
-                    except: raise ImportError, 'Transform module required.'
+                    except: raise ImportError('extractMesh: Transform module is required.')
                     fc[i] = Transform.dual(fc[i], extraPoints=0)
                 else: fc[i] = Converter.node2Center(fc[i])
             fa = C.getFields(Internal.__FlowSolutionCenters__, tp)
             allf = []
             nzones = len(fc)
-            for i in xrange(nzones):
+            for i in range(nzones):
                 if fc[i] != [] and fa[i] != 0:
                     allf.append(Converter.addVars([fc[i], fa[i]]))
                 elif fa[i] != []: allf.append(fa[i])
@@ -297,7 +300,7 @@ def selectCells2(t, tagName, strict=0):
     C._deleteZoneBC__(tp)
     C._deleteGridConnectivity__(tp)
     res = tagName.split(':')
-    if (len(res) == 2 and res[0] == 'centers'): loc = 1
+    if len(res) == 2 and res[0] == 'centers': loc = 1
     else: loc = 0
     zones = Internal.getZones(tp)
     for z in zones:
@@ -309,7 +312,7 @@ def selectCells2(t, tagName, strict=0):
             taga = Converter.extractVars(taga, [res[1]])[0]
         fc = C.getFields(Internal.__GridCoordinates__, z)[0]
         fa = C.getFields(Internal.__FlowSolutionNodes__, z)[0]
-        if (fc != [] and fa != []):
+        if fc != [] and fa != []:
             f = Converter.addVars([fc, fa])
             fp = Post.selectCells2(f, taga, strict, loc)
             C.setFields([fp], z, 'nodes')
@@ -325,7 +328,7 @@ def selectCells2(t, tagName, strict=0):
 
 def selectCells3(t, tagName):
     try: import Transform.PyTree as T
-    except: raise ImportError, 'Transform module required.'
+    except: raise ImportError('selectCells: Transform module is required.')
     tp = Internal.copyRef(t)
     C._deleteZoneBC__(tp)
     C._deleteGridConnectivity__(tp)
@@ -424,6 +427,18 @@ def _exteriorElts(t):
     C._deleteFlowSolutions__(t, 'centers')
     return C._TZA(t, 'nodes', 'nodes', Post.exteriorElts, None)
 
+def exteriorEltsStructured(t, depth=1):
+    """Exterior (border) elts of a mesh as a structured grid.
+    Usage: exteriorEltsStructured(t, depth)"""
+    tp = Internal.copyRef(t)
+    _exteriorEltsStructured(tp, depth)
+    return tp
+
+def _exteriorEltsStructured(t, depth=1):
+    C._TZA2(t, Post.exteriorEltsStructured, 'nodes', 'nodes', 1, depth)
+    C._TZA2(t, Post.exteriorEltsStructured, 'centers', 'centers', 0, depth)
+    return None
+    
 def computeVariables(t, varList,
                      gamma=-1., rgp=-1., s0=0., betas=-1.,
                      Cs=-1., mus=-1., Ts=-1.):
@@ -458,23 +473,23 @@ def computeVariables(t, varList,
         else: varnamesn.append(var)
     presn = C.isNamePresent(t, 'Density')
     presc = C.isNamePresent(t, 'centers:Density')
-    if (presc == -1 and varnamesc != []):
+    if presc == -1 and varnamesc != []:
         tp = C.node2Center(tp, ['Density', 'MomentumX', 'MomentumY',
                                 'MomentumZ', 'EnergyStagnationDensity'])
-    if (presn == -1 and varnamesn != []):
+    if presn == -1 and varnamesn != []:
         tp = C.center2Node(tp, ['centers:Density', 'centers:MomentumX',
                                 'centers:MomentumY', 'centers:MomentumZ',
                                 'centers:EnergyStagnationDensity'])
 
-    tp = C.TZAGC(tp, 'both', 'both',
+    tp = C.TZAGC(tp, 'both', 'both', False,
                  Post.computeVariables, Post.computeVariables,
                  varnamesn, gamma, rgp, s0, betas, Cs, mus, Ts,
                  varnamesc, gamma, rgp, s0, betas, Cs, mus, Ts)
-    if (presc == -1 and varnamesc != []):
+    if presc == -1 and varnamesc != []:
         tp = C.rmVars(tp, ['centers:Density', 'centers:MomentumX',
                            'centers:MomentumY', 'centers:MomentumZ',
                            'centers:EnergyStagnationDensity'])
-    if (presn == -1 and varnamesn != []):
+    if presn == -1 and varnamesn != []:
         tp = C.rmVars(tp, ['Density', 'MomentumX', 'MomentumY',
                            'MomentumZ', 'EnergyStagnationDensity'])
     return tp
@@ -500,6 +515,7 @@ def _computeVariables(t, varList,
     if Cs < 0: Cs=110.4
     if mus < 0: mus=1.76e-5
     if Ts < 0: Ts=273.15
+    if isinstance(varList, str): varList = [varList]
 
     varnamesn = [] # variables aux noeuds
     varnamesc = [] # variables aux centres
@@ -511,25 +527,87 @@ def _computeVariables(t, varList,
         else: varnamesn.append(var)
     presn = C.isNamePresent(t, 'Density')
     presc = C.isNamePresent(t, 'centers:Density')
-    if (presc == -1 and varnamesc != []):
-        raise ValueError("Not implemented.")
-    if (presn == -1 and varnamesn != []):
-        raise ValueError("Not implemented.")
+    if presc == -1 and varnamesc != []:
+        raise ValueError("computeVariables: conservative variables missing.")
+    if presn == -1 and varnamesn != []:
+        raise ValueError("computeVariables: conservative variables missing.")
 
-    C._TZAGC(t, 'both', 'both',
+    C._TZAGC(t, 'both', 'both', False,
              Post.computeVariables, Post.computeVariables,
              varnamesn, gamma, rgp, s0, betas, Cs, mus, Ts,
              varnamesc, gamma, rgp, s0, betas, Cs, mus, Ts)
-    if (presc == -1 and varnamesc != []):
+    if presc == -1 and varnamesc != []:
         C._rmVars(t, ['centers:Density', 'centers:MomentumX',
                       'centers:MomentumY', 'centers:MomentumZ',
                       'centers:EnergyStagnationDensity'])
-    if (presn == -1 and varnamesn != []):
+    if presn == -1 and varnamesn != []:
         C._rmVars(t, ['Density', 'MomentumX', 'MomentumY',
                       'MomentumZ', 'EnergyStagnationDensity'])
     return None
 
-def _computeVariablesBC(t, varList, gamma=1.4, rgp=287.053, s0=0., 
+def computeVariables2(t, varList, gamma=-1., rgp=-1., s0=0., betas=-1.,
+                        Cs=-1., mus=-1., Ts=-1.):
+    """Compute variables (in place version) defined in varList.
+    Usage: computeVariables2(array, varList, gamma=1.4, rgp=287.053, s0=0., betas=1.458e-6, Cs=110.4, mus=0., Ts=0.)"""
+    tp = Internal.copyRef(t)
+    _computeVariables2(tp, varList, gamma, rgp, s0, betas, Cs, mus, Ts)
+    return tp
+
+def _computeVariables2(t, varList,gamma=-1., rgp=-1., s0=0., betas=-1.,
+                          Cs=-1., mus=-1., Ts=-1.):
+    if gamma < 0:
+        try: gamma = C.getState(t,'gamma')
+        except: pass
+    if rgp < 0:
+        try: rgp   = C.getState(t,'rgp')
+        except: pass
+    if s0 < 0:
+        try: s0    = C.getState(t,'s0')
+        except: pass
+    if betas < 0:
+        try: betas = C.getState(t,'betas')
+        except: pass
+    if Cs < 0:
+        try: Cs    = C.getState(t,'Cs')
+        except: pass
+    if mus < 0:
+        try: mus   = C.getState(t,'mus')
+        except: pass
+    if Ts < 0:
+        try: Ts    = C.getState(t,'Ts')
+        except: pass
+
+    if gamma < 0: gamma =   1.4
+    if rgp   < 0: rgp   = 287.053
+    if betas < 0: betas =   1.458e-6
+    if Cs    < 0: Cs    = 110.4
+    if mus   < 0: mus   =   1.76e-5
+    if Ts    < 0: Ts    = 273.15
+
+    varnamesn = [] # variables aux noeuds
+    varnamesc = [] # variables aux centres
+    for var in varList:
+        v = var.split(':')
+        if len(v) > 1:
+            if v[0] == 'centers':
+                name = v[1]
+                varnamesc.append(name)
+            else:
+                name = v[1]
+                varnamesn.append(name)
+        else: varnamesn.append(var)
+
+    if varnamesn != []:
+        C.__TZC(t, Post._computeVariables2, 'nodes',
+                varnamesn, gamma, rgp, s0, betas, Cs, mus, Ts)
+
+    if varnamesc != []:
+        C.__TZC(t, Post._computeVariables2, 'centers',
+                varnamesc, gamma, rgp, s0, betas, Cs, mus, Ts)
+
+    return None
+
+def _computeVariablesBC(t, varList, gamma=1.4, rgp=287.053, s0=0.,
                         betas=1.458e-6, Cs=110.4, mus=1.76e-5, Ts=273.15):
     zones = Internal.getZones(t)
     if zones == []: zones = [t] # must be a BC node
@@ -564,19 +642,20 @@ def _computeVariablesBC(t, varList, gamma=1.4, rgp=287.053, s0=0.,
 # INPUT: t: tree of skin/wall borders (velocity gradients must be defined yet)
 #===============================================================================
 def computeWallShearStress(t):
-    import extraVariablesPT
+    """Compute wall shear stress."""
+    from . import extraVariablesPT
     tp = Internal.copyRef(t)
     extraVariablesPT._computeWallShearStress(tp)
     return tp
 
 def _computeWallShearStress(t):
-    import extraVariablesPT
+    from . import extraVariablesPT
     return extraVariablesPT._computeWallShearStress(t)
-    
+
 def computeExtraVariable(t, varname, gamma=-1, rgp=-1.,
                          Cs=-1., mus=-1., Ts=-1.):
     """Compute variables that requires a change of location."""
-    import extraVariablesPT
+    from . import extraVariablesPT
     try:
         state = C.getState(t)
         if gamma < 0: gamma = state[11]
@@ -608,14 +687,14 @@ def computeExtraVariable(t, varname, gamma=-1, rgp=-1.,
         return t2
     elif varname == 'centers:VorticityMagnitude':
         return extraVariablesPT.computeVorticityMagnitude(t)
-    elif (varname == 'QCriterion' or varname == 'nodes:QCriterion'):
+    elif varname == 'QCriterion' or varname == 'nodes:QCriterion':
         t2 = extraVariablesPT.computeQCriterion(t)
         t2 = C.center2Node(t2, 'centers:QCriterion')
         C._rmVars(t2, 'centers:QCriterion')
         return t2
     elif varname == 'centers:QCriterion':
         return extraVariablesPT.computeQCriterion(t)
-    elif (varname == 'ShearStress' or varname == 'nodes:ShearStress'):
+    elif varname == 'ShearStress' or varname == 'nodes:ShearStress':
         t2 = extraVariablesPT.computeShearStress(t, gamma, rgp, Cs, mus, Ts)
         vars = ['centers:ShearStressXX',
                 'centers:ShearStressXY',
@@ -640,7 +719,7 @@ def computeExtraVariable(t, varname, gamma=-1, rgp=-1.,
     elif varname == 'centers:SkinFrictionTangential':
         return extraVariablesPT.computeSkinFriction(t, centers=1, tangent=1)
     else:
-        print 'Warning: computeExtraVariable: unknown variable: %s.'%varname
+        print('Warning: computeExtraVariable: unknown variable: %s.'%varname)
 
 #==============================================================================
 # Importe les variables de t1 dans t2, retourne t2 modifie
@@ -650,22 +729,24 @@ def computeExtraVariable(t, varname, gamma=-1, rgp=-1.,
 # addExtra=1, ajoute les zones non reconnues dans une base EXTRA
 #==============================================================================
 def importVariables(t1, t2, method=0, eps=1.e-6, addExtra=1):
+    """Import the variables of tree t1 to tree t2."""
     a2 = Internal.copyRef(t2)
     zones1 = Internal.getZones(t1)
     zones2 = Internal.getZones(a2)
     nzones1 = len(zones1); nzones2 = len(zones2)
     dejaVu = numpy.zeros(nzones2, numpy.int32)
 
-    loc = 1
+    locDict={}
     if method == 2:
-        for noz1 in xrange(nzones1):
+        for noz1 in range(nzones1):
             z1 = zones1[noz1]; found = 0
             noz2 = noz1
             if dejaVu[noz2] == 0 and found == 0:
                 z2 = zones2[noz2]
                 (parent2, d) = Internal.getParentOfNode(a2, z2)
                 loc = identifyZonesLoc__(z1, z2, method, eps)
-                if (abs(loc) == 1): # nodes
+                locDict[z1[0]]=loc
+                if abs(loc) == 1: # nodes
                     dejaVu[noz2] = noz1+1; found = 1
                     sol1 = Internal.getNodesFromType1(z1, 'FlowSolution_t')
                     dim1 = Internal.getZoneDim(z1)
@@ -673,7 +754,7 @@ def importVariables(t1, t2, method=0, eps=1.e-6, addExtra=1):
                     for s1 in sol1:
                         loc1 = 'nodes'
                         loci = Internal.getNodesFromType1(s1, 'GridLocation_t')
-                        if (len(loci) > 0):
+                        if len(loci) > 0:
                             v = Internal.getValue(loci[0])
                             if v == 'CellCenter': loc1 = 'centers'
                         sol11 = Internal.getNodesFromType(s1, 'DataArray_t')
@@ -688,20 +769,28 @@ def importVariables(t1, t2, method=0, eps=1.e-6, addExtra=1):
                     dim1 = Internal.getZoneDim(z1)
                     cn1 = Internal.getNodeFromName1(z1, 'GridElements')
                     for s1 in sol1:
-                        sol11 = Internal.getNodesFromType(s1, 'DataArray_t')
-                        for s11 in sol11:
-                            ar1 = Internal.convertDataNode2Array(s11, dim1, cn1)[1]
-                            z2 = C.setFields([ar1], z2, 'centers')
+                        loc1 = 0
+                        loci = Internal.getNodesFromType1(s1, 'GridLocation_t')
+                        if len(loci) > 0:
+                            v = loci[0]
+                            if v[0]!='V': loc1 = 1# 'Vertex'
+
+                        if loc1==0:
+                            sol11 = Internal.getNodesFromType(s1, 'DataArray_t')
+                            for s11 in sol11:
+                                ar1 = Internal.convertDataNode2Array(s11, dim1, cn1)[1]
+                                z2 = C.setFields([ar1], z2, 'centers')
                     parent2[2][d] = z2
 
     elif method in (0,1):
-        for noz1 in xrange(nzones1):
+        for noz1 in range(nzones1):
             z1 = zones1[noz1]; found = 0
-            for noz2 in xrange(nzones2):
+            for noz2 in range(nzones2):
                 if dejaVu[noz2] == 0 and found == 0:
                     z2 = zones2[noz2]
                     (parent2, d) = Internal.getParentOfNode(a2, z2)
                     loc = identifyZonesLoc__(z1, z2, method, eps)
+                    locDict[z1[0]]=loc
                     if loc == 1: # nodes
                         dejaVu[noz2] = noz1+1; found = 1
                         sol1 = Internal.getNodesFromType1(z1, 'FlowSolution_t')
@@ -711,7 +800,7 @@ def importVariables(t1, t2, method=0, eps=1.e-6, addExtra=1):
                         for s1 in sol1:
                             loc1 = 'nodes'
                             loci = Internal.getNodesFromType1(s1, 'GridLocation_t')
-                            if (len(loci) > 0):
+                            if len(loci) > 0:
                                 v = Internal.getValue(loci[0])
                                 if v == 'CellCenter': loc1 = 'centers'
 
@@ -727,35 +816,44 @@ def importVariables(t1, t2, method=0, eps=1.e-6, addExtra=1):
                         dim1 = Internal.getZoneDim(z1)
                         cn1 = Internal.getNodeFromName1(z1, 'GridElements')
                         for s1 in sol1:
-                            sol11 = Internal.getNodesFromType(s1, 'DataArray_t')
-                            for s11 in sol11:
-                                ar1 = Internal.convertDataNode2Array(s11, dim1, cn1)[1]
-                                z2 = C.setFields([ar1], z2, 'centers')
+                            loc1 = 0
+                            loci = Internal.getNodesFromType1(s1, 'GridLocation_t')
+                            if len(loci) > 0:
+                                v = loci[0]
+                                if v[0]!='V': loc1 = 1# 'Vertex'
+
+                            if loc1==0:
+                                sol11 = Internal.getNodesFromType(s1, 'DataArray_t')
+                                for s11 in sol11:
+                                    ar1 = Internal.convertDataNode2Array(s11, dim1, cn1)[1]
+                                    z2 = C.setFields([ar1], z2, 'centers')        
+
                         parent2[2][d] = z2
     else: raise NotImplementedError("Method {0!r} is not implemented. Please refer to the documentation".format(method))
 
     if not Internal.isTopTree(a2): return a2
 
     tag = numpy.zeros(nzones1, numpy.int32)
-    for noz2 in xrange(nzones2):
+    for noz2 in range(nzones2):
         if dejaVu[noz2] > 0: tag[dejaVu[noz2]-1] = 1
 
     extra = False
-    for noz1 in xrange(nzones1):
+    for noz1 in range(nzones1):
         if tag[noz1] == 0: extra = True; break
 
-    if (extra == True and addExtra == 1):
-        print 'Warning: importVariables: extra grid(s) in t2 detected, added to EXTRA base.'
-        a2 = C.addBase2PyTree(a2, 'EXTRA', 3)
+    if extra == True and addExtra == 1:
+        print('Warning: importVariables: extra grid(s) in t2 detected, added to EXTRA base.')
+        C._addBase2PyTree(a2, 'EXTRA', 3)
         base = Internal.getNodesFromName1(a2, 'EXTRA')
-        if (loc == 1): # ajout direct
-            for noz1 in xrange(nzones1):
-                if (tag[noz1] == 0):
-                    base[0][2].append(zones1[noz1])
-        else: # ajout coord en noeud et champ direct
-            for noz1 in xrange(nzones1):
-                if tag[noz1] == 0:
-                    z = zones1[noz1]
+        for noz1 in range(nzones1):
+            if tag[noz1] == 0:
+                z = zones1[noz1]
+                loc = locDict[z[0]]
+                if abs(loc)==1: # ajout direct
+                    base[0][2].append(z)
+
+                elif abs(loc) == 2: # ajout coord en noeud et champ direct (qui correspond aux centres du  nouveau)
+                    C._rmVars(z,Internal.__FlowSolutionCenters__)                    
                     zc = C.center2Node(z)
                     coords = Internal.getNodesFromType1(zc, 'GridCoordinates_t')
                     dim = Internal.getZoneDim(zc)
@@ -767,11 +865,17 @@ def importVariables(t1, t2, method=0, eps=1.e-6, addExtra=1):
                             z = C.setFields([ar], z, 'nodes')
                     fields = Internal.getNodesFromType1(z, 'FlowSolution_t')
                     for x in fields:
-                        ax = Internal.getNodesFromType(x, 'DataArray_t')
-                        for sx in ax:
-                            ar = Internal.convertDataNode2Array(sx, dim, cn)[1]
-                            z = C.setFields([ar], z, 'centers')
-                    z = C.rmVars(z, 'FlowSolution')
+                        gloc= Internal.getNodeFromType(x,'GridLocation_t')
+                        vloc = 1
+                        if gloc is None: vloc = 0
+                        else:
+                            if gloc[1][0]=='V': vloc=0# =='Vertex'
+                        if vloc == 0:                       
+                            ax = Internal.getNodesFromType(x, 'DataArray_t')
+                            for sx in ax:
+                                ar = Internal.convertDataNode2Array(sx, dim, cn)[1]
+                                z = C.setFields([ar], z, 'centers')
+                    C._rmVars(z,Internal.__FlowSolutionNodes__)                    
                     base[0][2].append(z)
     return a2
 
@@ -879,10 +983,10 @@ def extractArraysForScalarInteg__(t, var=''):
 
     # mise a jour de fields [[],[],[],..,[]] -> []
     foundn = 0; foundc = 0
-    for nof in xrange(len(fields)):
+    for nof in range(len(fields)):
         if fields[nof] != []: foundn = 1
     if foundn == 0: fields = []
-    for nof in xrange(len(fieldsc)):
+    for nof in range(len(fieldsc)):
         if fieldsc[nof] != []: foundc = 1
     if foundc == 0: fieldsc = []
     return [coords, fields, fieldsc]
@@ -911,10 +1015,10 @@ def extractArraysForVectorInteg__(t, vector):
 
     # mise a jour de fields [[],[],[],..,[]] -> []
     foundn = 0; foundc = 0
-    for nof in xrange(len(fields)):
+    for nof in range(len(fields)):
         if fields[nof] != []: foundn = 1
     if foundn == 0: fields = []
-    for nof in xrange(len(fieldsc)):
+    for nof in range(len(fieldsc)):
         if fieldsc[nof] != []: foundc = 1
     if foundc == 0: fieldsc = []
     return [coords, fields, fieldsc]
@@ -925,10 +1029,10 @@ def extractRatioForInteg__(t):
     ration = C.getField('ratio', zones)
     ratioc = C.getField('centers:ratio', zones)
     foundn = 0; foundc = 0
-    for nof in xrange(len(ration)):
+    for nof in range(len(ration)):
         if ration[nof] != []: foundn = 1
     if foundn == 0: ration = []
-    for nof in xrange(len(ratioc)):
+    for nof in range(len(ratioc)):
         if ratioc[nof] != []: foundc = 1
     if foundn == 0: ration = []
     if foundc == 0: ratioc = []
@@ -960,9 +1064,7 @@ def integ(t, var=''):
         else: loc = 0; varName = vars[1]
     else: loc = 0; varName = var
     ret = 0.
-
-    zones = Internal.getZones(t)
-    for z in zones:
+    for z in Internal.getZones(t):
         vol = None; removeVol = False; removeVar = False
         cont = Internal.getNodeFromName1(z, Internal.__FlowSolutionCenters__)
         if cont is not None:
@@ -972,10 +1074,14 @@ def integ(t, var=''):
             removeVol = True
             G._getVolumeMap(z)
         if loc == 0:
-            try: z = C.node2Center(z, varName); removeVar = True
+            try: 
+                z2 = C.node2Center(z, varName); removeVar = True
+                ret += post.integ2(z2, varName, Internal.__GridCoordinates__,
+                                   Internal.__FlowSolutionNodes__, Internal.__FlowSolutionCenters__)
             except: pass
-        ret += post.integ2(z, varName, Internal.__GridCoordinates__, 
-                           Internal.__FlowSolutionNodes__, Internal.__FlowSolutionCenters__)
+        else:
+            ret += post.integ2(z, varName, Internal.__GridCoordinates__,
+                               Internal.__FlowSolutionNodes__, Internal.__FlowSolutionCenters__)
         if removeVol: C._rmVars(z, 'centers:vol')
         if removeVar: C._rmVars(z, 'centers:'+varName)
     return [ret] # for compatibility
@@ -1061,15 +1167,18 @@ def _usurp(t):
 
 def computeGrad(t, var):
     """Compute the gradient of a variable defined in array.
-    Usage: computeGrad(t) """
+    Usage: computeGrad(t,var) """
     tp = Internal.copyRef(t)
-    gradVar = var             # variable on which gradient is computed
+    gradVar = var # variable on which gradient is computed
     v = var.split(':')
     posv = 0
     if len(v) > 1:
         if v[0] == 'centers':
             posv = C.isNamePresent(tp, v[1])
             tp = C.center2Node(tp, var)
+            gradVar = v[1]
+        if v[0] == 'nodes':
+            posv    = C.isNamePresent(tp, v[1])
             gradVar = v[1]
 
     nodes = C.getAllFields(tp, 'nodes')
@@ -1078,43 +1187,83 @@ def computeGrad(t, var):
     C.setFields(centers, tp, 'centers')
     return tp
 
-def computeGrad2(t, var):
+def computeGrad2(t,var,ghostCells=False):
+    tp = Internal.copyRef(t)
+    _computeGrad2(tp,var,ghostCells=False)
+    return tp
+
+def _computeGrad2(t,var,ghostCells=False):
     """Compute the gradient of a variable defined in array.
     Usage: computeGrad2(t,var)"""
+    if type(var) == list:
+        raise ValueError("computeGrad2: not available for lists of variables.")
     vare = var.split(':')
     if len(vare) > 1: vare = vare[1]
-    tp = Internal.copyRef(t)
-    zones = Internal.getZones(tp)
-    for z in zones:
-        dims = Internal.getZoneDim(z)
-        f = C.getField(var, z)[0]
-        x = C.getFields(Internal.__GridCoordinates__, z)[0]
-        # Get BCDataSet if any
-        indices=None; BCField=None
 
-        isghost = Internal.getNodeFromType1(z,'Rind_t')
-        if isghost is None: # not a ghost cells zone : add BCDataSet
-            zoneBC = Internal.getNodesFromType1(z, 'ZoneBC_t')
-            if zoneBC is not None:
-                BCs = Internal.getNodesFromType1(zoneBC, 'BC_t')
-                for b in BCs:
-                    datas = Internal.getBCDataSet(z, b)
-                    inds = Internal.getBCFaceNode(z, b)
-                    if datas != [] and inds != []:
-                        bcf = None
-                        for i in datas:
-                            if i[0] == vare: bcf = i; break
-                        if bcf is not None:
-                            indsp = inds[1].reshape(inds[1].size)
-                            bcfp = bcf[1].reshape(bcf[1].size)
-                            if indices is None: indices = indsp
-                            else: indices = numpy.concatenate((indices, indsp))
-                            if BCField is None: BCField = bcfp
-                            else: BCField = numpy.concatenate((BCField, bcfp))
-        if f != []:
-            centers = Post.computeGrad2(x, f, indices=indices, BCField=BCField)
-            C.setFields([centers], z, 'centers')
-    return tp
+    # Compute fields on BCMatch (for all match connectivities)
+    if not ghostCells:
+        allMatch = C.extractAllBCMatch(t,vare)
+    else:
+        allMatch = {}
+
+    zones = Internal.getZones(t)
+    for z in zones:
+        # if not C.isXZone(z): # For MPI computation with additionnal XZones loaded. 
+            # print("calcul du gradient!!!!!")
+            f = C.getField(var, z)[0]
+            x = C.getFields(Internal.__GridCoordinates__, z)[0]
+            # Get BCDataSet if any
+            indices=None; BCField=None
+
+            isghost = Internal.getNodeFromType1(z,'Rind_t')
+            if isghost is None or not ghostCells: # not a ghost cells zone : add BCDataSet
+                zoneBC = Internal.getNodesFromType1(z, 'ZoneBC_t')
+                if zoneBC is not None:
+                    BCs = Internal.getNodesFromType1(zoneBC, 'BC_t')
+                    for b in BCs:
+                        datas = Internal.getBCDataSet(z, b)
+                        inds = Internal.getBCFaceNode(z, b)
+                        if datas != [] and inds != []:
+                            bcf = None
+                            for i in datas:
+                                if i[0] == vare: bcf = i; break
+                            if bcf is not None:
+                                indsp = inds[1].ravel(order='K')
+                                bcfp = bcf[1].ravel(order='K')
+                                if indices is None: indices = indsp
+                                else: indices = numpy.concatenate((indices, indsp))
+                                if BCField is None: BCField = bcfp
+                                else: BCField = numpy.concatenate((BCField, bcfp))
+
+            # compute field on BCMatch for current zone
+            if allMatch != {}:
+                indFace, fldFace = C.computeBCMatchField(z,allMatch,vare)
+
+                if fldFace is not None:
+
+                    fldp = None
+
+                    for fgc in fldFace:
+                        fgc   = fgc[1][0]
+                        if fldp is None:
+                            fldp = fgc
+                        else:
+                            fldp = numpy.concatenate((fldp,fgc))
+
+                    indp    = indFace.ravel(order='K')
+                    fldp    = fldp.ravel(order='K')
+
+                    if indices is None: indices = indp
+                    else: indices = numpy.concatenate((indices, indp))
+
+                    if BCField is None: BCField = fldp
+                    else: BCField = numpy.concatenate((BCField, fldp))
+
+            if f != []:
+                centers = Post.computeGrad2(x, f, indices=indices, BCField=BCField)
+                C.setFields([centers], z, 'centers')
+
+    return None
 
 def computeNormGrad(t, var):
     """Compute the norm of gradient of a variable defined in array.
@@ -1128,12 +1277,245 @@ def computeNormGrad(t, var):
             posv = C.isNamePresent(tp, v[1])
             tp = C.center2Node(tp, var)
             gradVar = v[1]
-
     nodes = C.getAllFields(tp, 'nodes')
-    if posv == -1: tp = C.rmVars(tp, gradVar)
+    if posv == -1: C._rmVars(tp, gradVar)
     centers = Post.computeNormGrad(nodes, gradVar)
     C.setFields(centers, tp, 'centers')
     return tp
+
+def computeDiv(t,var):
+    """Compute the divergence of a variable defined in array.
+    Usage: computeDiv(t, var) """
+    if isinstance(var, list):
+        raise ValueError("computeDiv: not available for lists of variables.")
+    tp = Internal.copyRef(t)
+    sdirlist = ['X', 'Y', 'Z'] # The order is important!
+    dim = 3
+    posv = [0]*dim
+    divVector = list()
+    for i in range(dim):
+        name = var+sdirlist[i]
+        v = name.split(':')
+        if len(v) > 1:
+            if v[0] == 'centers':
+                posv[i] = C.isNamePresent(tp, v[1])
+                tp = C.center2Node(tp, name)
+                name = v[1]
+        divVector.append(name)
+
+    tn = C.getAllFields(tp, 'nodes') # < get all fields (?) We only need a few...
+    for i in range(dim):
+        if posv[i] == -1: C._rmVars(tp, divVector[i])
+    tc = Post.computeDiv(tn, divVector)
+    C.setFields(tc, tp, 'centers')
+    return tp
+
+def computeDiv2(t,var,ghostCells=False):
+    tp = Internal.copyRef(t)
+    _computeDiv2(tp, var,ghostCells=False)
+    return tp
+
+def _computeDiv2(t, var,ghostCells=False):
+    """Compute the divergence of a variable defined in array.
+    Usage: computeDiv2(t, var)"""
+    if isinstance(var, list):
+        raise ValueError("computeDiv2: not available for lists of variables.")
+    vare = var.split(':')
+    if len(vare) > 1: vare = vare[1]
+
+    # Compute fields on BCMatch (for all match connectivities)
+    varList  = [vare+'X',vare+'Y',vare+'Z']
+    if not ghostCells:
+        allMatch = C.extractAllBCMatch(t,varList)
+    else:
+        allMatch = {}
+
+    zones = Internal.getZones(t)
+    for z in zones:
+        dims = Internal.getZoneDim(z)
+        if dims[-1] == 1: raise ValueError("computeDiv2: not available for 1-dimensional elements.")
+        sdirlist = ['X', 'Y', 'Z'] # The order is important!
+        flist = list()
+        for sdir in sdirlist:
+            flist.append(C.getField('%s%s' % (var,sdir), z)[0])
+        flist = [x for x in flist if x != []]
+        if len(flist) == 3:
+            f = Converter.addVars(flist)
+        elif len(flist) == 2 and dims[-1] == 2:
+            f = Converter.addVars(flist)
+        else:
+            f = []
+        x = C.getFields(Internal.__GridCoordinates__, z)[0]
+        # Get BCDataSet if any
+        indices  = None
+        BCFieldX = None
+        BCFieldY = None
+        BCFieldZ = None
+
+        isghost = Internal.getNodeFromType1(z,'Rind_t')
+        if isghost is None: # not a ghost cells zone : add BCDataSet
+            zoneBC = Internal.getNodesFromType1(z, 'ZoneBC_t')
+            if zoneBC is not None:
+                BCs = Internal.getNodesFromType1(zoneBC, 'BC_t')
+                for b in BCs:
+                    datas = Internal.getBCDataSet(z, b)
+                    inds = Internal.getBCFaceNode(z, b)
+                    if datas != [] and inds != []:
+                        bcf = None
+
+                        # BCFieldX
+                        for i in datas:
+                            if i[0] == vare+'X': bcf = i; break
+                        if bcf is not None:
+                            indsp = inds[1].ravel(order='K')
+                            bcfp = bcf[1].ravel(order='K')
+                            if indices is None: indices = indsp
+                            else: indices = numpy.concatenate((indices, indsp))
+                            if BCFieldX is None: BCFieldX = bcfp
+                            else: BCFieldX = numpy.concatenate((BCFieldX, bcfp))
+
+                        # BCFieldY
+                        for i in datas:
+                            if i[0] == vare+'Y': bcf = i; break
+                        if bcf is not None:
+                            bcfp = bcf[1].ravel(order='K')
+                            if BCFieldY is None: BCFieldY = bcfp
+                            else: BCFieldY = numpy.concatenate((BCFieldY, bcfp))
+
+                        # BCFieldZ
+                        for i in datas:
+                            if i[0] == vare+'Z': bcf = i; break
+                        if bcf is not None:
+                            bcfp = bcf[1].ravel(order='K')
+                            if BCFieldZ is None: BCFieldZ = bcfp
+                            else: BCFieldZ = numpy.concatenate((BCFieldZ, bcfp))
+
+
+         # compute field on BCMatch for current zone
+        if allMatch != {}:
+            indFace, fldFace = C.computeBCMatchField(z,allMatch,varList)
+
+            if fldFace is not None:
+
+                fldX = None
+                fldY = None
+                fldZ = None
+
+                foundVar = fldFace[0][0].split(',')
+
+                if len(foundVar)==3: # 3D
+                    for fgc in fldFace:
+                        fgcX = fgc[1][0]
+                        fgcY = fgc[1][1]
+                        fgcZ = fgc[1][2]
+
+                        if fldX is None: fldX = fgcX
+                        else: fldX = numpy.concatenate((fldX,fgcX))
+
+                        if fldY is None: fldY = fgcY
+                        else: fldY = numpy.concatenate((fldY,fgcY))
+
+                        if fldZ is None: fldZ = fgcZ
+                        else: fldZ = numpy.concatenate((fldZ,fgcZ))
+
+                    indp    = indFace.ravel(order='K')
+                    fldX    = fldX.ravel(order='K')
+                    fldY    = fldY.ravel(order='K')
+                    fldZ    = fldZ.ravel(order='K')
+
+                    if indices is None: indices = indp
+                    else: indices = numpy.concatenate((indices, indp))
+
+                    if BCFieldX is None: BCFieldX = fldX
+                    else: BCFieldX = numpy.concatenate((BCFieldX, fldX))
+
+                    if BCFieldY is None: BCFieldY = fldY
+                    else: BCFieldY = numpy.concatenate((BCFieldY, fldY))
+
+                    if BCFieldZ is None: BCFieldZ = fldZ
+                    else: BCFieldZ = numpy.concatenate((BCFieldZ, fldZ))
+
+                elif len(foundVar)==2: # 2D
+                    # Config (XY)
+                    if (foundVar[0][-1] == 'X' and foundVar[1][-1] == 'Y'):
+                        for fgc in fldFace:
+                            fgcX = fgc[1][0]
+                            fgcY = fgc[1][1]
+
+                            if fldX is None: fldX = fgcX
+                            else: fldX = numpy.concatenate((fldX,fgcX))
+
+                            if fldY is None: fldY = fgcY
+                            else: fldY = numpy.concatenate((fldY,fgcY))
+
+                        indp    = indFace.ravel(order='K')
+                        fldX    = fldX.ravel(order='K')
+                        fldY    = fldY.ravel(order='K')
+
+                        if indices is None: indices = indp
+                        else: indices = numpy.concatenate((indices, indp))
+
+                        if BCFieldX is None: BCFieldX = fldX
+                        else: BCFieldX = numpy.concatenate((BCFieldX, fldX))
+
+                        if BCFieldY is None: BCFieldY = fldY
+                        else: BCFieldY = numpy.concatenate((BCFieldY, fldY))
+
+                    # Config (XZ)
+                    if (foundVar[0][-1] == 'X' and foundVar[1][-1] == 'Z'):
+                        for fgc in fldFace:
+                            fgcX = fgc[1][0]
+                            fgcZ = fgc[1][1]
+
+                            if fldX is None: fldX = fgcX
+                            else: fldX = numpy.concatenate((fldX,fgcX))
+
+                            if fldZ is None: fldZ = fgcZ
+                            else: fldZ = numpy.concatenate((fldZ,fgcZ))
+
+                        indp    = indFace.ravel(order='K')
+                        fldX    = fldX.ravel(order='K')
+                        fldZ    = fldZ.ravel(order='K')
+
+                        if indices is None: indices = indp
+                        else: indices = numpy.concatenate((indices, indp))
+
+                        if BCFieldX is None: BCFieldX = fldX
+                        else: BCFieldX = numpy.concatenate((BCFieldX, fldX))
+
+                        if BCFieldZ is None: BCFieldZ = fldZ
+                        else: BCFieldZ = numpy.concatenate((BCFieldZ, fldZ))
+
+                    # Config (YZ)
+                    if (foundVar[0][-1] == 'Y' and foundVar[1][-1] == 'Z'):
+                        for fgc in fldFace:
+                            fgcY = fgc[1][0]
+                            fgcZ = fgc[1][1]
+
+                            if fldY is None: fldY = fgcY
+                            else: fldY = numpy.concatenate((fldY,fgcY))
+
+                            if fldZ is None: fldZ = fgcZ
+                            else: fldZ = numpy.concatenate((fldZ,fgcZ))
+
+                        indp    = indFace.ravel(order='K')
+                        fldY    = fldY.ravel(order='K')
+                        fldZ    = fldZ.ravel(order='K')
+
+                        if indices is None: indices = indp
+                        else: indices = numpy.concatenate((indices, indp))
+
+                        if BCFieldY is None: BCFieldY = fldY
+                        else: BCFieldY = numpy.concatenate((BCFieldY, fldY))
+
+                        if BCFieldZ is None: BCFieldZ = fldZ
+                        else: BCFieldZ = numpy.concatenate((BCFieldZ, fldZ))
+
+        if f != []:
+            centers = Post.computeDiv2(x, f, indices=indices, BCFieldX=BCFieldX,
+                                             BCFieldY=BCFieldY, BCFieldZ=BCFieldZ)
+            C.setFields([centers], z, 'centers')
+    return None
 
 def computeCurl(t, vector):
     """Compute the curl of a vector defined in array.
@@ -1142,7 +1524,7 @@ def computeCurl(t, vector):
     curlVector = []
     n = len(vector)
     posv = [0]*n
-    for i in xrange(n):
+    for i in range(n):
         var = vector[i]
         curlVar = var
         v = var.split(':')
@@ -1154,7 +1536,7 @@ def computeCurl(t, vector):
         curlVector.append(curlVar)
 
     nodes = C.getAllFields(tp, 'nodes')
-    for i in xrange(n):
+    for i in range(n):
         if posv[i] == -1: tp = C.rmVars(tp, curlVector[i])
 
     centers = Post.computeCurl(nodes, curlVector)
@@ -1168,7 +1550,7 @@ def computeNormCurl(t, vector):
     curlVector = []
     n = len(vector)
     posv = [0]*n
-    for i in xrange(n):
+    for i in range(n):
         var = vector[i]
         curlVar = var
         v = var.split(':')
@@ -1180,7 +1562,7 @@ def computeNormCurl(t, vector):
         curlVector.append(curlVar)
 
     nodes = C.getAllFields(tp, 'nodes')
-    for i in xrange(n):
+    for i in range(n):
         if posv[i] == -1: tp = C.rmVars(tp, curlVector[i])
     centers = Post.computeNormCurl(nodes, curlVector)
     C.setFields(centers, tp, 'centers')
@@ -1247,15 +1629,26 @@ def isoLine(t, var, value):
     a = Post.isoLine(arrays, v, value)
     return C.convertArrays2ZoneNode('isoLine', [a])
 
-def isoSurf(t, var, value, split='simple'):
+def isoSurf(t, var, value, split='simple', vars=None):
     """Compute an iso surface in volume zones using marching tetra.
     Usage: isoSurf(t, var, value)"""
-    t = C.center2Node(t, Internal.__FlowSolutionCenters__)
+    if vars is None:
+        t = C.center2Node(t, Internal.__FlowSolutionCenters__)
+    else:
+        for v in vars:
+            vs = v.split(':')
+            vc = []; vn = ['CoordinateX','CoordinateY','CoordinateY']
+            if len(vs) == 2 and vs[0] == 'centers': vc.append(vs[1])
+            elif len(vs) == 2 and vs[0] == 'nodes': vn.append(vs[1])
+            else: vn.append(v)
+        if vc != []: t = C.center2Node(t, vc)
+
     zones = Internal.getZones(t)
     var, loc = Internal.fixVarName(var)
     ret = []
     for z in zones:
-        array = C.getAllFields(z, 'nodes')[0]
+        if vars is None: array = C.getAllFields(z, 'nodes')[0]
+        else: array = C.getFields([Internal.__GridCoordinates__, Internal.__FlowSolutionNodes__], z, vn+vc)[0]
         try:
             a = Post.isoSurf(array, var, value, split)
             if a != []:
@@ -1269,13 +1662,10 @@ def isoSurfMC_opt(t, var, value, list=[]):
     """Compute an iso surface in volume zones using marching cubes.
     If varlist present, only variables of varlist are interpolated on the isosurface
     Usage: isoSurfMC_opt(t, var, value, varlist)"""
-
     import KCore
     OMP_NUM_THREADS = KCore.getOmpMaxThreads()
-
     vars = var.split(':')
     if len(vars) == 2: var = vars[1]
-
     ret = []; new_list=[]; coord=['CoordinateX','CoordinateY','CoordinateZ']
 
     if list != []:
@@ -1332,15 +1722,26 @@ def isoSurfMC_opt(t, var, value, list=[]):
     if var not in coord: ret = C.rmVars(ret, var)
     return ret
 
-def isoSurfMC(t, var, value, split='simple'):
+def isoSurfMC(t, var, value, split='simple', vars=None):
     """Compute an iso surface in volume zones using marching cubes.
-    Usage: isoSurfMC(t, var, value)"""
-    t = C.center2Node(t, Internal.__FlowSolutionCenters__)
+    Usage: isoSurfMC(t, var, value, split, vars)"""
+    if vars is None:
+        t = C.center2Node(t, Internal.__FlowSolutionCenters__)
+    else:
+        for v in vars:
+            vs = v.split(':')
+            vc = []; vn = ['CoordinateX','CoordinateY','CoordinateY']
+            if len(vs) == 2 and vs[0] == 'centers': vc.append(vs[1])
+            elif len(vs) == 2 and vs[0] == 'nodes': vn.append(vs[1])
+            else: vn.append(v)
+        if vc != []: t = C.center2Node(t, vc)
+
     zones = Internal.getZones(t)
     var, loc = Internal.fixVarName(var)
     ret = []
     for z in zones:
-        array = C.getAllFields(z, 'nodes')[0]
+        if vars is None: array = C.getAllFields(z, 'nodes')[0]
+        else: array = C.getFields([Internal.__GridCoordinates__, Internal.__FlowSolutionNodes__], z, vn+vc)[0]
         try:
             a = Post.isoSurfMC(array, var, value, split)
             if a != []:
@@ -1386,7 +1787,7 @@ def _computeIndicatorField(octreeHexa, varName, nbTargetPts=-1, bodies=[],
     if bodies != []:
         bodiesA = C.getFields(Internal.__GridCoordinates__, bodies)
     fields = C.getField(varName, octreeHexa)[0]
-    if (vars[0] != 'centers'): fields = Converter.node2Center(fields)
+    if vars[0] != 'centers': fields = Converter.node2Center(fields)
     indicator, epsInf, epsSup = Post.computeIndicatorField(
         hexa, fields, nbTargetPts, bodiesA,
         refineFinestLevel, coarsenCoarsestLevel)
@@ -1451,22 +1852,22 @@ def _renameVars(a, varsPrev, varsNew):
 
     fnodes = Internal.getNodesFromName3(a, Internal.__FlowSolutionNodes__)
     fcenters = Internal.getNodesFromName3(a, Internal.__FlowSolutionCenters__)
-    for nov in xrange(len(varsPrev)):
+    for nov in range(len(varsPrev)):
         splP = varsPrev[nov].split(':')
         splN = varsNew[nov].split(':')
         if fcenters != []:
             if len(splP) != 1 and splP[0] == 'centers' and len(splN) != 1 and splN[0]=='centers':
                 for fc in fcenters:
                     for j in fc[2]:
-                        if j[0]==splP[1]: j[0]=splN[1]
+                        if j[0]==splP[1]: j[0] = splN[1]
         if fnodes != []:
             if len(splP) == 1 and len(splN) == 1:
                 if fnodes != []:
                     for fn in fnodes:
                         for j in fn[2]:
-                            if j[0]==splP[0]: j[0]=splN[0]
+                            if j[0]==splP[0]: j[0] = splN[0]
             elif len(splP) != 1 and splP[0] == 'nodes' and len(splN) != 1 and splN[0]=='nodes':
                 if fnodes != []:
                     for fn in fnodes:
                         for j in fn[2]:
-                            if j[0]==splP[1]: j[0]=splN[1]
+                            if j[0]==splP[1]: j[0] = splN[1]

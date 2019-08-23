@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -42,6 +42,7 @@ void K_DISTRIBUTOR2::genetic(
 {
   // Nombre total de blocs: nb
   E_Int nb = nbPts.size();
+  //for (E_Int i = 0; i < nb; i++) printf("bloc %d : %g\n", i, nbPts[i]);
 
   // Nombre de blocs a equilibrer: nbeq
   E_Int nbeq = 0;
@@ -267,6 +268,7 @@ void K_DISTRIBUTOR2::genetic(
   }
 
   // First evaluation for nice people:
+//#pragma omp parallel for
   for (E_Int j = 1; j <= sizeOfPopulation; j++)
   {
     evalp[j-1] = K_DISTRIBUTOR2::eval(nb, NProc, meanPtsPerProc,
@@ -275,6 +277,8 @@ void K_DISTRIBUTOR2::genetic(
                                       nbPtsPerProcs, nbPts,
                                       popp+(j-1)*nb);
   }
+
+  //for (E_Int j = 1; j <= sizeOfPopulation; j++) printf("evalp=%f\n", evalp[j-1]);
   
   //printf("Adaptation init1: %f\n", evalp[0]);
   //printf("Adaptation init2: %f\n", evalp[1]);
@@ -335,11 +339,11 @@ void K_DISTRIBUTOR2::genetic(
     {
       if (evalp[j-1] == -1)
       {
-	E_Int indClone = survivorsp[E_Int(nbSurvivors*K_NOISE::stdRand(&idum))];
-	for (E_Int i = 0; i < nb; i++)
-	{
-	  popp[i+(j-1)*nb] = popp[i+(indClone-1)*nb];
-	}
+       E_Int indClone = survivorsp[E_Int(nbSurvivors*K_NOISE::stdRand(&idum))];
+       for (E_Int i = 0; i < nb; i++)
+       {
+         popp[i+(j-1)*nb] = popp[i+(indClone-1)*nb];
+       }
       }
     }
 
@@ -485,7 +489,8 @@ void K_DISTRIBUTOR2::genetic(
         if (setBlocks[i] >= 0) popp[i+(j-1)*nb] = setBlocks[i];
 
     // On reevalue l'adaptation des survivants:
-    for ( E_Int j = 1; j <= sizeOfPopulation; j++ )
+//#pragma omp parallel for
+    for (E_Int j = 1; j <= sizeOfPopulation; j++)
     {
       evalp[j-1] = K_DISTRIBUTOR2::eval(nb, NProc, meanPtsPerProc,
                                         solver, latence,
@@ -503,6 +508,7 @@ void K_DISTRIBUTOR2::genetic(
   } // loop
 
   // Sortie
+  //printf("jbest=%d\n", jBest);
   for (E_Int i = 0; i < nb; i++) out[i] = popp[i+(jBest-1)*nb];
 
   // Calcul du nombre de pts par processeurs
@@ -517,8 +523,8 @@ void K_DISTRIBUTOR2::genetic(
   //printf("Nb de pts par proc:\n");
   for (E_Int i = 0; i < NProc; i++)
   {
-    //  printf("Proc %d: %d pts\n", i, nbNodePerProc[i]);
-    if (nbNodePerProc[i] == 0) 
+    //printf("Proc %d: %g pts\n", i, nbNodePerProc[i]);
+    if (K_FUNC::E_abs(nbNodePerProc[i]) < 1.e-6)
       printf("Warning: processor %d is empty!\n", i);
   }
 

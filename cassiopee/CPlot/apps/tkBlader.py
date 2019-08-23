@@ -1,5 +1,6 @@
 # - blader -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import Converter.Internal as Internal
@@ -8,9 +9,11 @@ import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
 import CPlot.Panels as Panels
 
+try: range = xrange
+except: pass
+
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 # Evalue la qualite du maillage m
@@ -150,10 +153,10 @@ def step1():
         noz = CTK.Nz[nz]
         z = CTK.t[2][nob][2][noz]
         dim = Internal.getZoneDim(z)
-        if (dim[0] == 'Unstructured'): 
+        if dim[0] == 'Unstructured': 
             try: z = C.convertBAR2Struct(z)
-            except Exception, e:
-                #print 'Error: blader: %s'%str(e)
+            except Exception as e:
+                #print('Error: blader: %s'%str(e))
                 errors += [0,str(e)]
                 CTK.TXT.insert('START', 'Input profile must be structured.\n')
                 CTK.TXT.insert('START', 'Error: ', 'Error'); return
@@ -352,7 +355,7 @@ def step1():
     # check volume + subzone
     vol = G.getVolumeMap(m4[0])
     nk = vol[4]; ni = vol[2]
-    for k in xrange(nk-1):
+    for k in range(nk-1):
         sub = T.subzone(vol, (1,1,k+1), (ni,1,k+2)) 
         volmin = Converter.getMinValue(sub, 'vol')
         if volmin < 0.:
@@ -448,13 +451,13 @@ def step2():
     #==========================================================================
     M1b = T.translate(M1, (0,0,Dfar))
     B1 = []
-    for i in xrange(len(M1)):
+    for i in range(len(M1)):
         B1.append(G.stack(M1[i], M1b[i]))
 
     M1c = T.translate(M1, (0,0,-span))
     M1d = T.translate(M1, (0,0,-span-Dfar))
     B2 = []
-    for i in xrange(len(M1c)):
+    for i in range(len(M1c)):
         B2.append(G.stack(M1c[i], M1d[i]))
 
     #C.convertArrays2File(B1+B2, 'bouchon.plt')
@@ -462,7 +465,7 @@ def step2():
     M2b = T.translate(M2, (0,0,Dfar))
     M2c = T.translate(M2, (0,0,-span-Dfar))
     I = []
-    for i in xrange(len(M2b)):
+    for i in range(len(M2b)):
         I.append(G.stack(M2c[i], M2b[i]))
 
     # B1, B2: les bouchons; I le reste
@@ -473,13 +476,13 @@ def step2():
 
     N = int(Dfar/hp)+1
     distrib = G.cart( (0,0,0), (1./(N-1),1,1), (N,1,1) )
-    for i in xrange(len(B1)):
+    for i in range(len(B1)):
         B1[i] = G.map(B1[i], distrib, 3)
-    for i in xrange(len(B2)):
+    for i in range(len(B2)):
         B2[i] = G.map(B2[i], distrib, 3)
     N = int((2*Dfar+span)/hp)+1
     distrib = G.cart( (0,0,0), (1./(N-1),1,1), (N,1,1) )
-    for i in xrange(len(I)):
+    for i in range(len(I)):
         I[i] = G.map(I[i], distrib, 3)
     
     # Back to zones
@@ -516,12 +519,12 @@ def step2():
         z = C.addBC2Zone(z, 'overlap', 'BCOverlap', 'imax')
         base[2][11] = z
 
-        for i in xrange(5):
+        for i in range(5):
             z = base[2][i]
             z = C.addBC2Zone(z, 'overlap', 'BCOverlap', 'kmax')
             base[2][i] = z
 
-        for i in xrange(5):
+        for i in range(5):
             z = base[2][5+i]
             z = C.addBC2Zone(z, 'overlap', 'BCOverlap', 'kmax')
             base[2][5+i] = z
@@ -546,12 +549,12 @@ def step2():
         z = C.addBC2Zone(z, 'overlap', 'BCOverlap', 'kmin')
         base[2][7] = z
 
-        for i in xrange(3):
+        for i in range(3):
             z = base[2][i]
             z = C.addBC2Zone(z, 'overlap', 'BCOverlap', 'kmax')
             base[2][i] = z
 
-        for i in xrange(3):
+        for i in range(3):
             z = base[2][3+i]
             z = C.addBC2Zone(z, 'overlap', 'BCOverlap', 'kmax')
             base[2][3+i] = z
@@ -573,7 +576,7 @@ def createApp(win):
                            text='tkBlader', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Automatic mesher for\nblades.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=0)
     Frame.columnconfigure(1, weight=1)
@@ -590,29 +593,29 @@ def createApp(win):
     # - VARS -
     # -0- front split % -
     V = TK.StringVar(win); V.set('0.5'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBladerFrontSplit'): 
+    if 'tkBladerFrontSplit' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBladerFrontSplit'])
     # -1- front step -
     V = TK.StringVar(win); V.set('0.001'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBladerFrontStep'): 
+    if 'tkBladerFrontStep' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBladerFrontStep'])
     # -2- other step -
     V = TK.StringVar(win); V.set('0.01'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBladerStep'): 
+    if 'tkBladerStep' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBladerStep'])
     # -3- delta line index -
     V = TK.StringVar(win); V.set('15'); VARS.append(V)
     # -4- Dfar. Mesh height -
     V = TK.StringVar(win); V.set('0.3'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBladerHeight'): 
+    if 'tkBladerHeight' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBladerHeight'])
     # -5- hp: step en envergure -
     V = TK.StringVar(win); V.set('0.02'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBladerSpanStep'): 
+    if 'tkBladerSpanStep' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBladerSpanStep'])
     # -6- span: longeur de l'envergure -
     V = TK.StringVar(win); V.set('5.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkBladerSpan'): 
+    if 'tkBladerSpan' in CTK.PREFS: 
         V.set(CTK.PREFS['tkBladerSpan'])
 
     # - Step1 -
@@ -719,11 +722,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

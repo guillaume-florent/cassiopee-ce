@@ -1,7 +1,7 @@
 # - Variable manager -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
-import tkFileDialog
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
@@ -19,7 +19,7 @@ WIDGETS = {}; VARS = []
 def updateVarNameList1(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         varsl = C.getVarNames(CTK.t, excludeXYZ=True)
     else:
         nob = CTK.Nb[0]+1
@@ -45,7 +45,7 @@ def updateVarNameList1_2(event=None):
 
     vars = ['All', 'FlowSolutionNodes', 'FlowSolutionCenters']
     if len(varsl) != 0: vars += varsl[0]
-    if WIDGETS.has_key('var1'):
+    if 'var1' in WIDGETS:
         WIDGETS['var1']['values'] = vars
 
 #==============================================================================
@@ -53,7 +53,7 @@ def updateVarNameList1_2(event=None):
 def updateVarNameList2(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         vars = C.getVarNames(CTK.t)
     else:
         nob = CTK.Nb[0]+1
@@ -69,14 +69,14 @@ def updateVarNameList2(event=None):
 def updateVarNameList2_2(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         vars = C.getVarNames(CTK.t)
     else:
         nob = CTK.Nb[0]+1
         noz = CTK.Nz[0]
         vars = C.getVarNames(CTK.t[2][nob][2][noz])    
     if len(vars) == 0: return
-    if WIDGETS.has_key('var2'):
+    if 'var2' in WIDGETS:
         WIDGETS['var2']['values'] = vars[0]
 
 #==============================================================================
@@ -102,7 +102,7 @@ def updateVarNameList3(event=None):
 def updateVarNameList3_2(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         varsl = C.getVarNames(CTK.t, excludeXYZ=True, loc='centers')
     else:
         nob = CTK.Nb[0]+1
@@ -113,7 +113,7 @@ def updateVarNameList3_2(event=None):
     vars = ['FlowSolutionCenters']
     if len(varsl) != 0: vars += varsl[0]
 
-    if WIDGETS.has_key('var3'):
+    if 'var3' in WIDGETS:
         WIDGETS['var3']['values'] = vars
 
 #==============================================================================
@@ -121,7 +121,7 @@ def updateVarNameList3_2(event=None):
 def updateVarNameList4(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         varsl = C.getVarNames(CTK.t, excludeXYZ=True, loc='nodes')
     else:
         nob = CTK.Nb[0]+1
@@ -148,7 +148,7 @@ def updateVarNameList4_2(event=None):
                               loc='nodes')
     vars = ['FlowSolutionNodes']
     if len(varsl) != 0: vars += varsl[0]
-    if WIDGETS.has_key('var4'):
+    if 'var4' in WIDGETS:
         WIDGETS['var4']['values'] = vars
 
 #==============================================================================
@@ -156,7 +156,7 @@ def updateVarNameList4_2(event=None):
 def updateVarNameList5(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         varsl = C.getVarNames(CTK.t, excludeXYZ=True)
     else:
         nob = CTK.Nb[0]+1
@@ -171,14 +171,14 @@ def updateVarNameList5(event=None):
 def updateVarNameList5_2(event=None):
     if CTK.t == []: return
     nzs = CPlot.getSelectedZones()
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         varsl = C.getVarNames(CTK.t, excludeXYZ=True)
     else:
         nob = CTK.Nb[0]+1
         noz = CTK.Nz[0]
         varsl = C.getVarNames(CTK.t[2][nob][2][noz], excludeXYZ=True)
 
-    if WIDGETS.has_key('var5'):
+    if 'var5' in WIDGETS:
         WIDGETS['var5']['values'] = varsl[0]
 
 #==============================================================================
@@ -187,17 +187,17 @@ def rmVar():
     CTK.saveTree()
     var = VARS[5].get()
     if var == 'All':
-        CTK.t = C.rmVars(CTK.t, Internal.__FlowSolutionNodes__)
-        CTK.t = C.rmVars(CTK.t, Internal.__FlowSolutionCenters__)
+        C._rmVars(CTK.t, Internal.__FlowSolutionNodes__)
+        C._rmVars(CTK.t, Internal.__FlowSolutionCenters__)
     elif var == 'FlowSolutionNodes':
-        CTK.t = C.rmVars(CTK.t, Internal.__FlowSolutionNodes__)
+        C._rmVars(CTK.t, Internal.__FlowSolutionNodes__)
     elif var == 'FlowSolutionCenters':
-        CTK.t = C.rmVars(CTK.t, Internal.__FlowSolutionCenters__)
-    else: CTK.t = C.rmVars(CTK.t, var)
+        C._rmVars(CTK.t, Internal.__FlowSolutionCenters__)
+    else: C._rmVars(CTK.t, var)
     CTK.TXT.insert('START', 'Variable %s removed.\n'%var)
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
-    CTK.TKPLOTXY.updateApp()
+    if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
 
 #==============================================================================
 def renameVar():
@@ -237,6 +237,8 @@ def node2CenterVar():
 #==============================================================================
 def chooseImportFile(event=None):
     import sys
+    try: import tkFileDialog
+    except: import tkinter.tkfiledialog as tkFileDialog 
     init = VARS[4].get()
     init = init.split(';')[0]
     files = tkFileDialog.askopenfilenames(
@@ -257,15 +259,15 @@ def importFile(event=None):
     try:
         t1 = []
         for filename in s:
-            if (filename != ''):
+            if filename != '':
                 t2 = C.convertFile2PyTree(filename)
                 # Fusion des bases de t et t2
-                if (t1 == []): t1 = t2
+                if t1 == []: t1 = t2
                 else: t1 = C.mergeTrees(t1, t2)
     except:
         CTK.TXT.insert('START', 'Import failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
-    if (t1 == []):
+    if t1 == []:
         CTK.TXT.insert('START', 'Import failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
 
@@ -280,9 +282,9 @@ def importFile(event=None):
     inter = zoneNames & zoneNames1
     linter = len(inter)*1.
     comp = min(len(zoneNames), len(zoneNames1))*1.
-    if (linter / comp > 0.9): method = 0 # try match by name (safer)
+    if linter / comp > 0.9: method = 0 # try match by name (safer)
 
-    if (CTK.__MAINTREE__ <= 0 or nzs == []):
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
         CTK.t = P.importVariables(t1, CTK.t, method=method)
     else:
         zones = C.newPyTree(['Base'])
@@ -298,11 +300,11 @@ def importFile(event=None):
             noz = CTK.Nz[nz]
             CTK.t[2][nob][2][noz] = zones[2][1][2][c]; c += 1
     CTK.TXT.insert('START', 'Variable file %s imported.\n'%filename)
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
-    CTK.TKPLOTXY.updateApp()
+    if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
 
 #==============================================================================
 def computeVariables():
@@ -334,9 +336,9 @@ def computeVariables():
         else: ReInf = nodes[0][1]
     else: ReInf = 1.
 
-    if (adim == 'Adim1 (ro,a,T)'):
+    if adim == 'Adim1 (ro,a,T)':
         adim = Adim.adim1(MInf, 0., 0., ReInf)
-    elif (adim == 'Adim2 (ro,u,T)'):
+    elif adim == 'Adim2 (ro,u,T)':
         adim = Adim.adim2(MInf, 0., 0., ReInf)
     else:
         CTK.TXT.insert('START', 'Unknown adim type.\n')
@@ -356,13 +358,13 @@ def computeVariables():
         varname == 'QCriterion' or varname == 'ShearStress' or
         varname == 'SkinFriction' or varname == 'SkinFrictionTangential'): # extra variables
         varloc = loc+':'+varname
-        if (CTK.__MAINTREE__ <= 0 or nzs == []):
+        if CTK.__MAINTREE__ <= 0 or nzs == []:
             try:
                 CTK.t = P.computeExtraVariable(CTK.t, varloc, gamma=gamma,
                                                rgp=rgp, Cs=Cs, mus=muInf,
                                                Ts=TInf)
                 CTK.TXT.insert('START', 'Variable %s computed.\n'%varloc)
-            except Exception, e:
+            except Exception as e:
                 Panels.displayErrors([0,str(e)], header='Error: computeExtraVariables')
                 CTK.TXT.insert('START', 'Computation of variable %s failed.\n'%varloc)
                 CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -376,7 +378,7 @@ def computeVariables():
                         P.computeExtraVariable(CTK.t[2][nob][2][noz], varloc,
                                                gamma=gamma, rgp=rgp, Cs=Cs,
                                                mus=muInf, Ts=TInf)
-                except Exception, e:
+                except Exception as e:
                     fail = True; errors += [0,str(e)]
 
             if not fail:
@@ -388,13 +390,13 @@ def computeVariables():
 
     else: # std variables 
         varloc = loc+':'+varname
-        if (CTK.__MAINTREE__ <= 0 or nzs == []):
+        if CTK.__MAINTREE__ <= 0 or nzs == []:
             try:
                 CTK.t = P.computeVariables(CTK.t, [varloc],
                                            gamma=gamma, rgp=rgp, Cs=Cs,
                                            mus=muInf, Ts=TInf)
                 CTK.TXT.insert('START', 'Variable %s computed.\n'%varloc)
-            except Exception, e:
+            except Exception as e:
                 Panels.displayErrors([0,str(e)], header='Error: computeVariables')
                 CTK.TXT.insert('START', 'Computation of variable %s failed.\n'%varloc)
                 CTK.TXT.insert('START', 'Error: ', 'Error')
@@ -408,7 +410,7 @@ def computeVariables():
                         P.computeVariables(CTK.t[2][nob][2][noz], [varloc],
                                            gamma=gamma, rgp=rgp, Cs=Cs,
                                            mus=muInf, Ts=TInf)
-                except Exception, e:
+                except Exception as e:
                     fail = True; errors += [0,str(e)]
 
             if not fail: 
@@ -417,43 +419,47 @@ def computeVariables():
                 Panels.displayErrors(errors, header='Error: computeVariables')
                 CTK.TXT.insert('START', 'Computation of variable %s failed.\n'%varloc)
                 CTK.TXT.insert('START', 'Error: ', 'Error')
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
-    CTK.TKPLOTXY.updateApp()
+    if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
 
 #==============================================================================
 def addVar(event=None):
     if CTK.t == []: return
+    nzs = CPlot.getSelectedZones()
     varname = VARS[1].get()
     CTK.saveTree()
-    s = varname.split('=')
-    try:
-        if (len(s) > 1): CTK.t = C.initVars(CTK.t, varname)
-        else: CTK.t = C.addVars(CTK.t, varname)
-        CTK.TXT.insert('START', 'Variable %s added.\n'%varname)
-        CTK.TKTREE.updateApp()
-        CTK.display(CTK.t)
-        CTK.TKPLOTXY.updateApp()
-    except Exception, e:
-        Panels.displayErrors([0,str(e)], header='Error: addVar')
-        CTK.TXT.insert('START', 'Fail to add variable %s.\n'%varname)
-        CTK.TXT.insert('START', 'Error: ', 'Error')
-
+    s = varname.split('=')    
+    if CTK.__MAINTREE__ <= 0 or nzs == []:
+        if len(s) > 1: C._initVars(CTK.t, varname)
+        else: C._addVars(CTK.t, varname)
+    else:
+        for nz in nzs:
+            nob = CTK.Nb[nz]+1
+            noz = CTK.Nz[nz]
+            z = CTK.t[2][nob][2][noz]
+            if len(s) > 1: C._initVars(z, varname)
+            else: C._addVars(z, varname)
+    CTK.TXT.insert('START', 'Variable %s added.\n'%varname)
+    CTK.TKTREE.updateApp()
+    CTK.display(CTK.t)
+    if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
+            
 #==============================================================================
 def computeGrad():
     if CTK.t == []: return
     varname = VARS[2].get()
     CTK.saveTree()
     try: CTK.t = P.computeGrad(CTK.t, varname)
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: computeGrad')
         CTK.TXT.insert('START', 'Gradient computation failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     CTK.TXT.insert('START', 'Gradient of %s computed.\n'%varname)
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
-    CTK.TKPLOTXY.updateApp()
+    if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
 
 #==============================================================================
 def computeNormGrad():
@@ -461,14 +467,14 @@ def computeNormGrad():
     varname = VARS[2].get()
     CTK.saveTree()
     try: CTK.t = P.computeNormGrad(CTK.t, varname)
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: computeNormGrad')
         CTK.TXT.insert('START', 'Gradient\'s norm computation failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     CTK.TXT.insert('START', 'Gradient\'s norm of %s computed.\n'%varname)
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
-    CTK.TKPLOTXY.updateApp()
+    if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
 
 #==============================================================================
 def computeNormCurl():
@@ -478,14 +484,14 @@ def computeNormCurl():
     vars = vars.split(';')
     CTK.saveTree()
     try: CTK.t = P.computeNormCurl(CTK.t, vars)
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: computeNormCurl')
         CTK.TXT.insert('START', 'Curl\'s norm computation failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     CTK.TXT.insert('START', 'Curl\'s norm computed.\n')
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
-    CTK.TKPLOTXY.updateApp()
+    if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
 
 #==============================================================================
 def computeCurl():
@@ -495,14 +501,14 @@ def computeCurl():
     vars = vars.split(';')
     CTK.saveTree()
     try: CTK.t = P.computeCurl(CTK.t, vars)
-    except Exception, e:
+    except Exception as e:
         Panels.displayErrors([0,str(e)], header='Error: computeCurl')
         CTK.TXT.insert('START', 'Curl computation failed.\n')
         CTK.TXT.insert('START', 'Error: ', 'Error'); return
     CTK.TXT.insert('START', 'Curl computed.\n')
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
-    CTK.TKPLOTXY.updateApp()
+    if CTK.TKPLOTXY is not None: CTK.TKPLOTXY.updateApp()
     
 #==============================================================================
 # Fill missing variables
@@ -510,7 +516,7 @@ def computeCurl():
 def fillMissingVariables():
     if CTK.t == []: return
     CTK.saveTree()
-    CTK.t = C.fillMissingVariables(CTK.t)
+    C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'Missing variables filled.\n')
     CTK.TKTREE.updateApp()
     CTK.display(CTK.t)
@@ -527,7 +533,7 @@ def createApp(win):
                            text='tkVariable', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Manage field variables.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -544,11 +550,11 @@ def createApp(win):
     # - VARS -
     # -0- computeVariable name
     V = TK.StringVar(win); V.set('Pressure'); VARS.append(V)
-    if CTK.PREFS.has_key('tkVariablesName'): 
+    if 'tkVariablesName' in CTK.PREFS: 
         V.set(CTK.PREFS['tkVariablesName'])
     # -1- addVar
     V = TK.StringVar(win); V.set('Density'); VARS.append(V)
-    if CTK.PREFS.has_key('tkVariablesAddVar'): 
+    if 'tkVariablesAddVar' in CTK.PREFS: 
         V.set(CTK.PREFS['tkVariablesAddVar'])
     # -2- computeGrad -
     V = TK.StringVar(win); V.set('CoordinateX'); VARS.append(V)
@@ -557,17 +563,17 @@ def createApp(win):
     VARS.append(V)
     # -4- importFile -
     V = TK.StringVar(win); V.set('output.plt'); VARS.append(V)
-    if CTK.PREFS.has_key('tkVariablesImportFile'): 
+    if 'tkVariablesImportFile' in CTK.PREFS: 
         V.set(CTK.PREFS['tkVariablesImportFile'])
     # -5- Rm variable
     V = TK.StringVar(win); V.set('All'); VARS.append(V)
     # -6- Var location
     V = TK.StringVar(win); V.set('nodes'); VARS.append(V)
-    if CTK.PREFS.has_key('tkVariablesLoc'): 
+    if 'tkVariablesLoc' in CTK.PREFS: 
         V.set(CTK.PREFS['tkVariablesLoc'])
     # -7- adim type
     V = TK.StringVar(win); V.set('Adim1 (ro,a,T)'); VARS.append(V)
-    if CTK.PREFS.has_key('tkVariablesAdim'): 
+    if 'tkVariablesAdim' in CTK.PREFS: 
         V.set(CTK.PREFS['tkVariablesAdim'])
     # -8- center2Node variable
     V = TK.StringVar(win); V.set('FlowSolutionCenters'); VARS.append(V)
@@ -591,6 +597,7 @@ def createApp(win):
     B.bind('<Return>', importFile)
     B.grid(row=norow, column=0, sticky=TK.EW)
     B = TTK.Button(F, text="...", padx=0, command=chooseImportFile)
+    BB = CTK.infoBulle(parent=B, text='Select solution file.')
     B.grid(row=norow, column=1, sticky=TK.EW)
     F.grid(row=norow, column=1, sticky=TK.EW)
 
@@ -822,11 +829,11 @@ def resetApp():
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys
-    if (len(sys.argv) == 2):
+    if len(sys.argv) == 2:
         CTK.FILE = sys.argv[1]
         try:
             CTK.t = C.convertFile2PyTree(CTK.FILE)

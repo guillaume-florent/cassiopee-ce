@@ -1,5 +1,5 @@
 C  
-C    Copyright 2013-2017 Onera.
+C    Copyright 2013-2019 Onera.
 C
 C    This file is part of Cassiopee.
 C
@@ -85,7 +85,7 @@ C_IN
       REAL_E stota,t,coef,d1,d2,a,b,c,d,valcub
       REAL_E tabx0(0:im0-1),taby0(0:im0-1),tabz0(0:im0-1)
       REAL_E s0(0:im0-1)
-      INTEGER_E net0            ! nb d elts BAR
+      INTEGER_E net0             ! nb d'elts BAR
       INTEGER_E cn10(0:net-1)    ! connectivite BAR : 1ers sommets
       INTEGER_E cn20(0:net-1)    ! connectivite BAR : 2nds sommets
 C_OUT

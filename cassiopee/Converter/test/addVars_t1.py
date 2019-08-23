@@ -4,7 +4,7 @@ import Generator as G
 import KCore.test as test
 
 # STRUCT
-a = G.cart( (0,0,0), (1,1,1), (10,10,11) )
+a = G.cart((0,0,0), (1,1,1), (10,10,11))
 b = C.array('cell', a[2], a[3], a[4])
 c = C.array('t,u', a[2], a[3], a[4])
 f = C.addVars([a, b, c])
@@ -30,8 +30,8 @@ f = C.addVars([a, b, c])
 test.testA([f], 21)
 
 # On lists
-a = G.cart( (0,0,0), (1,1,1), (10,10,11) )
-b = G.cart( (0,0,0), (1,1,1), (5,5,2) )
+a = G.cart((0,0,0), (1,1,1), (10,10,11))
+b = G.cart((0,0,0), (1,1,1), (5,5,2))
 c = [a,b]
 d = [C.array('cell', a[2], a[3], a[4]),C.array('cell', b[2], b[3], b[4])]
 f = C.addVars([c,d])

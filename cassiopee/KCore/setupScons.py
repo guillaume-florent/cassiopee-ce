@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys
+import os
 from distutils.core import setup, Extension
 
 #=============================================================================
@@ -42,7 +42,7 @@ extensions = [
               include_dirs=["KCore"]+additionalIncludePaths+[numpyIncDir],
               library_dirs=additionalLibPaths+libraryDirs,
               libraries=libraries+additionalLibs,
-              extra_compile_args=Dist.getCppArgs(),
+              extra_compile_args=Dist.getCArgs(),
               extra_link_args=Dist.getLinkArgs()
 	)
     ]
@@ -50,7 +50,7 @@ extensions = [
 # Setup ======================================================================
 setup(
     name="KCore",
-    version="2.5",
+    version="2.9",
     description="Core for *Cassiopee* modules.",
     author="Onera",
     package_dir={"":"."},

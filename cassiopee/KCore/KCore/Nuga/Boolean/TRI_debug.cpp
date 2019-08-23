@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -360,11 +360,11 @@ void TRI_debug::coloring_frames
 }
 
 void TRI_debug::get_same_ancestor_T3s
-(E_Int Ti, E_Int iter, const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3, const std::vector<E_Int>& ancestors, std::vector<E_Int>& oids)
+(E_Int Ti, const std::vector<E_Int>& ancestors, std::vector<E_Int>& oids)
 {  
   oids.clear();
   
-  for (size_t i=0; i < connectT3.cols(); ++i)
+  for (size_t i = 0; i < ancestors.size(); ++i)
   {
     if (ancestors[i] == Ti)
       oids.push_back(i);
@@ -378,7 +378,7 @@ void TRI_debug::draw_same_ancestor_T3s
   o << "PG_" << Ti << "_it" << iter << ".mesh";
   
   std::vector<E_Int> oids;
-  TRI_debug::get_same_ancestor_T3s(Ti, iter, coord, connectT3, ancestors, oids);
+  TRI_debug::get_same_ancestor_T3s(Ti, ancestors, oids);
   
   K_FLD::IntArray tmp;
   tmp.append_selection(connectT3, oids);

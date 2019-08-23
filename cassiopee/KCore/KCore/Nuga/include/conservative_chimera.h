@@ -43,16 +43,7 @@ namespace NUGA
    Vector_t<E_Int>& dindices, Vector_t<E_Float>& dcoeffs,
    Vector_t<E_Int>& xr, Vector_t<E_Int>& roids)
   {
-    // HACK CONVERSION OF THE FLD INTO DYNS
-    // TEMPORARY HACK COPY to pass to FloaArrays ///////
-    K_FLD::FloatArray crdR(fldR, posRx, posRy, posRz);
-    K_FLD::FloatArray crdD(fldD, posDx, posDy, posDz);
-    K_FLD::IntArray cntR(cnR), cntD(cnD);
-    /////////////////////////////////////////////////////
-    
-    typedef NUGA::P1_Conservative_Chimera<K_FLD::FloatArray, K_FLD::IntArray> chimera_t;
-    
-    return chimera_t::compute_coeffs<DELAUNAY::Triangulator>(crdR, cntR, crdD, cntD, cellNR, dindices, dcoeffs, xr, roids);
+    return 0;
   }
   }
 }

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -24,6 +24,8 @@
 #include "Connect/GeomAlgo.h"
 #include <vector>
 #define Vector_t std::vector
+
+const E_Int K_MESH::Polygon::NB_NODES = -1;
 
 #ifdef DEBUG_POLYGON
 #include "IO/DynArrayIO.h"
@@ -57,10 +59,10 @@ void Polygon::getBoundary
 (const Polygon&  T1, const Polygon&  T2, E_Int& i1, E_Int& i2)
 {
   K_MESH::NO_Edge Ei, Ej;
-  for (i1=0; i1 < T1.NB_NODES; ++i1)
+  for (i1=0; i1 < T1._nb_nodes; ++i1)
   {
     T1.getBoundary(i1, Ei);
-    for (i2=0; i2 < T2.NB_NODES; ++i2)
+    for (i2=0; i2 < T2._nb_nodes; ++i2)
     {
       T2.getBoundary(i2, Ej);
       if (Ei == Ej)
@@ -75,33 +77,74 @@ E_Int Polygon::getOrientation
 {
   same_orient = false;
  
-  for (E_Int n = 0; n < PG.NB_NODES; ++n)
+  for (E_Int n = 0; n < PG._nb_nodes; ++n)
   {
-    if ((PG._nodes[n] == Ni) && (PG._nodes[(n+1)%PG.NB_NODES] == Nj))
+    if ((PG._nodes[n] == Ni) && (PG._nodes[(n+1)%PG._nb_nodes] == Nj))
     {
       same_orient = true;
       return 0;
     }
-    if ((PG._nodes[n] == Nj) && (PG._nodes[(n+1)%PG.NB_NODES] == Ni))
+    if ((PG._nodes[n] == Nj) && (PG._nodes[(n+1)%PG._nb_nodes] == Ni))
       return 0;
   }
 
   return -1;
 }
 
+// ///
+// bool Polygon:: is_convex
+// (const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int index_start,
+// const E_Float* normal, E_Float PI_ratio, E_Int& iworst)
+// {
+//   //
+//   E_Float Ei[3], Ej[3];
+//   bool convex = true;
+//   iworst = E_IDX_NONE;
+  
+//   E_Float angle_max = K_CONST::E_PI* PI_ratio; // a fraction betwen 0 and Pi
+//   E_Float cos_min = ::cos(angle_max); // cos is decreasing on [0; Pi]
+//   E_Float Z[3];
+//   for (E_Int i = 1; i < nb_nodes + 1; ++i)
+//   {
+//     E_Int ei = nodes[i%nb_nodes] - index_start;
+//     E_Int eim1 = nodes[i - 1] - index_start;
+//     E_Int eip1 = nodes[(i + 1) % nb_nodes] - index_start;
+
+//     K_FUNC::diff<3>(coord.col(ei), coord.col(eim1), &Ei[0]); //fixme : no normalization ??
+//     K_FUNC::diff<3>(coord.col(eip1), coord.col(ei), &Ej[0]);
+//     K_FUNC::sum<3>(normal, coord.col(ei), Z);
+
+//     E_Float det = K_FUNC::zzdet4(coord.col(eim1), coord.col(ei), coord.col(eip1), Z);
+    
+//     if (det >= 0.) continue; // convex
+    
+//     K_FUNC::normalize<3>(Ei);
+//     K_FUNC::normalize<3>(Ej);
+
+//     E_Float c = K_FUNC::dot<3>(Ei, Ej);
+    
+//     if (c < cos_min) // angle > anle max
+//     {
+//       convex = false;
+//       iworst = i%nb_nodes;
+//       cos_min = c;
+//     }
+//   }
+
+//   return convex;
+// }
+
 ///
 bool Polygon:: is_convex
 (const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int index_start,
-const E_Float* normal, E_Float PI_ratio, E_Int& iworst)
+const E_Float* normal, E_Float convexity_tol, E_Int& iworst, E_Int& ibest)
 {
-
-  E_Float worst_ps = K_CONST::E_MAX_FLOAT, Ei[3], Ej[3];
+  //
+  E_Float Ei[3], Ej[3];
   bool convex = true;
-  iworst = E_IDX_NONE;
+  ibest = iworst = E_IDX_NONE;
   
-  E_Float angle_max = K_CONST::E_PI* PI_ratio; // a fraction betwen 0 and Pi
-  E_Float cos_min = ::cos(angle_max); // cos is decreasing on [0; Pi]
-  E_Float Z[3];
+  E_Float Z[3], det_min(-convexity_tol), det_max(0.);
   for (E_Int i = 1; i < nb_nodes + 1; ++i)
   {
     E_Int ei = nodes[i%nb_nodes] - index_start;
@@ -113,29 +156,27 @@ const E_Float* normal, E_Float PI_ratio, E_Int& iworst)
     K_FUNC::sum<3>(normal, coord.col(ei), Z);
 
     E_Float det = K_FUNC::zzdet4(coord.col(eim1), coord.col(ei), coord.col(eip1), Z);
-    
-    if (det >= 0.) continue; // convex
-    
-    K_FUNC::normalize<3>(Ei);
-    K_FUNC::normalize<3>(Ej);
 
-    E_Float c = K_FUNC::dot<3>(Ei, Ej);
-    
-    if (c < cos_min) // angle > anle max
+    if (det < det_min)
     {
       convex = false;
-      if (c < worst_ps)
-      {
-        iworst = i%nb_nodes;
-        worst_ps = c;
-      }
+      iworst = i%nb_nodes;
+      det_min = det;
+    }
+    
+    det /= (K_FUNC::normalize<3>(Ei)*K_FUNC::normalize<3>(Ej)); //normalization to really have a angular-based test.
+    
+    if (det > det_max)
+    {
+      ibest = i%nb_nodes;
+      det_max = det;
     }
   }
 
   return convex;
 }
 
-///
+/// Predicate
 bool Polygon::is_convex
 (const K_FLD::FloatArray& coord, const E_Int* nodes, E_Int nb_nodes, E_Int index_start, const E_Float *normal, E_Float convexity_tol)
 {
@@ -223,10 +264,17 @@ const std::set<K_MESH::NO_Edge>* wall/*extra specified walls*/)
         {
           //it = noe_to_bound[E];
           noe_to_bound[E].first = K_MESH::Edge(i, j);
-          noe_to_bound[E].second = K_MESH::Edge(E_IDX_NONE, E_IDX_NONE);
+          noe_to_bound[E].second = K_MESH::Edge(-1, -1);
         }
         else
-          it->second.second = K_MESH::Edge(i, j);
+        {
+          if (it->second.second.node(0) == -1) //first time
+          {
+            it->second.second = K_MESH::Edge(i, j);
+          }
+          else //non-manifold so treat as a cut
+            it->second.second = K_MESH::Edge(E_IDX_NONE, E_IDX_NONE);
+        }
       }
     }
   }
@@ -246,10 +294,17 @@ const std::set<K_MESH::NO_Edge>* wall/*extra specified walls*/)
         {
           //it = noe_to_bound[E];
           noe_to_bound[E].first = K_MESH::Edge(PGi, j);
-          noe_to_bound[E].second = K_MESH::Edge(E_IDX_NONE, E_IDX_NONE);
+          noe_to_bound[E].second = K_MESH::Edge(-1, -1);
         }
         else
-          it->second.second = K_MESH::Edge(PGi, j);
+        {
+          if (it->second.second.node(0) == -1) //first time
+          {
+            it->second.second = K_MESH::Edge(PGi, j);
+          }
+          else //non-manifold so treat as a cut
+            it->second.second = K_MESH::Edge(E_IDX_NONE, E_IDX_NONE);
+        }
       }
     }
   }
@@ -260,7 +315,9 @@ const std::set<K_MESH::NO_Edge>* wall/*extra specified walls*/)
   std::map<K_MESH::NO_Edge, std::pair<K_MESH::Edge, K_MESH::Edge> >::iterator itE = noe_to_bound.end();
   for (it = noe_to_bound.begin(); it != itE; ++it)
   {
-    if (it->second.second.node(0) == E_IDX_NONE)
+    if (it->second.second.node(0) == E_IDX_NONE) // non-manifold
+      continue;
+    if (it->second.second.node(0) == -1)         // free-edge
       continue;
 
     const E_Int& pg1 = it->second.first.node(0);
@@ -572,6 +629,47 @@ E_Int Polygon::get_boundary
   } while (Nnext != Nbegin && count-- > 0);
 
   return ( (Nnext != Nbegin) || (PGb.size() != w_oe_set.size()) ); // unclosed or non-connex/holes
+}
+
+E_Int Polygon::shuffle_triangulation()
+{
+  
+  if (_triangles == nullptr) return 0;
+  
+  E_Int ntris = nb_tris();
+  if (ntris == 1) return 0;
+  
+  // Get inner edges
+  std::vector<std::pair<E_Int, E_Int> > wpair_set;
+  {
+    std::set<K_MESH::NO_Edge> tmp;
+    K_MESH::NO_Edge E;
+    for (size_t i=0; i < ntris; ++i)
+    {
+      for (size_t n=0; n < 3; ++n)
+      {
+        E.setNodes(_triangles[3*i + n], _triangles[3*i + (n+1)%3]);
+        if (!tmp.insert(E).second)//already in => inner edge
+          wpair_set.push_back(std::make_pair(i, (n+2)%3));
+      }
+    }
+  }
+  
+  if (wpair_set.empty()) return 0; //Triangle
+  
+  // _triangle => IntArray (for fast_swap_edges)
+  K_FLD::IntArray cT3(3, ntris);
+  for (size_t i=0; i < ntris; ++i)
+    for (size_t n=0; n < 3; ++n) cT3(n,i) = _triangles[3*i + n];
+  
+  K_FLD::IntArray neighbors;
+  K_CONNECT::EltAlgo<K_MESH::Triangle>::getManifoldNeighbours(cT3, neighbors);
+  K_CONNECT::EltAlgo<K_MESH::Triangle>::fast_swap_edges(wpair_set, cT3, neighbors);
+  
+  // IntArray => _triangles
+  for (size_t i=0; i < ntris; ++i)
+    for (size_t n=0; n < 3; ++n) _triangles[3*i + n] = cT3(n,i);
+  
 }
 
 } //namespace

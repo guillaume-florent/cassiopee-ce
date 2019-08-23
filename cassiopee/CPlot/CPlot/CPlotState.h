@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -58,6 +58,7 @@ struct CPlotState {
     int   inmenu;           // we are in menu mode or not?
     int   smoke;            // if particles smoke is to be displayed
 
+    int farClip;            // if 1 perform farClipping before display
     int render;             // -1: dont push data, dont flush buffer
                             // 0: push but dont flush
                             // 1, push and flush at end of display
@@ -68,8 +69,8 @@ struct CPlotState {
     int   menu;             // if 1, display bottom menu
     int   isoLegend;        // if 1, display iso legend
     int   offscreen;        // 1 offscreen rendering with mesa, 2 with FBO
-    void* offscreenBuffer;  // buffer for rendering (offscreen)
-
+    char* offscreenBuffer;  // buffer for rendering (offscreen)
+    float* offscreenDepthBuffer;// Depth buffer for offscreen rendering 3 et 4
     // overlay message
     char* message;
 
@@ -87,6 +88,12 @@ struct CPlotState {
     // Depth of field
     int    DOF;
     double dofPower;
+    
+    // Gamma correction
+    double gamma;
+
+    // Sobel threshold
+    double sobelThreshold;
 
     // Last selected zone
     int selectedZone;
@@ -113,11 +120,15 @@ struct CPlotState {
     int billBoardNj;    // nbre de samples en j
     int billBoardD;     // no du champ a utiliser pour la taille des billboards
     int billBoardT;     // no du champ a utiliser pour le choix du billboard
+    int billBoardWidth; // nbre de pixel de l'image
+    int billBoardHeight; // idem
+    double billBoardSize; // Reference size for billboards. If = 0., automatic from cam
 
     // Autres
     char winTitle[120];        // titre de la fenetre
     char file[120];            // fichier en cours de display (si il y en a)
-    char localPathName[1028];  // local directory name
+    char filePath[1028];       // local directory of current file
+    char localPathName[1028];  // local directory name (where cassiopee is launched)
 
     // cursor
     int cursorType;    // current cursor type
@@ -138,13 +149,28 @@ struct CPlotState {
     int   solidStyle;      // style pour le solid mode
     int   scalarStyle;     // style pour le scalar mode
     int   vectorStyle;     // style pour le vector mode
+    float vectorScale;     // scale pour le vector mode
+    float vectorDensity;   // Density of vectors in vector mode
+    int   vectorNormalize; // Normalize all vectors before display them ( 1 : yes, 0 : no )
+    int   vectorShowSurface;// Show the triangle emmiting the vector field.
+    int   vectorShape;     // Shape of the arrow
+    int   vector_projection; // Project ( 1 ) or not ( 0 ) the vector on the surface of the obstacle
     int   selectionStyle;  // style pour la selection (0: bleue, 1: alpha)
     int   colormap;        // colormap
     int   isoLight;        // light ou pas light -> isoLight
     int   niso;            // nbre d'isos (global)
     float isoEdges;        // edge entre les isos
 
-    virtual ~CPlotState( ) {}
+    // Options pour le high order
+    int inner_tesselation; // Degre de raffinement pour les triangles internes
+    int outer_tesselation; // Degre de raffinement pour les triangles au bord.
+
+    CPlotState() : lock(0), _lockGPURes(0), _mustExport(0), _isExporting(0) {}
+
+    virtual ~CPlotState( ) { 
+        if (offscreenBuffer != NULL) free(offscreenBuffer); 
+        if (offscreenDepthBuffer != NULL) free(offscreenDepthBuffer);
+    }
 
     // lock=1 pendant le display, les donnees ne doivent alors
     // pas etre modifiees!
@@ -152,20 +178,26 @@ struct CPlotState {
     pthread_mutex_t lock_mutex;
     pthread_cond_t  unlocked_display;
     void            lockDisplay( ) {
+        //printf("locking display\n");
         pthread_mutex_lock( &lock_mutex );
         lock = 1;
         pthread_mutex_unlock( &lock_mutex );
+        //printf("end locking display\n");
     }
-    void unlockDisplay( ) {
+    void unlockDisplay() {
+        //printf("unlocking display\n");
         pthread_mutex_lock( &lock_mutex );
         lock = 0;
         pthread_cond_signal( &unlocked_display );
         pthread_mutex_unlock( &lock_mutex );
+        //printf("end unlocking display\n");
     }
-    void syncDisplay( int time = 5 ) {
+    void syncDisplay(int time = 5) {
+        //printf("sync display\n");
         pthread_mutex_lock( &lock_mutex );
-        if ( lock == 1 ) pthread_cond_wait( &unlocked_display, &lock_mutex );
+        if (lock == 1) pthread_cond_wait( &unlocked_display, &lock_mutex );
         pthread_mutex_unlock( &lock_mutex );
+        //printf("end sync display\n");
     }
 
     int    freeGPURes;      // dit a display de liberer les ressources du GPU
@@ -180,20 +212,26 @@ struct CPlotState {
     // lockGPURes=display1: On bloque les ressources GPUs qui ne doivent pas etre
     //                      modifiees pendant ce temps
     void lockGPURes( ) {
+        //printf("lock GPU res\n");
         pthread_mutex_lock( &gpures_mutex );
         _lockGPURes = 1;
         pthread_mutex_unlock( &gpures_mutex );
+        //printf("end lock GPU res\n");
     }
     void unlockGPURes( ) {
+        //printf("unlock GPU res\n");
         pthread_mutex_lock( &gpures_mutex );
         _lockGPURes = 0;
         pthread_cond_signal( &unlocked_gpures );
         pthread_mutex_unlock( &gpures_mutex );
+        //printf("end unlock GPU res\n");
     }
     virtual void syncGPURes( int dt = 5 ) {
+        //printf("sync GPU res\n"); fflush(stdout);
         pthread_mutex_lock( &gpures_mutex );
         if ( _lockGPURes == 1 ) pthread_cond_wait( &unlocked_gpures, &gpures_mutex );
         pthread_mutex_unlock( &gpures_mutex );
+        //printf("end sync GPU res\n"); fflush(stdout);
     }
 
     int timeStep;           // temps en ms entre 2 appels de display
@@ -209,6 +247,7 @@ struct CPlotState {
     int             exportNumber;               // no ajoute au nom du fichier
     int             shootScreen;                // dit a display de shooter
     pthread_mutex_t export_mutex;
+    volatile int    _mustExport, _isExporting;
     pthread_cond_t  unlocked_export;
 
     // Others

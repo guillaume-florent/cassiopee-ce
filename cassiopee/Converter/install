@@ -36,13 +36,15 @@ if [ $? -eq 0 ]; then
     fi
     scons install prefix="$INSTALLPATH" "$SCONSOPT"
     [ $? != 0 ] && exit;
-    touch Converter/converter.cpp
+    #touch Converter/converter.cpp
+    rm -f build/lib.*/Converter/converter.*
+    rm -f build/lib.*/Converter/expression.*
     python setupScons.py install --prefix="$INSTALLPATH"
 else
     python setup.py install --prefix="$INSTALLPATH"
 fi
 cp test/ediff "$INSTALLPATH"
 cp test/ediff.py "$INSTALLPATH"
-
+cp Converter/kpython "$INSTALLPATH"
 # Test installation
 python test/t1.py

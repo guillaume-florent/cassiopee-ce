@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -21,7 +21,6 @@
 
 # include <locale>
 # include <cctype>
-# include "Python.h"
 # include "kcore.h"
 # include <vector>
 
@@ -45,6 +44,7 @@ namespace K_POST
   PyObject* selectExteriorFaces(PyObject* self, PyObject* args);
   PyObject* selectExteriorFacesStructured(PyObject* self, PyObject* args);
   PyObject* selectExteriorElts(PyObject* self, PyObject* args);
+  PyObject* exteriorEltsStructured(PyObject* self, PyObject* args);
   PyObject* frontFaces(PyObject* self, PyObject* args);
   PyObject* integ(PyObject* self, PyObject* args);
   PyObject* integ2(PyObject* self, PyObject* args);
@@ -56,10 +56,14 @@ namespace K_POST
   PyObject* zipperF(PyObject* self, PyObject* args);
   PyObject* usurpF(PyObject* self, PyObject* args);
   PyObject* computeVariables(PyObject* self,PyObject* args);
+  PyObject* computeVariables2(PyObject* self,PyObject* args);
   PyObject* computeGrad(PyObject* self,PyObject* args);
   PyObject* computeGrad2NGon(PyObject* self,PyObject* args);
   PyObject* computeGrad2Struct(PyObject* self,PyObject* args);
   PyObject* computeNormGrad(PyObject* self,PyObject* args);
+  PyObject* computeDiv(PyObject* self,PyObject* args);
+  PyObject* computeDiv2NGon(PyObject* self,PyObject* args);
+  PyObject* computeDiv2Struct(PyObject* self,PyObject* args);
   PyObject* computeCurl(PyObject* self,PyObject* args);
   PyObject* computeNormCurl(PyObject* self,PyObject* args);
   PyObject* computeDiff(PyObject* self,PyObject* args);
@@ -71,6 +75,7 @@ namespace K_POST
   PyObject* isoSurf(PyObject* self, PyObject* args);
   PyObject* isoSurfMC(PyObject* self, PyObject* args);
   PyObject* isoSurfMC_opt(PyObject* self, PyObject* args);
+  PyObject* isoSurfNGon(PyObject* self, PyObject* args);
   PyObject* computeIndicatorValue(PyObject* self, PyObject* args);
   PyObject* enforceIndicatorNearBodies(PyObject* self, PyObject* args);
   PyObject* enforceIndicatorForFinestLevel(PyObject* self, PyObject* args);
@@ -305,7 +310,7 @@ namespace K_POST
   short checkAndExtractVariables(char* vars0, std::vector<char*>& vars,
                                  char* varStringOut);
 
-/* Calcule les variables composees a partir des grandeurs conservatives. 
+/* Calcule les variables composees a partir des grandeurs conservatives.
  * Retourne 0 si erreur.*/
   E_Int computeCompVariables(const FldArrayF& f, const E_Int posro,
                              const E_Int posrou, const E_Int posrov,
@@ -316,7 +321,7 @@ namespace K_POST
                              std::vector<char*>& vars,
                              FldArrayF& fnew);
 
-/* Calcule les variables composees a partir des grandeurs ro,u,T. 
+/* Calcule les variables composees a partir des grandeurs ro,u,T.
  * Retourne 0 si erreur.*/
   E_Int computeCompVariables2(const FldArrayF& f, const E_Int posro,
                               const E_Int posu, const E_Int posv,
@@ -326,6 +331,28 @@ namespace K_POST
                               const E_Float betas, const E_Float Cs,
                               std::vector<char*>& vars,
                               FldArrayF& fnew);
+
+/* Calcule les variables composees a partir des grandeurs conservatives.
+ * en association de la fonction computeVariables2
+ * Retourne 0 si erreur.*/
+  E_Int computeCompVars(const FldArrayF& f,  const E_Int posnew,
+                        char* varname,       const E_Int posro,
+                        const E_Int posrou,  const E_Int posrov,
+                        const E_Int posrow,  const E_Int posroe,
+                        const E_Float gamma, const E_Float rgp,
+                        const E_Float s0,    const E_Float betas,
+                        const E_Float Cs);
+
+/* Calcule les variables composees a partir des grandeurs primitives.
+ * en association de la fonction computeVariables2
+ * Retourne 0 si erreur.*/
+  E_Int computeCompVars2(const FldArrayF& f,  const E_Int posnew,
+          	               char* varnew,  const E_Int posro,
+                         const E_Int posu,    const E_Int posv,
+                         const E_Int posw,    const E_Int post,
+                         const E_Float gamma, const E_Float rgp,
+                         const E_Float s0,    const E_Float betas,
+                         const E_Float Cs);
 
 /* Calcule la vitesse absolue */
   void computeVelocity(const FldArrayF& f,
@@ -398,6 +425,11 @@ namespace K_POST
    OUT: varStringOut "gradxvar1, gradyvar1, gradzvar1...." */
   void computeGradVarsString(char* varString, char*& varStringOut);
 
+/* Creation de la chaine de caracteres pour les fonctions computeDiv/computeDiv2
+   IN: varString: "x,y,z, var1..." avec var1... variables calculees
+   OUT: varStringOut "divvar1, ...." */
+  void computeDivVarsString(char* varString, char*& varStringOut);
+
 /* gradx, grady, gradz must be allocated previously */
   E_Int computeGradStruct(E_Int ni, E_Int nj, E_Int nk,
                           E_Float* xt, E_Float* yt, E_Float* zt, E_Float* field,
@@ -408,6 +440,18 @@ namespace K_POST
   E_Int computeGradNGon(E_Float* xt, E_Float* yt, E_Float* zt,
                         E_Float* fp, FldArrayI& cn,
                         E_Float* gradx, E_Float* grady, E_Float* gradz);
+  /* Idem for div */
+  E_Int computeDivStruct(E_Int ni, E_Int nj, E_Int nk,
+                         E_Float* xt, E_Float* yt, E_Float* zt,
+                         E_Float* fieldX, E_Float* fieldY, E_Float* fieldZ,
+                         E_Float* div);
+  E_Int computeDivNS(char* eltType, E_Int npts, FldArrayI& cn,
+                     E_Float* xt, E_Float* yt, E_Float* zt,
+                     E_Float* fieldX, E_Float* fieldY, E_Float* fieldZ,
+                     E_Float* div);
+  E_Int computeDivNGon(E_Float* xt, E_Float* yt, E_Float* zt,
+                       E_Float* fpx, E_Float* fpy, E_Float* fpz, FldArrayI& cn,
+                       E_Float* div);
   /* Idem for curl */
   E_Int computeCurlStruct(E_Int ni, E_Int nj, E_Int nk,
                           E_Float* xt, E_Float* yt, E_Float* zt,
@@ -572,6 +616,9 @@ namespace K_POST
   /* Isosurface dans un maillage tetra (sortie TRI) */
   void doIsoSurf(FldArrayF& f, FldArrayI& cn, E_Int posf, E_Float value,
                  E_Int poscellN, FldArrayF& fiso, FldArrayI& ciso);
+  /* Isosurface dans un maillage NGON (sortie TRI) */
+  void doIsoSurfNGon(FldArrayF& f, FldArrayI& cn, E_Int posf, E_Float value,
+                     E_Int poscellN, FldArrayF& fiso, FldArrayI& ciso);
   /* Isosurface dans un maillage hexa (sortie TRI) */
   void doIsoSurfMC(FldArrayF& f, FldArrayI& cn, E_Int posf, E_Float value,
                    E_Int poscellN, FldArrayF& fiso, FldArrayI& ciso);
@@ -626,6 +673,21 @@ namespace K_POST
                                  FldArrayF& fc, FldArrayF& faceField,
                                  E_Int* cellG, E_Int* cellD,
                                  PyObject* indices, PyObject* field);
+  PyObject* computeDiv2Struct2D(E_Int ni, E_Int nj, E_Int nic, E_Int njc,
+                                E_Int ixyz, const char* varStringOut,
+                                E_Float* xt, E_Float* yt, E_Float* zt,
+                                FldArrayF& fc, FldArrayF& faceField,
+                                E_Int* cellG, E_Int* cellD,
+                                PyObject* indices, PyObject* fieldX,
+                                PyObject* fieldY, PyObject* fieldZ);
+  PyObject* computeDiv2Struct3D(E_Int ni, E_Int nj, E_Int nk,
+                                E_Int nic, E_Int njc, E_Int nkc,
+                                const char* varStringOut,
+                                E_Float* xt, E_Float* yt, E_Float* zt,
+                                FldArrayF& fc, FldArrayF& faceField,
+                                E_Int* cellG, E_Int* cellD,
+                                PyObject* indices, PyObject* fieldX,
+                                PyObject* fieldY, PyObject* fieldZ);
 }
 #undef FldArrayF
 #undef FldArrayI

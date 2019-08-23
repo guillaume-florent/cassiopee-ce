@@ -1,7 +1,6 @@
 import Converter.PyTree as C
 import Connector.PyTree as X
 import Generator.PyTree as G
-import Converter.Internal as Internal
 import KCore.test as test
 
 # 1. Direct storage
@@ -11,10 +10,10 @@ C._initVars(zD,'centers:cellN',1.)
 
 # Receptor
 zR = G.cart((0.25,0.25,0.25), (0.1,0.1,0.1), (5,5,5))
-C._initVars(zR,'centers:cellN=2.*({centers:CoordinateX}<1.)')
+C._initVars(zR,'{centers:cellN}=2.*({centers:CoordinateX}<1.)')
 zR=X.setInterpData(zR, zD, method='conservative',itype='chimera')   
-C._initVars(zR,"centers:F=0.")
-C._initVars(zD,'centers:F={centers:CoordinateX}*{centers:CoordinateY}')
+C._initVars(zR,"centers:F", 0.)
+C._initVars(zD,'{centers:F}={centers:CoordinateX}*{centers:CoordinateY}')
 zD = C.node2Center(zD)
 zR2 = X.setInterpTransfers(zR,zD,variables=["F"])
 test.testT(zR2,1)
@@ -30,10 +29,10 @@ C._initVars(zD,'centers:cellN',1.)
 
 # Receptor
 zR = G.cart((0.25,0.25,0.25), (0.1,0.1,0.1), (5,5,5))
-C._initVars(zR,'centers:cellN=2.*({centers:CoordinateX}<1.)')
+C._initVars(zR,'{centers:cellN}=2.*({centers:CoordinateX}<1.)')
 zD=X.setInterpData(zR, zD, method='conservative',itype='chimera',storage='inverse')   
-C._initVars(zR,"centers:F=0.")
-C._initVars(zD,'centers:F={centers:CoordinateX}*{centers:CoordinateY}')
+C._initVars(zR,"centers:F", 0.)
+C._initVars(zD,'{centers:F}={centers:CoordinateX}*{centers:CoordinateY}')
 zD = C.node2Center(zD)
 zR2 = X.setInterpTransfers(zR,zD,variables=["F"])
 test.testT(zR2,3)

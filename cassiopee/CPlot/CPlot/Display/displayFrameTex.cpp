@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -22,10 +22,10 @@
 /*
   Display une texture de la taille de l'ecran dans l'ecran.
   mode=0: anaglyph
-  mode=2: DOF
+  mode=2: DOF+GAMMA+SOBEL
 */
 //============================================================================
-void Data::displayFrameTex(int mode)
+void Data::displayFrameTex(int mode, double sobelThreshold)
 {
   glColor3f(1., 0, 0);
 
@@ -43,7 +43,7 @@ void Data::displayFrameTex(int mode)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    int shader = 12 + ptrState->stereo;
+    int shader = _shaders.shader_id(12 + ptrState->stereo);
     if (_shaders.currentShader() != shader) _shaders.activate(shader);
     _shaders[shader]->setUniform("leftEyeTexture", (int)0);
     _shaders[shader]->setUniform("rightEyeTexture", (int)1);
@@ -61,14 +61,15 @@ void Data::displayFrameTex(int mode)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
  
-    int shader = 20;
+    int shader = _shaders.shader_id(20);
     if (_shaders.currentShader() != shader) _shaders.activate(shader);
     _shaders[shader]->setUniform("FrameBuffer", (int)0);
     _shaders[shader]->setUniform("depthMap", (int)1);
-    _shaders[shader]->setUniform("windowWidth", (int)_view.w);
-    _shaders[shader]->setUniform("windowHeight", (int)_view.h);
     _shaders[shader]->setUniform("focalDepth", (float)ptrState->activePointZBuf);
     _shaders[shader]->setUniform("radius", (float)ptrState->dofPower);
+    _shaders[shader]->setUniform("ext", (float)1.);
+    _shaders[shader]->setUniform("gamma", (float)ptrState->gamma);
+    _shaders[shader]->setUniform("sobelThreshold", (float)sobelThreshold); 
   }
 #endif
 

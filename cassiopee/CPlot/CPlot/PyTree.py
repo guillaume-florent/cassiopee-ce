@@ -1,12 +1,12 @@
-"""Plotter functions.
+"""Plotter functions for pyTrees.
 """
-#
-# Plotter functions for pyTrees
-#
 import numpy
 import CPlot
 try: import cplot
 except: ImportError("CPlot: is partially installed (no display).")
+
+try: range = xrange
+except: pass
 
 # Separateur intra-nom
 SEP1 = '/'
@@ -36,6 +36,12 @@ def display(t,
             solidStyle=-1,
             scalarStyle=-1,
             vectorStyle=-1,
+            vectorScale=-1.,
+            vectorDensity=-1.,
+            vectorNormalize=-1,
+            vectorShowSurface=-1,
+            vectorShape=-1,
+            vectorProjection=-1,
             colormap=-1,
             niso=25,
             isoEdges=-0.5,
@@ -63,11 +69,12 @@ def display(t,
     else: t = C.node2Center(t)
     zoneNames = C.getZoneNames(t)
     renderTags = getRenderTags(t)
-    arrays = C.getAllFields(t, 'nodes')
+    arrays = C.getAllFields(t, 'nodes', api=2)
     CPlot.display(arrays, dim, mode, scalarField, vectorField1,
                   vectorField2, vectorField3, displayBB, displayInfo,
                   displayIsoLegend, meshStyle,
-                  solidStyle, scalarStyle, vectorStyle,
+                  solidStyle, scalarStyle, vectorStyle, vectorScale, vectorDensity, vectorNormalize,
+                  vectorShowSurface, vectorShape, vectorProjection,
                   colormap, niso, isoEdges, isoScales, win,
                   posCam, posEye, dirCam, viewAngle,
                   bgColor, shadow, dof, stereo, stereoDist,
@@ -101,7 +108,7 @@ def add(t, nob, noz, zone):
     if __LOCATION__ == 'nodes': # ajouter le toptree
         zone = C.center2Node(zone, Internal.__FlowSolutionCenters__)
     else: zone = C.node2Center(zone)
-    array = C.getAllFields(zone, 'nodes')[0]
+    array = C.getAllFields(zone, 'nodes', api=2)[0]
     
     cplot.add(array, (nzs, nzu), zoneName, renderTag)
 
@@ -120,7 +127,7 @@ def replace(t, nob, noz, zone):
     if __LOCATION__ == 'nodes': # ajouter le toptree
         zone = C.center2Node(zone, Internal.__FlowSolutionCenters__)
     else: zone = C.node2Center(zone)
-    array = C.getAllFields(zone, 'nodes')[0]
+    array = C.getAllFields(zone, 'nodes', api=2)[0]
    
     cplot.replace(array, (nzs, nzu, oldType), zoneName, renderTag)
     
@@ -133,7 +140,7 @@ def display1D(t, slot=0, gridPos=(0,0), gridSize=(-1,-1),
     import Converter
     if len(t) > 0 and isinstance(t[0], numpy.ndarray): # as numpys
         if len(t) < 2:
-            raise ValueError, 'display1D: requires at least two numpys [x,y]'
+            raise ValueError('display1D: requires at least two numpys [x,y]')
         x = t[0]; y = t[1]
         n = x.size
         array = Converter.array(var1+','+var2,n,1,1)
@@ -224,6 +231,12 @@ def setState(dim=-1,
              solidStyle=-1,
              scalarStyle=-1,
              vectorStyle=-1,
+             vectorScale=-1.,
+             vectorDensity=-1.,
+             vectorNormalize=-1,
+             vectorShowSurface=-1,
+             vectorShape=-1,
+             vectorProjection=-1,
              colormap=-1,
              niso=-1,
              isoEdges=-1,
@@ -237,6 +250,8 @@ def setState(dim=-1,
              bgColor=-1,
              shadow=-1,
              dof=-1, dofPower=-1,
+             gamma=-1,
+             sobelThreshold=-1,
              ghostifyDeactivatedZones=-1,
              edgifyActivatedZones=-1,
              edgifyDeactivatedZones=-1,
@@ -250,22 +265,26 @@ def setState(dim=-1,
              timer=-1,
              selectionStyle=-1,
              activateShortCuts=-1,
-             billBoards=None):
+             billBoards=None,
+             billBoardSize=-1,
+             materials=None, bumpMaps=None):
     """Set CPlot state.
     Usage: setState(posCam=(12,0,0))"""
     CPlot.setState(dim, mode, scalarField, vectorField1, vectorField2,
                    vectorField3, displayBB, displayInfo, displayIsoLegend,
                    meshStyle, solidStyle, scalarStyle,
-                   vectorStyle, colormap,
+                   vectorStyle, vectorScale, vectorDensity, vectorNormalize, 
+                   vectorShowSurface, vectorShape, vectorProjection, colormap,
                    niso, isoEdges, isoScales, win,
                    posCam, posEye, dirCam, viewAngle, lightOffset,
-                   bgColor, shadow, dof, dofPower,
+                   bgColor, shadow, dof, dofPower, gamma, sobelThreshold,
                    ghostifyDeactivatedZones, edgifyActivatedZones,
                    edgifyDeactivatedZones,
                    export, exportResolution, continuousExport,
                    envmap, message,
                    stereo, stereoDist, cursor, gridSize, timer, selectionStyle,
-                   activateShortCuts, billBoards)
+                   activateShortCuts, billBoards, billBoardSize, 
+                   materials, bumpMaps)
     
 def setMode(mode):
     """Set CPlot display mode.
@@ -332,9 +351,9 @@ def fitView():
     Usage: firView()"""
     CPlot.fitView()
 
-def finalizeExport(t=0):
+def finalizeExport(action=0):
     """Finalize export (barrier, end movie, stop continuous export."""
-    CPlot.finalizeExport(t)
+    CPlot.finalizeExport(action)
 
 def hide():
     """Hide window."""
@@ -344,10 +363,16 @@ def show():
     """Show window if it has been hidden with flush."""
     CPlot.show()
     
-def moveCamera(checkPoints, moveEye=False, N=100, speed=0.001):
+def moveCamera(posCams, posEyes=None, dirCams=None, moveEye=False, N=100, speed=1., pos=-1):
     """Move camera.
-    Usage: moveCamera(checkPoints, moveEye, N, speed."""
-    CPlot.moveCamera(checkPoints, moveEye, N, speed)
+    Usage: moveCamera(checkPoints, moveEye, N, speed, pos)."""
+    if isinstance(posCams[0], str): # zone
+        posCams = C.getAllFields(posCams, 'nodes')
+    if posEyes is not None and isinstance(posEyes[0], str): # zone
+        posEyes = C.getAllFields(posEyes, 'nodes')
+    if dirCams is not None and isinstance(dirCams[0], str): # zone
+        dirCams = C.getAllFields(dirCams, 'nodes')
+    CPlot.moveCamera(posCams, posEyes, dirCams, moveEye, N, speed, pos)
 
 def travelRight(xr=0.1, N=100):
     CPlot.travelRight(xr, N)
@@ -456,9 +481,9 @@ def getNzs(t, zone):
     nzs = 0; nzu = 0
     nodes = Internal.getZones(t)
     for z in nodes:
-        if (id(z) == id(zone)): return (nzs, nzu)
+        if id(z) == id(zone): return (nzs, nzu)
         type = Internal.getZoneType(z)
-        if (type == 1): nzs += 1
+        if type == 1: nzs += 1
         else: nzu += 1
     return (nzs, nzu)
     
@@ -472,22 +497,22 @@ def getNzs(t, zone):
 def deleteSelection(t, Nb, Nz, nzs):
     nbases = len(t[2])
     bases = []
-    for i in xrange(nbases): bases.append([])
+    for i in range(nbases): bases.append([])
     for nz in nzs:
         nob = Nb[nz]+1
         noz = Nz[nz]
         bases[nob].append(noz)
 
-    for i in xrange(nbases):
+    for i in range(nbases):
         l = bases[i]
-        for a in xrange(len(l)):
-            for b in xrange(a+1, len(l)):
-                if (l[a] < l[b]):
+        for a in range(len(l)):
+            for b in range(a+1, len(l)):
+                if l[a] < l[b]:
                     temp = l[a]; l[a] = l[b]; l[b] = temp
 
-    for i in xrange(1, nbases):
+    for i in range(1, nbases):
         l = bases[i]
-        for a in xrange(len(l)):
+        for a in range(len(l)):
             del t[2][i][2][l[a]]
     return t
 
@@ -501,11 +526,11 @@ def isSelAFullBase(t, Nb, nzs):
     fullBase = 0
     for nz in nzs:
         nob = Nb[nz]+1
-        if (fullBase == 0): fullBase = nob
-        if (fullBase != nob): fullBase = -1
-    if (fullBase > 0):
+        if fullBase == 0: fullBase = nob
+        if fullBase != nob: fullBase = -1
+    if fullBase > 0:
         zones = Internal.getNodesFromType1(t[2][fullBase], 'Zone_t')
-        if (len(nzs) != len(zones)): fullBase = -1
+        if len(nzs) != len(zones): fullBase = -1
     return fullBase
 
 #==============================================================================
@@ -574,9 +599,10 @@ def getRenderTags__(z, renderTags):
             if isinstance(v, numpy.ndarray):
                 shaderParameters = ''
                 lgt = v.shape[0]
-                for i in xrange(lgt):
+                for i in range(lgt):
                     shaderParameters += str(v[i])
                     if i < lgt-1: shaderParameters += ':'
+            else: shaderParameters = 'None:None' 
         renderTags.append(color+':'+material+':'+blending+':'+meshOverlay+':'+shaderParameters)
     return renderTags
 
@@ -594,7 +620,7 @@ def _addRender2Zone(a, material=None, color=None, blending=None,
                     meshOverlay=None, shaderParameters=None):
   """Add a renderInfo node to a zone node.
   Usage: addRender2Zone(zone, renderInfo)"""
-  if (material is None and color is None and blending is None and meshOverlay is None and shaderParameters is None): return None
+  if material is None and color is None and blending is None and meshOverlay is None and shaderParameters is None: return None
   
   zones = Internal.getZones(a)
   if zones == []: raise TypeError("addRender2Zone: zone must be a zone node.")
@@ -622,19 +648,20 @@ def _addRender2Zone(a, material=None, color=None, blending=None,
 def addRender2PyTree(t, slot=0, posCam=None, posEye=None, dirCam=None,
                      mode=None, scalarField=None, niso=None, isoScales=None,
                      isoEdges=None, isoLight=None,
-                     colormap=None):
+                     colormap=None, materials=None, bumpMaps=None, billBoards=None):
   """Add a renderInfo node to a tree.
-  Usage: addRender2PyTree(t, renderInfo)"""
+  Usage: addRender2PyTree(t, slot, renderInfo)"""
   a = Internal.copyRef(t)
   _addRender2PyTree(a, slot, posCam, posEye, dirCam,
                     mode, scalarField, niso, isoScales,
-                    isoEdges, isoLight, colormap)
+                    isoEdges, isoLight, colormap, 
+                    materials, bumpMaps, billBoards)
   return a
 
 def _addRender2PyTree(a, slot=0, posCam=None, posEye=None, dirCam=None,
                      mode=None, scalarField=None, niso=None, isoScales=None,
                      isoEdges=None, isoLight=None,
-                     colormap=None):
+                     colormap=None, materials=None, bumpMaps=None, billBoards=None):
   """Add a renderInfo node to a tree.
   Usage: addRender2PyTree(t, renderInfo)"""
   if a[3] != 'CGNSTree_t': return None
@@ -643,8 +670,7 @@ def _addRender2PyTree(a, slot=0, posCam=None, posEye=None, dirCam=None,
     if i[0] == '.RenderInfo': break
     exist += 1
   if exist < len(a[2]): ri = a[2][exist]
-  else:
-    ri = Internal.createChild(a, '.RenderInfo', 'UserDefinedData_t')
+  else: ri = Internal.createChild(a, '.RenderInfo', 'UserDefinedData_t')
     
   # find slot
   sl = Internal.getNodeFromName1(ri, 'Slot%d'%slot)
@@ -675,14 +701,14 @@ def _addRender2PyTree(a, slot=0, posCam=None, posEye=None, dirCam=None,
     
     if rt is None:
       v = numpy.empty((n), numpy.float64)
-      for i in xrange(n): v[i] = float(isoScales[i])
+      for i in range(n): v[i] = float(isoScales[i])
       sl[2].append(['isoScales', v, [], 'DataArray_t'])
-    else:
+    elif rt[1] is not None:
       old = rt[1]
       dict = {}
       l = old.shape[0]
-      for i in xrange(0,l,4): dict[old[i]] = [old[i+1], old[i+2], old[i+3]]
-      for i in xrange(0,n,4): dict[isoScales[i]] = [isoScales[i+1], isoScales[i+2], isoScales[i+3]]
+      for i in range(0,l,4): dict[old[i]] = [old[i+1], old[i+2], old[i+3]]
+      for i in range(0,n,4): dict[isoScales[i]] = [isoScales[i+1], isoScales[i+2], isoScales[i+3]]
       k = dict.keys(); l = len(k)
       v = numpy.empty((4*l), numpy.float64)
       c = 0
@@ -700,12 +726,43 @@ def _addRender2PyTree(a, slot=0, posCam=None, posEye=None, dirCam=None,
   if colormap is not None:
     rt = Internal.createUniqueChild(sl, 'colormap', 'DataArray_t', value=colormap)
 
+  # Under .RenderInfo
+  if materials is not None:
+    rt = Internal.createUniqueChild(ri, 'materials', 'UserDefinedData_t')
+    prevValues = [Internal.getValue(i) for i in rt[2]]
+    cnt = len(prevValues)
+    li = prevValues
+    for i in materials:
+      if i not in prevValues: li.append(i)
+    for c, f in enumerate(li):
+        rt = Internal.createUniqueChild(rt, 'file%d'%c, 'DataArray_t', value=f)
+
+  if bumpMaps is not None:
+    rt = Internal.createUniqueChild(ri, 'bumpMaps', 'UserDefinedData_t')
+    prevValues = [Internal.getValue(i) for i in rt[2]]
+    cnt = len(prevValues)
+    li = prevValues
+    for i in bumpMaps:
+      if i not in prevValues: li.append(i)
+    for c, f in enumerate(li):
+        rt = Internal.createUniqueChild(rt, 'file%d'%c, 'DataArray_t', value=f)
+
+  if billBoards is not None:
+    rt = Internal.createUniqueChild(ri, 'billBoards', 'UserDefinedData_t')
+    prevValues = [Internal.getValue(i) for i in rt[2]]
+    cnt = len(prevValues)
+    li = prevValues
+    for i in billBoards:
+      if i not in prevValues: li.append(i)
+    for c, f in enumerate(li):
+        re = Internal.createUniqueChild(rt, 'file%d'%(c+cnt), 'DataArray_t', value=f)
   return None
 
 #==============================================================================
 # loadView form slot
 #==============================================================================
 def loadView(t, slot=0):
+    """Load a view stored in slot."""
     renderInfo = Internal.getNodeFromName1(t, '.RenderInfo')
     if renderInfo is None: return
     slot = Internal.getNodeFromName1(renderInfo, 'Slot%d'%slot)
@@ -764,4 +821,44 @@ def loadView(t, slot=0):
     pos = Internal.getNodeFromName1(slot, 'isoScales')
     if pos is not None:
         CPlot.setState(isoScales=pos[1].tolist())
-    return
+    # RenderInfo
+    pos = Internal.getNodeFromName1(renderInfo, 'materials')
+    if pos is not None:
+        out = []
+        for i in pos[2]: out.append(Internal.getValue(i))
+        CPlot.setState(materials=out)
+    pos = Internal.getNodeFromName1(renderInfo, 'bumpMaps')
+    if pos is not None:
+        out = []
+        for i in pos[2]: out.append(Internal.getValue(i))
+        CPlot.setState(bumpMaps=out)
+    pos = Internal.getNodeFromName1(renderInfo, 'billBoards')
+    if pos is not None:
+        out = []
+        for i in pos[2]: out.append(Internal.getValue(i))
+        CPlot.setState(billBoards=out)
+
+#==============================================================================
+# loadGlobalFiles (material, bumpmaps, billboards)
+#==============================================================================
+def loadImageFiles(t):
+    """Load image files (texture, billboards, bumpmaps) in CPlot."""
+    if t == []: return
+    renderInfo = Internal.getNodeFromName1(t, '.RenderInfo')
+    if renderInfo is None: return None
+    pos = Internal.getNodeFromName1(renderInfo, 'materials')
+    if pos is not None:
+        out = []
+        for i in pos[2]: out.append(Internal.getValue(i))
+        CPlot.setState(materials=out)
+    pos = Internal.getNodeFromName1(renderInfo, 'bumpMaps')
+    if pos is not None:
+        out = []
+        for i in pos[2]: out.append(Internal.getValue(i))
+        CPlot.setState(bumpMaps=out)
+    pos = Internal.getNodeFromName1(renderInfo, 'billBoards')
+    if pos is not None:
+        out = []
+        for i in pos[2]: out.append(Internal.getValue(i))
+        CPlot.setState(billBoards=out)
+    return None

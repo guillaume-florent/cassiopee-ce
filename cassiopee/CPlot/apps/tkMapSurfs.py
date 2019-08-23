@@ -1,5 +1,6 @@
 # - surface remapper -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -75,35 +76,46 @@ def mapSurf(z, density, smoothIter, eltType, constraints, strength):
     f = T.smooth(f, eps=0.5, niter=10) # lissage du front quad
 
     if eltType == 'TRI' or eltType == 'QUAD':
-        #if constraints != []: f = G.snapSharpEdges(f, constraints, step=0.95*h, angle=30.)
         # Projection du front
-        if smoothIter == 0: f = T.projectOrtho(f, [a])
-        for smooth in xrange(smoothIter):
-            f = T.smooth(f, eps=0.5, niter=2, fixedConstraints=constraints,
-                         projConstraints=constraints,
-                         delta=strength)
+        if smoothIter == -1:
             f = T.projectOrtho(f, [a])
-            if constraints != []: f = G.snapSharpEdges(f, constraints, step=0.95*h, angle=30.)
+        elif smoothIter == 0:
+            f = T.projectOrtho(f, [a])
+            if constraints != []: 
+                f = Converter.initVars(f, 'indic', 0)
+                f = G.snapSharpEdges(f, constraints, step=0.3*h, angle=30.)
+        else:
+            f = T.projectOrtho(f, [a])
+            #if constraints != []:
+            #    f = G.snapSharpEdges(f, constraints, step=0.3*h, angle=30.)
+            for smooth in range(smoothIter):
+                f = T.smooth(f, eps=0.5, niter=2, 
+                             fixedConstraints=constraints,
+                             #projConstraints=constraints,
+                             delta=strength)
+                f = T.projectOrtho(f, [a])
+            if constraints != []:
+                f = Converter.initVars(f, 'indic', 0)
+                f = G.snapSharpEdges(f, constraints, step=0.3*h, angle=30.)
         proj = f
         if eltType == 'TRI': proj = Converter.converter.convertQuad2Tri(proj)
-        
         return C.convertArrays2ZoneNode('remaped', [proj])
 
     if eltType == 'STRUCT':
         N = 2
         distrib = G.cart((0,0,0), (1./(N-1),1,1), (N,1,1))
         if smoothIter == 0: f = T.projectOrtho(f, [a])
-        for smooth in xrange(smoothIter):
+        for smooth in range(smoothIter):
             f = T.projectOrtho(f, [a])
             f = T.smooth(f, eps=0.5, niter=2, fixedConstraints=constraints,
                          delta=strength)
         r = G.fillWithStruct(f, Vmin=10)
 
-        for smooth in xrange(smoothIter):
-            print 'Smoothing iteration...', smooth
+        for smooth in range(smoothIter):
+            print('Smoothing iteration %d...'%smooth)
             r = T.smooth(r, eps=0.5, niter=2, fixedConstraints=constraints,
                          delta=strength)
-            print 'Projection iteration...', smooth
+            print('Projection iteration %d...'%smooth)
             r = T.projectOrtho(r, [a])
         
         ret = []
@@ -183,7 +195,7 @@ def remap(event=None):
         CTK.replace(CTK.t, nob, noz, zp[0])
         for i in zp[1:]: CTK.add(CTK.t, nob, -1, i)
 
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     CTK.TXT.insert('START', 'Surface remapped.\n')
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TKTREE.updateApp()
@@ -198,7 +210,7 @@ def createApp(win):
                            text='tkMapSurfs', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Remap surfaces with octrees.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -215,21 +227,21 @@ def createApp(win):
     # - VARS -
     # -0- Point density -
     V = TK.StringVar(win); V.set('1.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkMapSurfsDensity'): 
+    if 'tkMapSurfsDensity' in CTK.PREFS: 
         V.set(CTK.PREFS['tkMapSurfsDensity'])
     # -1- Smoother power -
     V = TK.StringVar(win); V.set('10'); VARS.append(V)
-    if CTK.PREFS.has_key('tkMapSurfsSmooth'): 
+    if 'tkMapSurfsSmooth' in CTK.PREFS: 
         V.set(CTK.PREFS['tkMapSurfsSmooth'])
     # -2- Elt type -
     V = TK.StringVar(win); V.set('QUAD'); VARS.append(V)
-    if CTK.PREFS.has_key('tkMapSurfsElts'): 
+    if 'tkMapSurfsElts' in CTK.PREFS: 
         V.set(CTK.PREFS['tkMapSurfsElts'])
     # -3- Constraint
     V = TK.StringVar(win); V.set(''); VARS.append(V)
     # -4- Constraint strength
     V = TK.StringVar(win); V.set('1.'); VARS.append(V)
-    if CTK.PREFS.has_key('tkMapSurfsConsStrength'): 
+    if 'tkMapSurfsConsStrength' in CTK.PREFS: 
         V.set(CTK.PREFS['tkMapSurfsConsStrength'])
 
     # - Point density -

@@ -1,13 +1,13 @@
 # - integration -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
 import CPlot.Tk as CTK
 import Post.PyTree as P
 
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 def updateVarNameList__(no):
@@ -40,7 +40,7 @@ def updateVarNameList2__(no):
     allvars = []
     if (len(vars) > 0):
         for v in vars[0]: allvars.append(v)
-    if (WIDGETS.has_key('variable'+str(no)) == True):
+    if 'variable'+str(no) in WIDGETS:
         WIDGETS['variable'+str(no)]['values'] = allvars
 
 #==============================================================================
@@ -115,7 +115,7 @@ def createApp(win):
                            text='tkInteg', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Integrate fields.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -232,7 +232,7 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

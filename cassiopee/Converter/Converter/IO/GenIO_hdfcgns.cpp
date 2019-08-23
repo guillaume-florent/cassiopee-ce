@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -19,6 +19,9 @@
 
 // Binary HDF CGNS file support
 #ifdef _MPI
+#if defined(_WIN64)
+# define __int64 long long
+#endif
 # include "mpi.h"
 #else
 #define MPI_Comm void
@@ -30,6 +33,38 @@
 # include "GenIO_hdfcgns.h"
 using namespace std;
 using namespace K_IO;
+
+/* ------------------------------------------------------------------------- */
+E_Int checkCompressionFilters()
+{
+  unsigned int filter_info;
+  E_Int avail = H5Zfilter_avail(H5Z_FILTER_SZIP);
+  if (!avail) 
+  {
+    printf ("Warning: hdf: szip filter not available.\n");
+    return 1;
+  }
+  E_Int status = H5Zget_filter_info (H5Z_FILTER_SZIP, &filter_info);
+  if ( !(filter_info & H5Z_FILTER_CONFIG_ENCODE_ENABLED) ||
+      !(filter_info & H5Z_FILTER_CONFIG_DECODE_ENABLED) ) 
+  {
+    printf ("Warning: hdf: szip filter not available for encoding and decoding.\n");
+    return 1;
+  }
+
+  // Example of creating compressed dataSet
+  /*
+  dcpl = H5Pcreate(H5P_DATASET_CREATE);
+  status = H5Pset_szip (dcpl, H5_SZIP_NN_OPTION_MASK, 8);
+  status = H5Pset_chunk(dcpl, 2, chunk);
+
+  dset = H5Dcreate (file, DATASET, H5T_STD_I32LE, space, H5P_DEFAULT, dcpl,
+                    H5P_DEFAULT);
+  status = H5Dwrite (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                wdata[0]);
+  */
+  return 1;
+}
 
 /* ------------------------------------------------------------------------- */
 hid_t K_IO::GenIOHdf::ADF_to_HDF_datatype(const char *tp)
@@ -125,7 +160,30 @@ static herr_t count_children(hid_t id, const char *name, void *count)
   }
   return 0;
 }
-
+/* ------------------------------------------------------------------------- */
+static herr_t gfind_name(hid_t id, const char *nm, void *snm)
+{
+  /*  printf("GFIND [%s][%s]\n",nm,snm);fflush(stdout); */
+  if (!strcmp(nm,(char *)snm)) return 1;
+  return 0;
+}
+#define has_child(ID,NAME) H5Giterate(ID,".",NULL,gfind_name,(void *)NAME)
+/* ------------------------------------------------------------------------- */
+static herr_t delete_children(hid_t id, const char *name, void *data)
+{
+  /* do not change link id with actual here, stop deletion at link node */
+  if (name && (name[0] == ' ')) /* leaf node */
+  {
+    H5Ldelete(id,name,H5P_DEFAULT);
+  }
+  else 
+  {
+    /* should use H5Literate */
+    H5Giterate(id, name, NULL, delete_children, data);
+    H5Ldelete(id, name, H5P_DEFAULT);
+  }
+  return 0;
+}
 /* ------------------------------------------------------------------------- */
 // static herr_t feed_children_ids_list(hid_t id, const char *name, void *idlist)
 // {
@@ -155,6 +213,26 @@ static herr_t feed_children_ids(hid_t id, const char* name,
   n = 0;
   while (((hid_t*)idlist)[n] != -1) n++;
   ((hid_t*)idlist)[n] = cid;
+  return 0;
+}
+
+// Retourne 1 si path est dans links
+E_Int checkPathInLinks(const char* path, PyObject* links)
+{
+  E_Int li = PyList_Size(links);
+  for (E_Int i = 0; i < li; i++)
+  {
+    PyObject* tp = PyList_GetItem(links, i);
+    PyObject* d = PyList_GetItem(tp, 3);
+    char* s;
+    if (PyString_Check(d)) s = PyString_AsString(d);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(d)) s = PyBytes_AsString(PyUnicode_AsUTF8String(d));
+#endif
+    else s = NULL;
+    //printf("path=%s links=%s\n", path, s);
+    if (strcmp(s, path) == 0) return 1;
+  }
   return 0;
 }
 
@@ -262,7 +340,7 @@ int HDF_Get_DataDimensions(hid_t nid, int *dims)
 
 /* ------------------------------------------------------------------------- */
 int HDF_Add_Attribute_As_String(hid_t nodeid, const char *name,
-				const char *value)
+                                const char *value)
 {
   hid_t sid, tid, aid;
   herr_t status;
@@ -346,14 +424,14 @@ int HDF_Add_Attribute_As_Data(hid_t id, const char *name,
   {
     return 0;
   }
-  did=H5Dcreate2(id,name,H5T_NATIVE_CHAR,sid,
+  did = H5Dcreate2(id,name,H5T_NATIVE_CHAR,sid,
      H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
   if (did < 0)
   {
     H5Sclose(sid);
     return 0;
   }
-  status=H5Dwrite(did,H5T_NATIVE_CHAR,H5S_ALL,H5S_ALL,H5P_DEFAULT,value);
+  status = H5Dwrite(did,H5T_NATIVE_CHAR,H5S_ALL,H5S_ALL,H5P_DEFAULT,value);
   H5Dclose(did);
   H5Sclose(sid);
   
@@ -429,18 +507,17 @@ PyObject* K_IO::GenIOHdf::getArrayI4(hid_t node, hid_t tid,
   yid = H5Tget_native_type(tid, H5T_DIR_ASCEND);
   
 #if defined(_MPI) && defined(H5_HAVE_PARALLEL)
-  if(_ismpi == 1)    /** HDF is execute in parallel context and compile in MPI **/
+  if (_ismpi == 1)    /** HDF is executed in parallel context and compiled in MPI **/
   {
-    // printf("getArrayI4 parallel : \n ");
     hid_t xfer_plist = H5Pcreate(H5P_DATASET_XFER);
     hid_t ret        = H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE);
     H5Dread(did, yid, mid, sid, xfer_plist, PyArray_DATA(r));
   }
-  else /** HDF is execute in sequential context and compile in MPI **/
+  else /** HDF is executed in sequential context and compiled in MPI **/
   {
     H5Dread(did, yid, mid, sid, H5P_DEFAULT, PyArray_DATA(r));
   }
-#else  /** HDF is execute in sequential context and compile in sequential **/
+#else  /** HDF is executed in sequential context and compiled in sequential **/
   H5Dread(did, yid, mid, sid, H5P_DEFAULT, PyArray_DATA(r));
 #endif
   H5Tclose(yid); H5Dclose(did);
@@ -467,17 +544,17 @@ PyObject* K_IO::GenIOHdf::getArrayI8(hid_t node, hid_t tid,
   yid = H5Tget_native_type(tid, H5T_DIR_ASCEND);
   
 #if defined(_MPI) && defined(H5_HAVE_PARALLEL)  
-  if(_ismpi == 1)    /** HDF is execute in parallel context and compile in MPI **/
+  if (_ismpi == 1)    /** HDF is executed in parallel context and compiled in MPI **/
   {
     hid_t xfer_plist = H5Pcreate(H5P_DATASET_XFER);
     hid_t ret        = H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE);
     H5Dread(did, yid, mid, sid, xfer_plist, ptr);
   }
-  else /** HDF is execute in sequential context and compile in MPI **/
+  else /** HDF is executed in sequential context and compiled in MPI **/
   {
     H5Dread(did, yid, mid, sid, H5P_DEFAULT, ptr);
   }
-#else /** HDF is execute in sequential context and compile in sequential **/
+#else /** HDF is executed in sequential context and compiled in sequential **/
   H5Dread(did, yid, mid, sid, H5P_DEFAULT, ptr);
 #endif
   
@@ -535,17 +612,17 @@ PyObject* K_IO::GenIOHdf::getArrayR4(hid_t node, hid_t tid,
   yid = H5Tget_native_type(tid, H5T_DIR_ASCEND);
   
 #if defined(_MPI) && defined(H5_HAVE_PARALLEL)  
-  if(_ismpi == 1)    /** HDF is execute in parallel context and compile in MPI **/
+  if (_ismpi == 1)    /** HDF is executed in parallel context and compiled in MPI **/
   {
     hid_t xfer_plist = H5Pcreate(H5P_DATASET_XFER);
     hid_t ret        = H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE);
     H5Dread(did, yid, mid, sid, xfer_plist, ptr);
   }
-  else /** HDF is execute in sequential context and compile in MPI **/
+  else /** HDF is executed in sequential context and compiled in MPI **/
   {
     H5Dread(did, yid, mid, sid, H5P_DEFAULT, ptr);
   }
-#else  /** HDF is execute in sequential context and compile in sequential **/
+#else  /** HDF is executed in sequential context and compiled in sequential **/
   H5Dread(did, yid, mid, sid, H5P_DEFAULT, ptr);
 #endif
   H5Tclose(yid); H5Dclose(did);
@@ -625,23 +702,22 @@ PyObject* K_IO::GenIOHdf::getArrayR8(hid_t node, hid_t tid, int dim, int* dims,
   yid = H5Tget_native_type(tid, H5T_DIR_ASCEND);
 
 #if defined(_MPI) && defined(H5_HAVE_PARALLEL)
-  if(_ismpi == 1)    /** HDF is execute in parallel context and compile in MPI **/
+  if (_ismpi == 1)    /** HDF is executed in parallel context and compiled in MPI **/
   {
     hid_t xfer_plist = H5Pcreate(H5P_DATASET_XFER);
-    // hid_t ret        = H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE);
-    hid_t ret        = H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_INDEPENDENT);
+    hid_t ret        = H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE);
+    //hid_t ret        = H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_INDEPENDENT);
     H5Dread(did, yid, mid, sid, xfer_plist, PyArray_DATA(r));
   }     
-  else  /** HDF is execute in sequential context and compile in MPI **/
+  else  /** HDF is executed in sequential context and compiled in MPI **/
   {
     H5Dread(did, yid, mid, sid, H5P_DEFAULT, PyArray_DATA(r));
   }
-#else /** HDF is execute in sequential context and compile in sequential **/
+#else /** HDF is executed in sequential context and compiled in sequential **/
   H5Dread(did, yid, mid, sid, H5P_DEFAULT, PyArray_DATA(r));
 #endif
   H5Tclose(yid); H5Dclose(did);
-  // printf("K_IO::GenIOHdf::getArrayR8 end \n ");
-
+  
   return (PyObject*)r;
 }
 
@@ -660,17 +736,17 @@ char* K_IO::GenIOHdf::getArrayC1(hid_t node, hid_t tid, int dim, int* dims)
   yid = H5Tget_native_type(tid, H5T_DIR_ASCEND);
 
 #if defined(_MPI) && defined(H5_HAVE_PARALLEL)
-  if(_ismpi == 1)    /** HDF is execute in parallel context and compile in MPI **/
+  if (_ismpi == 1)    /** HDF is executed in parallel context and compiled in MPI **/
   {
     hid_t xfer_plist = H5Pcreate(H5P_DATASET_XFER);
     hid_t ret        = H5Pset_dxpl_mpio(xfer_plist, H5FD_MPIO_COLLECTIVE);
     H5Dread(did, yid, H5S_ALL, H5S_ALL, xfer_plist, ptr);
-  }     /** HDF is execute in sequential context and compile in MPI **/
+  }     /** HDF is executed in sequential context and compiled in MPI **/
   else
   {
     H5Dread(did, yid, H5S_ALL, H5S_ALL, H5P_DEFAULT, ptr);
   }
-#else /** HDF is execute in sequential context and compile in sequential **/
+#else /** HDF is executed in sequential context and compiled in sequential **/
    H5Dread(did, yid, H5S_ALL, H5S_ALL, H5P_DEFAULT, ptr);
 #endif
   H5Tclose(yid); H5Dclose(did);
@@ -678,9 +754,9 @@ char* K_IO::GenIOHdf::getArrayC1(hid_t node, hid_t tid, int dim, int* dims)
   return ptr;
 }
 
-// =============================================================================
+// ===============================================================================
 // Generic function to get data in HDF - NO cast - Allows contiguous or Interlaced 
-// =============================================================================
+// ===============================================================================
 PyObject* K_IO::GenIOHdf::getArrayContigous(hid_t     node, 
                                             hid_t     tid, 
                                             int       dim,
@@ -691,8 +767,8 @@ PyObject* K_IO::GenIOHdf::getArrayContigous(hid_t     node,
                                             PyObject* data)
 {
   IMPORTNUMPY;
-  vector<npy_intp>       npy_dim_vals(dim);
-  hid_t          did, yid;
+  vector<npy_intp>  npy_dim_vals(dim);
+  hid_t             did, yid;
 
   // Create numpy: No cast 
   if (data == NULL)
@@ -708,7 +784,7 @@ PyObject* K_IO::GenIOHdf::getArrayContigous(hid_t     node,
 
   // printf("K_IO::GenIOHdf::getArrayContigous \n ");
 #if defined(_MPI) && defined(H5_HAVE_PARALLEL)
-  if(_ismpi == 1)    /** HDF is execute in parallel context and compile in MPI **/
+  if(_ismpi == 1)    /** HDF is executed in parallel context and compiled in MPI **/
   {
    // printf("getArrayContigous H5_HAVE_PARALLEL / _ismpi ON \n ");
    hid_t xfer_plist = H5Pcreate(H5P_DATASET_XFER);
@@ -717,15 +793,12 @@ PyObject* K_IO::GenIOHdf::getArrayContigous(hid_t     node,
  }
  else
  {
-   // printf("getArrayContigous H5_HAVE_PARALLEL / _ismpi OFF \n ");
    H5Dread(did, yid, mid, sid, H5P_DEFAULT, PyArray_DATA( (PyArrayObject*) data));
  }
 #else
-  // printf("getArrayContigous SEQUENTIAL \n ");
   H5Dread(did, yid, mid, sid, H5P_DEFAULT, PyArray_DATA( (PyArrayObject*) data));
 #endif
   H5Tclose(yid); H5Dclose(did);
-  // printf("K_IO::GenIOHdf::getArrayContigous end \n ");
 
   return data;
 }
@@ -736,22 +809,20 @@ PyObject* K_IO::GenIOHdf::getArrayContigous(hid_t     node,
    IN: file: file name
    OUT: tree, arbre CGNS/python charge
    OUT: dataShape: si dataShape != NULL, retourne les chemins de noeuds + shape
+   OUT: links: si links != NULL, retourne les chemins des noeuds de link
    IN: skeleton: 0 (full), 1 (only skeleton loaded)
-   IN: maxFloatSize: pour skeleton=1, load si shape < maxFloatSize
-   IN: maxDepth: si skeleton=1, profondeur max de load
+   IN: maxFloatSize: si skeleton=1, load si shape < maxFloatSize
+   IN: maxDepth: profondeur max de load
 */
 //=============================================================================
-E_Int K_IO::GenIO::hdfcgnsread(char* file, PyObject*& tree, PyObject* dataShape, int skeleton,
-                               int maxFloatSize, int maxDepth)
+E_Int K_IO::GenIO::hdfcgnsread(char* file, PyObject*& tree, PyObject* dataShape, PyObject* links, 
+                               int skeleton, int maxFloatSize, int maxDepth, PyObject* skipTypes)
 {
   tree = PyList_New(4);
 
   /* Open file */
   hid_t fapl, fid;
   fapl = H5Pcreate(H5P_FILE_ACCESS);
-  //H5Pset_libver_bounds(fapl, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
-
-  //H5Pset_fclose_degree(fapl, H5F_CLOSE_STRONG);
   fid = H5Fopen(file, H5F_ACC_RDONLY, fapl);
   //printf("open Avant =%d\n",H5Fget_obj_count(fid, H5F_OBJ_ALL));
   // printf("open=%d\n",H5Fget_obj_count(fid, H5F_OBJ_ALL));
@@ -762,9 +833,25 @@ E_Int K_IO::GenIO::hdfcgnsread(char* file, PyObject*& tree, PyObject* dataShape,
     return 1;
   }
   hid_t gid = H5Gopen(fid, "/", H5P_DEFAULT);
+  GenIOHdf HDF;
+
+  /* Prepare skip types */
+  if (skipTypes != NULL)
+  {
+    E_Int skipSize = PyList_Size(skipTypes);
+    for (E_Int i = 0; i < skipSize; i++)
+    {
+      char* typeToSkip = NULL;
+      PyObject* l = PyList_GetItem(skipTypes, i);
+      if (PyString_Check(l)) typeToSkip = PyString_AsString(l);
+#if PY_VERSION_HEX >= 0x03000000
+      else if (PyUnicode_Check(l)) typeToSkip = PyBytes_AsString(PyUnicode_AsUTF8String(l)); 
+#endif
+      HDF._skipTypes[string(typeToSkip)] = true;
+    }
+  }
 
   /* Recursive load */
-  GenIOHdf HDF;
   HDF._skeleton = skeleton;
   HDF._ismpi = 0;
   HDF._maxFloatSize = maxFloatSize;
@@ -772,7 +859,7 @@ E_Int K_IO::GenIO::hdfcgnsread(char* file, PyObject*& tree, PyObject* dataShape,
   else HDF._maxDepth = maxDepth;
   HDF._fatherStack.push_front(gid);
   HDF._stringStack.push_front("");
-  HDF.loadOne(tree, 0, dataShape);
+  HDF.loadOne(tree, 0, dataShape, links);
   HDF._fatherStack.pop_front();
   HDF._stringStack.pop_front();
 
@@ -871,7 +958,9 @@ hid_t K_IO::GenIOHdf::openGroupWithLinks(hid_t start, char* path)
 // Retourne une liste d'objets pythons contenant les noeuds pointes par les
 // chemins
 //=============================================================================
-PyObject* K_IO::GenIO::hdfcgnsReadFromPaths(char* file, PyObject* paths)
+PyObject* K_IO::GenIO::hdfcgnsReadFromPaths(char* file, PyObject* paths,
+                                            E_Int maxFloatSize, E_Int maxDepth,
+                                            PyObject* skipTypes)
 {
   if (PyList_Check(paths) == false)
   {
@@ -880,15 +969,6 @@ PyObject* K_IO::GenIO::hdfcgnsReadFromPaths(char* file, PyObject* paths)
     return NULL;
   }
   E_Int size = PyList_Size(paths);
-  for (E_Int i = 0; i < size; i++)
-  {
-    if (PyString_Check(PyList_GetItem(paths, i)) == false)
-    {
-      PyErr_SetString(PyExc_TypeError,
-                      "hdfread: paths must be a list of strings.");
-      return NULL;
-    }
-  }
 
   /* Open file */
   hid_t fapl, fid;
@@ -907,17 +987,54 @@ PyObject* K_IO::GenIO::hdfcgnsReadFromPaths(char* file, PyObject* paths)
   HDF._skeleton = 0;
   PyObject* node;
 
+  /* Prepare skip types */
+  if (skipTypes != NULL)
+  {
+    E_Int skipSize = PyList_Size(skipTypes);
+    for (E_Int i = 0; i < skipSize; i++)
+    {
+      char* typeToSkip = NULL;
+      PyObject* l = PyList_GetItem(skipTypes, i);
+      if (PyString_Check(l)) typeToSkip = PyString_AsString(l);
+#if PY_VERSION_HEX >= 0x03000000
+      else if (PyUnicode_Check(l)) typeToSkip = PyBytes_AsString(PyUnicode_AsUTF8String(l)); 
+#endif
+      HDF._skipTypes[string(typeToSkip)] = true;
+    }
+  }
+
   for (E_Int i = 0; i < size; i++)
   {
-    char* path = PyString_AsString(PyList_GetItem(paths, i));
+    char* path; PyObject* l;
+    l = PyList_GetItem(paths, i);
+    if (PyString_Check(l)) path = PyString_AsString(l);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(l)) path = PyBytes_AsString(PyUnicode_AsUTF8String(l));
+#endif
+    else
+    {
+      PyErr_SetString(PyExc_TypeError, "hdfcgnsread: paths must be strings.");
+      return NULL;
+    }
     /* Open group in HDF corresponding to path */
     hid_t gid = HDF.openGroupWithLinks(fid, path);
     if (gid < 0)
     { 
       printf("Warning: hdfcgnsread: cannot find this path.\n");
     }
+    else if (maxDepth == 0)
+    {
+      node = HDF.createNode(gid);
+      PyObject* children = PyList_New(0);
+      PyList_SetItem(node, 2, children);
+      PyList_Append(ret, node); Py_DECREF(node);
+    }
     else
     {
+      if (maxFloatSize >= 0)
+      { HDF._maxFloatSize = maxFloatSize; HDF._skeleton = 1; }
+      if (maxDepth >= 0) HDF._maxDepth = maxDepth;
+      else HDF._maxDepth = 1e6;
       HDF._stringStack.push_front(path);
       node = HDF.createNode(gid);
       HDF._fatherStack.push_front(gid);
@@ -934,7 +1051,8 @@ PyObject* K_IO::GenIO::hdfcgnsReadFromPaths(char* file, PyObject* paths)
 }
 
 //=============================================================================
-PyObject* K_IO::GenIOHdf::loadOne(PyObject* tree, int depth, PyObject* dataShape)
+PyObject* K_IO::GenIOHdf::loadOne(PyObject* tree, int depth, 
+                                  PyObject* dataShape, PyObject* links)
 {
   hid_t* sonList;
   PyObject* node;
@@ -944,28 +1062,61 @@ PyObject* K_IO::GenIOHdf::loadOne(PyObject* tree, int depth, PyObject* dataShape
   if (depth >= _maxDepth) {H5Gclose(father); return tree;}
   sonList = getChildren(father);
   int c = 0;
-  while (sonList != NULL && sonList[c] != (hid_t)-1)
+  if (_skipTypes.size() == 0)
   {
-    node = createNode(sonList[c], dataShape);
-    PyList_Append(l, node); Py_DECREF(node);
-    _stringStack.push_front(_currentPath);
-    _fatherStack.push_front(sonList[c]);
-    loadOne(node, depth+1, dataShape);
-    _fatherStack.pop_front();
-    _stringStack.pop_front();
-    c++;
+    while (sonList != NULL && sonList[c] != (hid_t)-1)
+    {
+      node = createNode(sonList[c], dataShape, links);
+      PyList_Append(l, node); Py_DECREF(node);
+      _stringStack.push_front(_currentPath);
+      _fatherStack.push_front(sonList[c]);
+      loadOne(node, depth+1, dataShape, links);
+      _fatherStack.pop_front();
+      _stringStack.pop_front();
+      c++;
+    }
   }
+  else
+  {
+    /* with Skip */
+    while (sonList != NULL && sonList[c] != (hid_t)-1)
+    {
+      node = createNode(sonList[c], dataShape, links);
+      if (isAnodeToSkip())
+      {
+        Py_DECREF(node);
+      }
+      else
+      {
+        PyList_Append(l, node); Py_DECREF(node);
+        _stringStack.push_front(_currentPath);
+        _fatherStack.push_front(sonList[c]);
+        loadOne(node, depth+1, dataShape, links);
+        _fatherStack.pop_front();
+        _stringStack.pop_front();
+      }
+      c++;
+    }
+  }
+
   free(sonList);
   H5Gclose(father);
   return tree;
 }
 
 //=============================================================================
+bool K_IO::GenIOHdf::isAnodeToSkip()
+{
+  return (_skipTypes.find(_type) != _skipTypes.end());
+}
+
+//=============================================================================
 // Cree un noeud du pyTree
 // node peut etre modifie dans le cas d'un lien
 // Remplit dataShape si non NULL
+// Remplit links si non null
 //=============================================================================
-PyObject* K_IO::GenIOHdf::createNode(hid_t& node, PyObject* dataShape)
+PyObject* K_IO::GenIOHdf::createNode(hid_t& node, PyObject* dataShape, PyObject* links)
 {
   // Nom du noeud de l'arbre
   HDF_Get_Attribute_As_String(node, L3S_NAME, _name);
@@ -979,6 +1130,38 @@ PyObject* K_IO::GenIOHdf::createNode(hid_t& node, PyObject* dataShape)
   HDF_Get_Attribute_As_String(node, L3S_DTYPE, _dtype);
   if (strcmp(_dtype, "LK") == 0)
   {
+    // store link data
+    if (links != NULL)
+    {
+      H5L_info_t lk;
+      char querybuff[512];
+      const char *file; const char *path;
+      char rfile[512]; char rpath[512];
+      H5Lget_info(node, L3S_LINK, &lk, NULL);
+      H5Lget_val(node, L3S_LINK, querybuff, sizeof(querybuff), H5P_DEFAULT);
+      if (lk.type == H5L_TYPE_EXTERNAL)
+      {
+        H5Lunpack_elink_val(querybuff, lk.u.val_size, NULL, &file, &path);
+        strcpy(rfile, file); strcpy(rpath, path);
+      }
+      else
+      {
+        strcpy(rpath, querybuff);
+        rfile[0] = '\0';
+      }
+
+      //printf("link %s\n", _name);
+      //printf("link file: %s\n", rfile);
+      //printf("link current path: %s\n", _currentPath.c_str());
+      //printf("link target path: %s\n", rpath);
+
+      char lksearch[128]; strcpy(lksearch, ".");
+      // list of ['targetdirectory', 'targetfilename', 'targetpath', 'currentpath']
+      PyObject* v = Py_BuildValue("[s,s,s,s]", lksearch, rfile, rpath, _currentPath.c_str());
+      PyList_Append(links, v); Py_DECREF(v);
+    }
+
+    // follow link
     H5G_stat_t sb; /* Object information */
     herr_t herr = H5Gget_objinfo(node, L3S_LINK, (hbool_t)0, &sb);
     if (herr < 0)
@@ -1046,11 +1229,23 @@ PyObject* K_IO::GenIOHdf::createNode(hid_t& node, PyObject* dataShape)
   {  
     IMPORTNUMPY;
     char* s = getArrayC1(node, tid, dim, _dims);
-    E_Int l = strlen(s); npy_dim_vals2[0] = l;
-    v = PyArray_EMPTY(1, npy_dim_vals2, NPY_CHAR, 1);
-    memcpy(PyArray_DATA((PyArrayObject*)v), s, l*sizeof(char));
-    //v = PyString_FromString(s);
-    free(s);
+    if (dim == 1)
+    {
+      E_Int l = strlen(s); npy_dim_vals2[0] = l;
+      v = PyArray_EMPTY(1, npy_dim_vals2, NPY_CHAR, 1);
+      memcpy(PyArray_DATA((PyArrayObject*)v), s, l*sizeof(char));
+      free(s);
+    }
+    else 
+    {
+      npy_intp* npy_dim_vals = new npy_intp[dim];
+      E_Int l = 1;
+      for (E_Int i = 0; i < dim; i++) 
+      { npy_dim_vals[i] = _dims[i]; l = l*_dims[i]; } 
+      v = PyArray_EMPTY(dim, npy_dim_vals, NPY_CHAR, 1);
+      memcpy(PyArray_DATA((PyArrayObject*)v), s, l*sizeof(char));
+      free(s); delete [] npy_dim_vals;
+    }
   }
   else if (strcmp(_dtype, L3T_MT) == 0)
   {
@@ -1105,7 +1300,8 @@ E_Int K_IO::GenIO::hdfcgnswrite(char* file, PyObject* tree, PyObject* links)
   hid_t fapl, fid, capl;
   fapl = H5Pcreate(H5P_FILE_ACCESS);
   H5Pset_fclose_degree(fapl, H5F_CLOSE_STRONG);
-  H5Pset_libver_bounds(fapl, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
+  //H5Pset_libver_bounds(fapl, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
+  H5Pset_libver_bounds(fapl, KHDFVERSION, KHDFVERSION);
 
   capl = H5Pcreate(H5P_FILE_CREATE);
   H5Pset_link_creation_order(capl, H5P_CRT_ORDER_TRACKED | H5P_CRT_ORDER_INDEXED);
@@ -1124,7 +1320,8 @@ E_Int K_IO::GenIO::hdfcgnswrite(char* file, PyObject* tree, PyObject* links)
 
   GenIOHdf HDF;
   HDF._ismpi = 0;
-
+  HDF._maxDepth = 1e6;
+  
   // Ajout version... au root node
   hid_t gid = H5Gopen2(fid, "/", H5P_DEFAULT);
   HDF_Add_Attribute_As_String(gid, L3S_NAME, L3S_ROOTNODENAME);
@@ -1156,25 +1353,42 @@ E_Int K_IO::GenIO::hdfcgnswrite(char* file, PyObject* tree, PyObject* links)
   for (int n = 0; n < listsize; n++) // pour chaque Base
   {
     o = PyList_GetItem(tree, n);
+    HDF._stringStack.push_front("");
     HDF._fatherStack.push_front(gid);
-    HDF.dumpOne(o);
+    HDF.dumpOne(o, 0, links);
     HDF._fatherStack.pop_front();
+    HDF._stringStack.pop_front();
   }
   
-  /** Manage links */
-  /* List of ['targetdirectory', 'targetfilename', 'targetpath', 'currentpath'] */
+  /** Manage links (a l'ecriture) */
+  /* List of ['targetdirectory', 'targetfilename', 'targetpath', 'currentpath',0] */
   E_Int size;
   if (links == NULL) size = 0;
   else size = PyList_Size(links);
-  //printf("size = %d \n", size );
   
   for (E_Int i = 0; i < size; i++)
   {
     PyObject* llink  = PyList_GetItem(links, i);
-    char* tgt_dire = PyString_AsString(PyList_GetItem(llink, 0));
-    char* tgt_file = PyString_AsString(PyList_GetItem(llink, 1));
-    char* tgt_path = PyString_AsString(PyList_GetItem(llink, 2));
-    char* cur_path = PyString_AsString(PyList_GetItem(llink, 3));
+    char* tgt_file; char* tgt_path; char* cur_path;
+    PyObject* l = PyList_GetItem(llink, 1);
+    if (PyString_Check(l)) tgt_file = PyString_AsString(l);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(l)) tgt_file = PyBytes_AsString(PyUnicode_AsUTF8String(l));
+#endif
+    else tgt_file = NULL;
+    l = PyList_GetItem(llink, 2);
+    if (PyString_Check(l)) tgt_path = PyString_AsString(l);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(l)) tgt_path = PyBytes_AsString(PyUnicode_AsUTF8String(l));
+#endif
+    else tgt_path = NULL;
+    l = PyList_GetItem(llink, 3);
+    if (PyString_Check(l)) cur_path = PyString_AsString(l);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(l)) cur_path = PyBytes_AsString(PyUnicode_AsUTF8String(l));
+#endif
+    else cur_path = NULL;
+    
     
     // > Dramatic verbose 
     // printf(" tgt_dire : %s \n", tgt_dire);
@@ -1182,29 +1396,35 @@ E_Int K_IO::GenIO::hdfcgnswrite(char* file, PyObject* tree, PyObject* links)
     // printf(" tgt_path : %s \n", tgt_path);
     // printf(" cur_path : %s \n", cur_path);
     
-    /* Rip en of path to get parent */
-    char* startPath;
-    char* Name;
+    /* Rip end of path to get parent */
+    char* startPath; char* name;
     ripEndOfPath(cur_path, startPath);
-    getEndOfPath(cur_path, Name);
+    getEndOfPath(cur_path, name);
     hid_t gidp = H5Gopen(fid, startPath, H5P_DEFAULT);
     delete [] startPath;
     
+    /* node existe deja */
+    if (has_child(gidp, name))
+    {
+      H5Giterate(gidp, name, NULL, delete_children, NULL);
+      H5Gunlink(gidp, name);
+    }
+
     /* Create link node */
-    hid_t nid = H5Gcreate2(gidp, Name, H5P_DEFAULT, HDF._group, H5P_DEFAULT);
+    hid_t nid = H5Gcreate2(gidp, name, H5P_DEFAULT, HDF._group, H5P_DEFAULT);
     if (nid < 0) {printf("Error: nid is invalid.\n");}
     
-    if (HDF_Add_Attribute_As_String(nid,L3S_NAME, Name)          < 0){printf("Error in link 1 \n");}
-    if (HDF_Add_Attribute_As_String(nid,L3S_DTYPE, L3T_LK)       < 0){printf("Error in link 2 \n");}
-    if (HDF_Add_Attribute_As_String(nid,L3S_LABEL,"")            < 0){printf("Error in link 3 \n");}
+    HDF_Add_Attribute_As_String(nid, L3S_NAME, name);
+    HDF_Add_Attribute_As_String(nid, L3S_DTYPE, L3T_LK);
+    HDF_Add_Attribute_As_String(nid, L3S_LABEL, "");
   
-    delete [] Name;
+    delete [] name;
   
     /** Make the link effective **/
     HDF_Add_Attribute_As_Data(nid, L3S_PATH, cur_path, strlen(cur_path));
     
     H5Lcreate_external(tgt_file, tgt_path, nid, L3S_LINK,H5P_DEFAULT, H5P_DEFAULT);
-    HDF_Add_Attribute_As_Data(nid,L3S_FILE,tgt_file,strlen(tgt_file));
+    HDF_Add_Attribute_As_Data(nid, L3S_FILE, tgt_file, strlen(tgt_file));
         
     H5Gclose(gidp); H5Gclose(nid);
   } /* end link */
@@ -1225,7 +1445,6 @@ void K_IO::GenIO::ripEndOfPath(char* path, char*& startPath)
   { if (path[i] == '/') break; }
   for (j = 0; j < i; j++) startPath[j] = path[j];
   startPath[i] = '\0';
-  // printf("%s\n", startPath);
 }
 
 //=============================================================================
@@ -1238,18 +1457,16 @@ void K_IO::GenIO::getEndOfPath(char* path, char*& EndPath)
   EndPath = new char [l+1];
   for (i = l-1; i >= 0; i--)
   { if (path[i] == '/') break; }
-  // printf("i : %d\n", i);
-  // printf("l : %d\n", l);
   for (j = 0; j < l-i; j++) EndPath[j] = path[j+i+1];
   EndPath[l-i] = '\0';
-  // printf("%s\n", EndPath);
 }
 
 //=============================================================================
 // Ecrit seulement les chemins specifies de l'arbre
 //=============================================================================
 E_Int K_IO::GenIO::hdfcgnsWritePaths(char* file, PyObject* treeList,
-                                     PyObject* paths)
+                                     PyObject* paths, PyObject* links, 
+                                     E_Int maxDepth, E_Int mode)
 {
   if (PyList_Check(paths) == false)
   {
@@ -1258,15 +1475,6 @@ E_Int K_IO::GenIO::hdfcgnsWritePaths(char* file, PyObject* treeList,
     return 1;
   }
   E_Int size = PyList_Size(paths);
-  for (E_Int i = 0; i < size; i++)
-  {
-    if (PyString_Check(PyList_GetItem(paths, i)) == false)
-    {
-      PyErr_SetString(PyExc_TypeError,
-                      "hdwrite: paths must be a list of strings.");
-      return 1;
-    }
-  }
 
   /* Ouverture du fichier pour l'ecriture */
   hid_t fapl, fid;
@@ -1283,25 +1491,80 @@ E_Int K_IO::GenIO::hdfcgnsWritePaths(char* file, PyObject* treeList,
   }
 
   GenIOHdf HDF;
+  if (maxDepth >= 0) HDF._maxDepth = maxDepth;
+  else HDF._maxDepth = 1e6;
 
   for (E_Int i = 0; i < size; i++)
   {
-    char* path = PyString_AsString(PyList_GetItem(paths, i));
-    char* startPath;
-    ripEndOfPath(path, startPath);
+    char* path; PyObject* l;
+    l = PyList_GetItem(paths, i);
+    if (PyString_Check(l)) path = PyString_AsString(l);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(l)) path = PyBytes_AsString(PyUnicode_AsUTF8String(l));
+#endif
+    else
+    {
+      PyErr_SetString(PyExc_TypeError, "hdfwrite: paths must be strings.");
+      return 1;
+    }
+    
     PyObject* node = PyList_GetItem(treeList, i);
-    //hid_t gid = H5Gopen(fid, path, H5P_DEFAULT);
-    hid_t gidp = H5Gopen(fid, startPath, H5P_DEFAULT);
-    delete [] startPath;
-
+    hid_t gidp = H5Gopen(fid, path, H5P_DEFAULT);
+    
     if (gidp < 0)
       printf("Warning: hdfcgnswrite: cannot write this path %s.\n", path);
     else
     {
-      HDF._fatherStack.push_front(gidp);
-      HDF.dumpOne(node);
-      HDF._fatherStack.pop_front();
-      H5Gclose(gidp);
+      if (mode == 0) // append mixed
+      {
+        // Find node[0]
+        char* nodeName; PyObject* l;
+        l = PyList_GetItem(node,0);
+        if (PyString_Check(l)) nodeName = PyString_AsString(l);
+#if PY_VERSION_HEX >= 0x03000000
+        else if (PyUnicode_Check(l)) nodeName = PyBytes_AsString(PyUnicode_AsUTF8String(l));
+#endif
+        else nodeName = NULL;
+        char spath[512];
+        strcpy(spath, path);
+        strcat(spath, "/");
+        strcat(spath, nodeName);
+
+        herr_t status = H5Lexists(gidp, nodeName, H5P_DEFAULT);
+        if (status > 0)
+        {
+          H5Ldelete(fid, spath, H5P_DEFAULT);
+        }
+        
+        HDF._fatherStack.push_front(gidp);
+        HDF.dumpOne(node, 0, links);
+        HDF._fatherStack.pop_front();
+        H5Gclose(gidp);
+      }
+      else if (mode == 2) // append pur
+      {
+        HDF._fatherStack.push_front(gidp);
+        HDF.dumpOne(node, 0, links);
+        HDF._fatherStack.pop_front();
+        H5Gclose(gidp);
+      }
+      else if (mode == 1) // replace
+      {
+        H5Gclose(gidp);
+        vector<char*> pelts;
+        getABFromPath(path, pelts);
+        char* pp = new char [strlen(path)];
+        strcpy(pp, "/");
+        for (size_t i = 0; i < pelts.size()-1; i++) { strcat(pp, pelts[i]); strcat(pp, "/"); }
+        for (size_t i = 0; i < pelts.size(); i++) delete [] pelts[i];
+        gidp = H5Gopen(fid, pp, H5P_DEFAULT); // parent node
+        delete [] pp;
+        
+        H5Ldelete(fid, path, H5P_DEFAULT); // gain space for hdf > 1.10
+        HDF._fatherStack.push_front(gidp);
+        HDF.dumpOne(node, 0, links);
+        HDF._fatherStack.pop_front();
+      }
     }
   }
 
@@ -1310,11 +1573,33 @@ E_Int K_IO::GenIO::hdfcgnsWritePaths(char* file, PyObject* treeList,
 }
 
 //=============================================================================
-PyObject* K_IO::GenIOHdf::dumpOne(PyObject* tree)
+PyObject* K_IO::GenIOHdf::dumpOne(PyObject* tree, int depth, PyObject* links)
 {
   // ecrit le noeud courant
   hid_t node = _fatherStack.front();
+
+  if (depth > _maxDepth) return tree;
+
+  // Check if node is a link, set _currentPath
+  if (_stringStack.size() > 0)
+  {
+    PyObject* pname = PyList_GetItem(tree, 0);
+    char* name;
+    if (PyString_Check(pname)) name = PyString_AsString(pname);
+    #if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(pname)) name = PyBytes_AsString(PyUnicode_AsUTF8String(pname));
+#endif
+    else name = NULL;
+    std::string path = _stringStack.front();
+    _currentPath = path+"/"+string(name);
+    //printf("write node: writing %s\n", _currentPath.c_str());
+    if (links != NULL && checkPathInLinks(_currentPath.c_str(), links) == 1) return tree;
+  }
+  
+  // Write node
   hid_t child = writeNode(node, tree);
+  
+  std::string parentPath = _currentPath;
 
   // Dump les enfants
   if (PyList_Check(tree) == true && PyList_Size(tree) > 3)
@@ -1325,9 +1610,11 @@ PyObject* K_IO::GenIOHdf::dumpOne(PyObject* tree)
       int nChildren = PyList_Size(children);
       for (E_Int i = 0; i < nChildren; i++)
       {
+        _stringStack.push_front(parentPath);
         _fatherStack.push_front(child);
-        dumpOne(PyList_GetItem(children, i));
+        dumpOne(PyList_GetItem(children, i), depth+1, links);
         _fatherStack.pop_front();
+        _stringStack.pop_front();
       }
     }
   }
@@ -1341,13 +1628,22 @@ hid_t K_IO::GenIOHdf::writeNode(hid_t node, PyObject* tree)
   char s1[CGNSMAXLABEL+1];
   char s2[CGNSMAXLABEL+1];
   PyObject* pname = PyList_GetItem(tree, 0);
-  char* name = PyString_AsString(pname);
   PyObject* plabel = PyList_GetItem(tree, 3);
-  char* label = PyString_AsString(plabel);
+  char* name; char* label;
+  if (PyString_Check(pname)) name = PyString_AsString(pname);
+#if PY_VERSION_HEX >= 0x03000000
+  else if (PyUnicode_Check(pname)) name = PyBytes_AsString(PyUnicode_AsUTF8String(pname));
+#endif
+  else name = NULL;
+  if (PyString_Check(plabel)) label = PyString_AsString(plabel);
+#if PY_VERSION_HEX >= 0x03000000
+  else if (PyUnicode_Check(plabel)) label = PyBytes_AsString(PyUnicode_AsUTF8String(plabel));
+#endif
+  else label = NULL;
   strcpy(s1, name); strcpy(s2, label);
 
-  hid_t child;
   // Creation du noeud, prop. est requis par cgnslib
+  hid_t child;
   herr_t status = H5Lexists(node, s1, H5P_DEFAULT);
   if (status == true) // group already exist, strange
   {
@@ -1356,6 +1652,7 @@ hid_t K_IO::GenIOHdf::writeNode(hid_t node, PyObject* tree)
     return child;
   }
   else child = H5Gcreate2(node, s1, H5P_DEFAULT, _group, H5P_DEFAULT);
+  
   HDF_Add_Attribute_As_String(child, L3S_NAME, s1);
   HDF_Add_Attribute_As_String(child, L3S_LABEL, s2);
   HDF_Add_Attribute_As_Integer(child, L3S_FLAGS, 1);
@@ -1368,23 +1665,30 @@ hid_t K_IO::GenIOHdf::writeNode(hid_t node, PyObject* tree)
     // direct dans l'attribut
     HDF_Add_Attribute_As_String(child, L3S_DTYPE, L3T_MT);
   }
-  else if (PyString_Check(v) == true)
+  else if (PyString_Check(v))
   {
     setArrayC1(child, PyString_AsString(v));
     HDF_Add_Attribute_As_String(child, L3S_DTYPE, L3T_C1);
   }
-  else if (PyInt_Check(v) == true)
+#if PY_VERSION_HEX >= 0x03000000
+  else if (PyUnicode_Check(v))
+  {
+    setArrayC1(child, PyBytes_AsString(PyUnicode_AsUTF8String(v)));
+    HDF_Add_Attribute_As_String(child, L3S_DTYPE, L3T_C1);
+  }
+#endif
+  else if (PyInt_Check(v))
   {
     setSingleI4(child, PyInt_AsLong(v));
   }
-  else if (PyFloat_Check(v) == true)
+  else if (PyFloat_Check(v))
   {
     if (strcmp(name, "CGNSLibraryVersion") == 0)
       setSingleR4(child, PyFloat_AsDouble(v));
     else
       setSingleR8(child, PyFloat_AsDouble(v));
   }
-  else if (PyArray_Check(v) == true)
+  else if (PyArray_Check(v))
   {
     PyArrayObject* ar = (PyArrayObject*)v;
     int dim = PyArray_NDIM(ar);
@@ -1416,16 +1720,16 @@ hid_t K_IO::GenIOHdf::writeNode(hid_t node, PyObject* tree)
       }
       else if (typeNum == NPY_INT)
       {
-	if (elSize == 4)
-	{
-	  int* ptr = (int*)PyArray_DATA(ar);
-	  setSingleI4(child, ptr[0]);
-	}
-	else
-	{
-	  E_LONG* ptr = (E_LONG*)PyArray_DATA(ar);
-	  setSingleI8(child, ptr[0]);
-	}
+        if (elSize == 4)
+        {
+          int* ptr = (int*)PyArray_DATA(ar);
+          setSingleI4(child, ptr[0]);
+        }
+        else
+        {
+          E_LONG* ptr = (E_LONG*)PyArray_DATA(ar);
+          setSingleI8(child, ptr[0]);
+        }
       }
       else if (typeNum == NPY_CHAR ||
                typeNum == NPY_STRING ||
@@ -1433,9 +1737,11 @@ hid_t K_IO::GenIOHdf::writeNode(hid_t node, PyObject* tree)
                //typeNum == NPY_SBYTE ||
                typeNum == NPY_UBYTE )
       {
-	E_Int diml = PyArray_DIMS(ar)[0];
+        E_Int diml = PyArray_DIMS(ar)[0];
         char* buf = new char [diml+1];
-        strncpy(buf, (char*)PyArray_DATA(ar), diml);
+        char* pt = (char*)PyArray_DATA(ar);
+        for (E_Int i = 0; i < diml; i++) buf[i] = pt[i]; 
+        //strncpy(buf, (char*)PyArray_DATA(ar), diml); // pb align
         buf[diml] = '\0';
         setArrayC1(child, buf);
         HDF_Add_Attribute_As_String(child, L3S_DTYPE, L3T_C1);
@@ -1444,15 +1750,15 @@ hid_t K_IO::GenIOHdf::writeNode(hid_t node, PyObject* tree)
       else if (typeNum == NPY_LONG)
       {
         if (elSize == 4)
-	{
-	  int* ptr = (int*)PyArray_DATA(ar);
-	  setSingleI4(child, ptr[0]);
-	}
-	else
-	{
-	  E_LONG* ptr = (E_LONG*)PyArray_DATA(ar);
-	  setSingleI8(child, ptr[0]);
-	}
+        {
+         int* ptr = (int*)PyArray_DATA(ar);
+         setSingleI4(child, ptr[0]);
+        }
+        else
+        {
+          E_LONG* ptr = (E_LONG*)PyArray_DATA(ar);
+          setSingleI8(child, ptr[0]);
+        }
       }
       else if (typeNum == NPY_FLOAT)
       {
@@ -1484,14 +1790,14 @@ hid_t K_IO::GenIOHdf::writeNode(hid_t node, PyObject* tree)
       }
       else if (typeNum == NPY_INT)
       {
-	if (elSize == 4)
-	{
-	  setArrayI4(child, (int*)PyArray_DATA(ar), dim, dims);
-	}
-	else
-	{
-	  setArrayI8(child, (E_LONG*)PyArray_DATA(ar), dim, dims);
-	}
+       if (elSize == 4)
+       {
+         setArrayI4(child, (int*)PyArray_DATA(ar), dim, dims);
+       }
+       else
+       {
+         setArrayI8(child, (E_LONG*)PyArray_DATA(ar), dim, dims);
+       }
       }
       else if (typeNum == NPY_CHAR ||
                typeNum == NPY_STRING ||
@@ -1499,24 +1805,31 @@ hid_t K_IO::GenIOHdf::writeNode(hid_t node, PyObject* tree)
                //typeNum == NPY_SBYTE ||
                typeNum == NPY_UBYTE )
       {
-	E_Int diml = PyArray_DIMS(ar)[0];
-        char* buf = new char [diml+1];
-	strncpy(buf, (char*)PyArray_DATA(ar), diml);
-        buf[diml] = '\0';
-        setArrayC1(child, buf);
-        HDF_Add_Attribute_As_String(child, L3S_DTYPE, L3T_C1);
-        delete [] buf;
+        if (dim == 1)
+        {
+          E_Int diml = PyArray_DIMS(ar)[0];
+          char* buf = new char [diml+1];
+          strncpy(buf, (char*)PyArray_DATA(ar), diml);
+          buf[diml] = '\0';
+          setArrayC1(child, buf);
+          HDF_Add_Attribute_As_String(child, L3S_DTYPE, L3T_C1);
+          delete [] buf;
+        }
+        else
+        { 
+          setArrayC1(child, (char*)PyArray_DATA(ar), dim, dims);
+        }
       }
       else if (typeNum == NPY_LONG)
       {
-	if (elSize == 4)
-	{
-	  setArrayI4(child, (int*)PyArray_DATA(ar), dim, dims);
-	}
-	else
-	{
-	  setArrayI8(child, (E_LONG*)PyArray_DATA(ar), dim, dims);
-	}
+       if (elSize == 4)
+       {
+         setArrayI4(child, (int*)PyArray_DATA(ar), dim, dims);
+      }
+      else
+      {
+       setArrayI8(child, (E_LONG*)PyArray_DATA(ar), dim, dims);
+      }
         //E_Int s = PyArray_Size(v);
         //int* buf = new int [s];
         //for (int i = 0; i < s; i++) buf[i] = (int)PyArray_DATA(ar)[i];
@@ -1539,6 +1852,34 @@ hid_t K_IO::GenIOHdf::writeNode(hid_t node, PyObject* tree)
   return child;
 }
 
+//=============================================================================
+// modify name, type and value from pytree node
+hid_t K_IO::GenIOHdf::modifyNode(hid_t node, PyObject* tree)
+{
+  IMPORTNUMPY;
+  char s1[CGNSMAXLABEL+1];
+  char s2[CGNSMAXLABEL+1];
+  PyObject* pname = PyList_GetItem(tree, 0);
+  
+  char* name = NULL;
+  if (PyString_Check(pname)) name = PyString_AsString(pname);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(pname)) name = PyBytes_AsString(PyUnicode_AsUTF8String(pname));
+#endif
+  PyObject* plabel = PyList_GetItem(tree, 3);
+  char* label = NULL;
+  if (PyString_Check(plabel)) label = PyString_AsString(plabel);
+#if PY_VERSION_HEX >= 0x03000000
+    else if (PyUnicode_Check(plabel)) label = PyBytes_AsString(PyUnicode_AsUTF8String(plabel));
+#endif
+  strcpy(s1, name); strcpy(s2, label);
+
+  HDF_Set_Attribute_As_String(node, L3S_NAME, s1);
+  HDF_Set_Attribute_As_String(node, L3S_LABEL, s2);
+  //HDF_Set_Attribute_As_Integer(node, L3S_FLAGS, 1);
+  // Missing replace value!!
+  return node;
+}
 //=============================================================================
 hid_t K_IO::GenIOHdf::setSingleR4(hid_t node, float data)
 {
@@ -1652,6 +1993,7 @@ hid_t K_IO::GenIOHdf::setArrayC1(hid_t node, char* data, int idim, int* idims)
   hid_t mid = H5Tget_native_type(tid, H5T_DIR_ASCEND);
   H5Dwrite(did, mid, H5S_ALL, sid, H5P_DEFAULT, data);
   H5Tclose(tid); H5Dclose(did); H5Sclose(sid); H5Tclose(mid);
+  HDF_Add_Attribute_As_String(node, L3S_DTYPE, L3T_C1);
   free(dims);
   return node;
 }
@@ -1742,5 +2084,73 @@ hid_t K_IO::GenIOHdf::setArrayR8(hid_t node, double* data,
   return node;
 }
 
+//=============================================================================
+// Delete les chemins specifies du fichier (et tous les sous-noeuds attaches)
+// Attention ne libere pas de place dans le fichier
+//=============================================================================
+E_Int K_IO::GenIO::hdfcgnsDeletePaths(char* file,
+                                      PyObject* paths)
+{
+  if (PyList_Check(paths) == false)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "hdfdelete: paths must be a list of strings.");
+    return 1;
+  }
+  E_Int size = PyList_Size(paths);
+  for (E_Int i = 0; i < size; i++)
+  {
+    PyObject* o = PyList_GetItem(paths, i);
+    E_Int isString = 0;
+    if (PyString_Check(o)) isString = 1;
+#if PY_VERSION_HEX >= 0x03000000
+    if (PyUnicode_Check(o)) isString = 1;
+#endif
+    if (isString == 0)
+    {
+      PyErr_SetString(PyExc_TypeError,
+                      "hdfdelete: paths must be a list of strings.");
+      return 1;
+    }
+  }
+
+  /* Ouverture du fichier pour l'ecriture */
+  hid_t fapl, fid;
+  fapl = H5Pcreate(H5P_FILE_ACCESS);
+  H5Pset_fclose_degree(fapl, H5F_CLOSE_STRONG);
+  fid = H5Fopen(file, H5F_ACC_RDWR, fapl);
+  H5Pclose(fapl);
+
+  if (fid < 0)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "hdfdelete: can not open file.");
+    return 1;
+  }
+
+  GenIOHdf HDF;
+  for (E_Int i = 0; i < size; i++)
+  {
+    PyObject* o = PyList_GetItem(paths, i);
+    char* path = NULL;
+    if (PyString_Check(o)) path = PyString_AsString(o);
+#if PY_VERSION_HEX >= 0x03000000
+      else if (PyUnicode_Check(o)) path = PyBytes_AsString(PyUnicode_AsUTF8String(o));
+#endif
+    hid_t gidp = H5Gopen(fid, path, H5P_DEFAULT);
+    
+    if (gidp < 0)
+      printf("Warning: hdfcgnsdelete: cannot write this path %s.\n", path);
+    else
+    {
+      H5Gclose(gidp);
+      H5Ldelete(fid, path, H5P_DEFAULT); // gain space for hdf > 1.10
+    }
+  }
+
+  H5Fclose(fid);
+  return 0;
+
+}
 
 #include "GenIO_hdfcgns_partialMPI.cpp"

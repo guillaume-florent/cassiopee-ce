@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
-import os, sys
+import os
 
 #=============================================================================
 # Converter requires:
@@ -58,9 +58,12 @@ if mpi:
     ADDITIONALCPPFLAGS += ['-D_MPI']
 if mpi4py:
     includeDirs.append(mpi4pyIncDir)
+ADDITIONALCPPFLAGS += ['-g', '-O0']
 if hdf: libraries.append('hdf5')
 if png: libraries.append('png')
-if mpi: libraries.append('mpi')
+if mpi:
+    if Dist.getSystem()[0] == 'mingw': libraries.append('msmpi')
+    else: libraries.append('mpi')
 (ok, libs, paths) = Dist.checkFortranLibs([], additionalLibPaths)
 libraryDirs += paths; libraries += libs
 (ok, libs, paths) = Dist.checkCppLibs([], additionalLibPaths)
@@ -80,13 +83,24 @@ listExtensions.append(
               include_dirs=["Converter"]+additionalIncludePaths+includeDirs,
               library_dirs=additionalLibPaths+libraryDirs,
               libraries=libraries+additionalLibs,
-              extra_compile_args=Dist.getCppArgs()+ADDITIONALCPPFLAGS,
+              extra_compile_args=Dist.getCArgs()+ADDITIONALCPPFLAGS,
               extra_link_args=Dist.getLinkArgs()
               ) )
+import srcs
+if srcs.EXPRESSION:
+  listExtensions.append(
+    Extension('Converter.expression',
+              sources=['Converter/Expression/Expression.cpp'],
+              include_dirs=["Converter"]+additionalIncludePaths+includeDirs,
+              library_dirs=additionalLibPaths+libraryDirs,
+              libraries=libraries+additionalLibs,
+              extra_compile_args=Dist.getCArgs()+ADDITIONALCPPFLAGS,
+              extra_link_args=Dist.getLinkArgs() ) )
+
 # setup ======================================================================
 setup(
     name="Converter",
-    version="2.5",
+    version="2.9",
     description="Converter for *Cassiopee* modules.",
     author="Onera",
     package_dir={"":"."},

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from distutils.core import setup, Extension
-import os, sys
+import os
 
 #=============================================================================
 # Generator requires :
@@ -23,11 +23,10 @@ Dist.writeSetupCfg()
 
 # Compilation des fortrans ====================================================
 from KCore.config import *
-if (f77compiler == "None"):
-    print "Error: a fortran 77 compiler is required for compiling Generator."
+if f77compiler == "None":
+    print("Error: a fortran 77 compiler is required for compiling Generator.")
 args = Dist.getForArgs(); opt = ''
-for c in xrange(len(args)):
-    opt += 'FOPT'+str(c)+'='+args[c]+' '
+for c, v in enumerate(args): opt += 'FOPT'+str(c)+'='+v+' '
 os.system("make -e FC="+f77compiler+" WDIR=Generator/Fortran "+opt)
 prod = os.getenv("ELSAPROD")
 if prod is None: prod = 'xx'
@@ -41,7 +40,7 @@ libraryDirs += paths; libraries += libs
 libraryDirs += paths; libraries += libs
 
 # Hack: compilation of predicate
-#os.system(Cppcompiler+" -c -O0 -fPIC Generator/Tetgen/predicates.cxx -o build/temp.linux-x86_64-2.6/Generator/Tetgen/predicates.o")
+#os.system(Cppcompiler+" -c -O0 -fPIC Generator/Tetgen/predicates.cxx -o build/temp.linux-x86_64-2.9/Generator/Tetgen/predicates.o")
 
 # Extensions =================================================================
 import srcs
@@ -59,7 +58,7 @@ listExtensions.append(
 # setup =======================================================================
 setup(
     name="Generator",
-    version="2.5",
+    version="2.9",
     description="*Cassiopee* module of mesh generation.",
     author="Onera",
     package_dir={"":"."},

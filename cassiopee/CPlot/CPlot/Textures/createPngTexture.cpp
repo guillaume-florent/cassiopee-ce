@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -24,36 +24,46 @@
 /*
   Create une texture a partir d'un fichier png.
   IN: filename: fichier png
-  IN: mipmap: si true, cree une texture avec mipmaps
+  IN: mipmap: si true, cree une texture avec mipmaps (not used, always mipmap)
   OUT: tex: texture.
+  OUT: width, height: nbre de pixels de la texture
 */
 //=============================================================================
-int Data::createPngTexture(const char* filename, GLuint &tex, bool mipmap)
+int Data::createPngTexture(const char* filename, GLuint &tex, 
+                           int &width, int &height, bool mipmap)
 {
   Data* d = Data::getInstance();
 
-  GLint mipMap = GL_FALSE;
-  if (mipmap == true) mipMap = GL_TRUE;
+  //GLint mipMap = GL_FALSE;
+  //if (mipmap == true) mipMap = GL_TRUE;
 
+  // Shader path
   char path[256*8];
   strcpy(path, d->ptrState->shaderPath);
-
 #ifdef __SHADERS__
   strcat(path, filename);
 #else
   strcpy(path, filename);
 #endif
 
-  FILE* ptrFile = fopen(path, "rb");
+  // local path name
+  char path2[256*8];
+  //char* file = ptrState->file;
+  char* lpn = ptrState->filePath;
+  strcpy(path2, lpn);
+  strcat(path2, "/");
+  strcat(path2, filename);
+
+  FILE* ptrFile = fopen(path, "rb"); // shader path
   if (!ptrFile) 
-  { ptrFile = fopen(filename, "rb"); }
+  { ptrFile = fopen(filename, "rb"); } // local cassiopee path
   if (!ptrFile)
-  { printf("Warning: CPlot: can't open texture file %s.\n", path); 
+  { ptrFile = fopen(path2, "rb"); } // loaded file path
+  if (!ptrFile)
+  { printf("Warning: CPlot: can't open texture file %s.\n", path2); 
     return 0; }
   
-  int width, height;
   png_structp png_ptr;
-  int number_of_passes;
   png_byte color_type;
   png_byte bit_depth;
 
@@ -111,7 +121,7 @@ int Data::createPngTexture(const char* filename, GLuint &tex, bool mipmap)
     fclose(ptrFile); return 1;
   }
 
-  number_of_passes = png_set_interlace_handling(png_ptr);
+  //int number_of_passes = png_set_interlace_handling(png_ptr);
   png_read_update_info(png_ptr, info_ptr);
 
   /* read file */
@@ -127,6 +137,7 @@ int Data::createPngTexture(const char* filename, GLuint &tex, bool mipmap)
   png_set_rows(png_ptr, info_ptr, rows);
   png_read_image(png_ptr, rows);
 
+  //printf("reading file %s\n", filename);
   if (tex == 0)
   {
     glGenTextures(1, &tex);
@@ -149,7 +160,6 @@ int Data::createPngTexture(const char* filename, GLuint &tex, bool mipmap)
 
   png_read_end(png_ptr, end_info_ptr);
   png_destroy_read_struct(&png_ptr, &info_ptr, &end_info_ptr);
-
   delete [] image;
   delete [] rows;
   fclose(ptrFile);

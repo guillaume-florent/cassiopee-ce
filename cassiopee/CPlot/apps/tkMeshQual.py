@@ -1,5 +1,6 @@
 # - mesh quality -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import CPlot.PyTree as CPlot
@@ -9,8 +10,7 @@ import Converter.Internal as Internal
 import Post.PyTree as P
 
 # local widgets list
-WIDGETS = {}
-VARS = []
+WIDGETS = {}; VARS = []
 
 #==============================================================================
 # Filters
@@ -36,16 +36,16 @@ def findVar(var):
 
 #==============================================================================
 def computeQual():
-    if (CTK.t == []): return
+    if CTK.t == []: return
     CTK.saveTree()
     qtype = VARS[0].get()
-    if (qtype == 'Volume map'):
+    if qtype == 'Volume map':
         CTK.t = G.getVolumeMap(CTK.t)
         CTK.TXT.insert('START', 'Volume map computed.\n')
-    elif (qtype == 'Orthogonality map'):
+    elif qtype == 'Orthogonality map':
         CTK.t = G.getOrthogonalityMap(CTK.t)
         CTK.TXT.insert('START', 'Orthogonality map computed.\n')
-    elif (qtype == 'Regularity map'):
+    elif qtype == 'Regularity map':
         CTK.t = G.getRegularityMap(CTK.t)
         CTK.TXT.insert('START', 'Regularity map computed.\n')
     CTK.TKTREE.updateApp()
@@ -62,7 +62,8 @@ def viewQual():
             CTK.__MAINACTIVEZONES__ = CPlot.getActiveZones()
         active = []
         zones = Internal.getZones(CTK.t)
-        for z in CTK.__MAINACTIVEZONES__: active.append(zones[z])
+        for z in CTK.__MAINACTIVEZONES__: active.append(CTK.t[2][CTK.Nb[z]+1][2][CTK.Nz[z]])
+
         temp = C.newPyTree(['Base']); temp[2][1][2] += active
         Z = C.initVars(temp, 'centers:__tag__', F1, ['centers:vol'])
         Z = P.selectCells2(Z, 'centers:__tag__')
@@ -82,7 +83,7 @@ def createApp(win):
                            text='tkMeshQual', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Analyse mesh quality.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=1)
@@ -134,7 +135,7 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

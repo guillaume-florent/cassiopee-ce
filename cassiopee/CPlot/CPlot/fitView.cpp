@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -19,7 +19,6 @@
 
 #include "cplot.h"
 #include "Data.h"
-#include "Python.h"
 
 //=============================================================================
 // Fit the view to all objects
@@ -27,6 +26,7 @@
 PyObject* K_CPLOT::fitView(PyObject* self, PyObject* args)
 {
   Data* d = Data::getInstance();
-  d->initCam(); d->farClipping();
+  d->initCam(); 
+  d->ptrState->farClip = 1;
   return Py_BuildValue("i", KSUCCESS);
 }

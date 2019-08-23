@@ -26,28 +26,29 @@ prod = os.getenv("ELSAPROD")
 #==============================================================================
 # Nouveau systeme de configuration par la base d'installation
 #==============================================================================
-import installBase
+try: import installBase
+except: import KCore.installBase as installBase
 dict = installBase.installDict
 key = ''
 # prod est tout d'abord cherche dans le dictionnaire
 if prod is not None:
-    for i in dict.keys():
+    for i in dict:
         if re.compile(i).search(prod) is not None:
             key = i; break
 # puis le uname
 if key == '':
-    for i in dict.keys():
+    for i in dict:
         if re.compile(i).search(host) is not None:
             key = i; break
 
 if key == '': # not found in install base
-    print "Warning: %s was not found in KCore/installBase.py."%host
-    print "Warning: using default compilers and options."
-    print "Warning: to change that, add a block in KCore/installBase.py."
+    print("Warning: %s was not found in KCore/installBase.py."%host)
+    print("Warning: using default compilers and options.")
+    print("Warning: to change that, add a block in KCore/installBase.py.")
     key = 'default'
 
 v = dict[key]
-#print '%s was found in install base.'%host
+#print('%s was found in install base.'%host)
 description = v[0]
 f77compiler = v[1]
 f90compiler = v[2]

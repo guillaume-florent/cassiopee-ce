@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -139,7 +139,7 @@ PyObject* K_GENERATOR::mapMesh( PyObject* self, PyObject* args )
     E_Int net = nid-1;
     E_Int inds = cn1[0]; E_Int inde = cn2[net0-1];
     E_Int elt = 1; // BAR
-    if (inds == inde) net = net-1;
+    //if (inds == inde) net = net-1;
 
     PyObject* tpl = K_ARRAY::buildArray(3, "x,y,z", nid, net, elt, NULL);
     E_Float* coord1 = K_ARRAY::getFieldPtr(tpl);
@@ -151,7 +151,10 @@ PyObject* K_GENERATOR::mapMesh( PyObject* self, PyObject* args )
                   net, cnout.begin(1), cnout.begin(2),
                   coord1, coord1+nid, coord1+2*nid,
                   s.begin(), dx.begin(), dy.begin(), dz.begin());
+
     s.malloc(0); dx.malloc(0) ; dy.malloc(0) ; dz.malloc(0);
+
+    if (inds == inde) { cnout(net-1,2)=1; }
 
     RELEASESHAREDB(res, array, f, cn);
     RELEASESHAREDB(resd, arrayd, fd, cnd);

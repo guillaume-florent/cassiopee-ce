@@ -1,8 +1,12 @@
 """PolyQuad mesh generator. Extension of Generator.
 """
-import Generator as G
+from . import Generator as G
 import Geom as D
 import math
+
+try: range = xrange
+except: pass
+
 __version__ = G.__version__
 
 #=============================================================================
@@ -13,15 +17,14 @@ def polyQuadMesher(polyQuad, h, hf, density, next):
     Usage:
     polyQuadMesher( polyQuad, h, hf, density, next)"""
     import Converter as C
-    import Transform as T
     
     polyQuad = G.close(polyQuad)
     
     addFactor = 0.2
-    if (len(polyQuad) != 4):
+    if len(polyQuad) != 4:
         raise TypeError("polyQuadMesher: requires a QUAD array.")
     else:
-        if (polyQuad[3] != 'QUAD'):
+        if polyQuad[3] != 'QUAD':
             raise TypeError("polyQuadMesher: requires a QUAD array.")
     
     f = polyQuad[1]; c = polyQuad[2]; ne = c.shape[1]
@@ -31,7 +34,7 @@ def polyQuadMesher(polyQuad, h, hf, density, next):
     # Calcul des longueurs minimum et maximum des arretes
     lmin = 1.e6
     lmax = 0.
-    for i in xrange(ne):
+    for i in range(ne):
         ind1 = c[0,i]-1; ind2 = c[1,i]-1
         x1 = f[0,ind1]; y1 = f[1,ind1]; z1 = f[2,ind1]
         x2 = f[0,ind2]; y2 = f[1,ind2]; z2 = f[2,ind2]
@@ -60,18 +63,18 @@ def polyQuadMesher(polyQuad, h, hf, density, next):
     # Detection de la hauteur maximum admissible
     if (h > 0.9*lmin):
         h = 0.9*lmin
-        print "Warning: height changed to", h,"..."
-        print "...because length of a line segment is", lmin
+        print("Warning: height changed to", h,"...")
+        print("...because length of a line segment is", lmin)
 
     # Detection de la densite minimum
     nk = int(h*density)+1
-    if (nk < 4):
+    if nk < 4:
         density = 4./h
-        print "Warning: density changed to", density, "to have 4 points in height."
+        print("Warning: density changed to", density, "to have 4 points in height.")
     n = int(lmax*density)+1
-    if (n < 4):
+    if n < 4:
         density = 4./lmax
-        print "Warning: density changed to", density, "to have 4 points per segment",i
+        print("Warning: density changed to", density, "to have 4 points per segment",i)
 
     # Calcul automatique de l'extension
 #    extension = int(h*density)
@@ -85,12 +88,12 @@ def polyQuadMesher(polyQuad, h, hf, density, next):
     distribk = G.enforcePlusX(distribk, hf/h, nk-1, add)
     nk = distribk[2]-1
     delta = C.array('d',nk,1,1)
-    for i in xrange(nk):
+    for i in range(nk):
         delta[1][0,i] = h*( distribk[1][0,i+1] - distribk[1][0,i])
     mesh = []; walls = []
     
     # Generation des maillages
-    for i in xrange(ne):
+    for i in range(ne):
         ind1 = c[0,i]-1; ind2 = c[1,i]-1 ; ind3 = c[2,i]-1; ind4 = c[3,i]-1
         x1 = f[0,ind1]; y1 = f[1,ind1]; z1 = f[2,ind1]
         x2 = f[0,ind2]; y2 = f[1,ind2]; z2 = f[2,ind2]
@@ -397,60 +400,60 @@ def polyQuadMesher(polyQuad, h, hf, density, next):
             j2 = m[3]
         else:
             j2 = m[3]-next
-        range = [i1,i2, j1, j2, 1, 1]
-        rangesw.append(range)
+        wrange = [i1,i2, j1, j2, 1, 1]
+        rangesw.append(wrange)
         
         if (ext1 == 0):
             if (ext4 == 1):
                 if (ext2 == 1):
-                    range = [next+1, m[2]-next, 1, 1, 1, m[4]]
+                    wrange = [next+1, m[2]-next, 1, 1, 1, m[4]]
                 else:
-                    range = [next+1, m[2], 1, 1, 1, m[4]]
+                    wrange = [next+1, m[2], 1, 1, 1, m[4]]
             else:
                 if (ext2 == 1):
-                    range = [1, m[2]-next, 1, 1, 1, m[4]]
+                    wrange = [1, m[2]-next, 1, 1, 1, m[4]]
                 else:
-                    range = [1, m[2], 1, 1, 1, m[4]]
-            rangesw.append(range)
+                    wrange = [1, m[2], 1, 1, 1, m[4]]
+            rangesw.append(wrange)
             
         if (ext2 == 0):
             if (ext1 == 1):
                 if (ext3 == 1):
-                    range = [m[2], m[2], next+1, m[3]-next, 1, m[4]]
+                    wrange = [m[2], m[2], next+1, m[3]-next, 1, m[4]]
                 else:
-                    range = [m[2], m[2], next+1, m[3], 1, m[4]]
+                    wrange = [m[2], m[2], next+1, m[3], 1, m[4]]
             else:
                 if (ext3 == 1):
-                    range = [m[2], m[2], 1, m[3]-next, 1, m[4]]
+                    wrange = [m[2], m[2], 1, m[3]-next, 1, m[4]]
                 else:
-                    range = [m[2], m[2], 1, m[3], 1, m[4]]
-            rangesw.append(range)
+                    wrange = [m[2], m[2], 1, m[3], 1, m[4]]
+            rangesw.append(wrange)
 
         if (ext3 == 0):
             if (ext4 == 1):
                 if (ext2 == 1):
-                    range = [next+1, m[2]-next, m[3], m[3], 1, m[4]]
+                    wrange = [next+1, m[2]-next, m[3], m[3], 1, m[4]]
                 else:
-                    range = [next+1, m[2], m[3], m[3], 1, m[4]]
+                    wrange = [next+1, m[2], m[3], m[3], 1, m[4]]
             else:
                 if (ext2 == 1):
-                    range = [1, m[2]-next, m[3], m[3], 1, m[4]]
+                    wrange = [1, m[2]-next, m[3], m[3], 1, m[4]]
                 else:
-                    range = [1, m[2], m[3], m[3], 1, m[4]]
-            rangesw.append(range)
+                    wrange = [1, m[2], m[3], m[3], 1, m[4]]
+            rangesw.append(wrange)
         
         if (ext4 == 0):
             if (ext1 == 1):
                 if (ext3 == 1):
-                    range = [1, 1, next+1, m[3]-next, 1, m[4]]
+                    wrange = [1, 1, next+1, m[3]-next, 1, m[4]]
                 else:
-                    range = [1, 1, next+1, m[3], 1, m[4]]
+                    wrange = [1, 1, next+1, m[3], 1, m[4]]
             else:
                 if (ext3 == 1):
-                    range = [1, 1, 1, m[3]-next, 1, m[4]]
+                    wrange = [1, 1, 1, m[3]-next, 1, m[4]]
                 else:
-                    range = [1, 1, 1, m[3], 1, m[4]]
-            rangesw.append(range)
+                    wrange = [1, 1, 1, m[3], 1, m[4]]
+            rangesw.append(wrange)
 
         walls.append(rangesw)
             
@@ -485,7 +488,7 @@ def meshQuad(P1, P2, P3, P4, distrib1, distrib2):
 def findNeighbourIndex(polyQuad,i,iP1,iP2):
     c = polyQuad[2]
     ne = c.shape[1]
-    for j in xrange(ne):
+    for j in range(ne):
         ind1 = c[0,j]-1; ind2 = c[1,j]-1 ; ind3 = c[2,j]-1; ind4 = c[3,j]-1
         if (ind1 == iP1 and ind4 == iP2):
             return j
@@ -517,11 +520,11 @@ def normalVector(polyQuad,i):
     norme = math.sqrt(nx*nx + ny*ny + nz*nz)
     
     if (norme == 0.):
-        print i
-        print ind1, x1, y1, z1
-        print ind2, x2, y2, z2
-        print ind3, x3, y3, z3
-        print ind4, x4, y4, z4
+        print(i)
+        print(ind1, x1, y1, z1)
+        print(ind2, x2, y2, z2)
+        print(ind3, x3, y3, z3)
+        print(ind4, x4, y4, z4)
         raise TypeError("Division par 0! (1)")
     else:
         normi = 1./norme

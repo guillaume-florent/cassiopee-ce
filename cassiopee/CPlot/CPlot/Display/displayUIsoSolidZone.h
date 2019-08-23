@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -614,9 +614,10 @@
     {
       // Faces des elements 3D
       c = 2;
+      glBegin(GL_TRIANGLES);      
       for (i = 0; i < nf; i++)
       {
-        nd = connect[c]; // nbre de noeuds de la face
+        nd = connect[c]; 
         if (nd == 3) // TRI
         {
           n1 = connect[c+1]-1;
@@ -625,20 +626,34 @@
           glBegin(GL_TRIANGLES);
           glNormal3f(surfx[i], surfy[i], surfz[i]);
           PLOTNGON(n1); PLOTNGON(n2); PLOTNGON(n3);
-          glEnd();
         }
-        else if (nd == 4) // QUAD
+        c += nd+1;
+      }
+      glEnd();
+
+      c = 2;
+      glBegin(GL_QUADS);
+      for (i = 0; i < nf; i++)
+      {
+        nd = connect[c]; 
+        if (nd == 4) // QUAD
         {
           n1 = connect[c+1]-1;
           n2 = connect[c+2]-1;
           n3 = connect[c+3]-1;
           n4 = connect[c+4]-1;
-          glBegin(GL_QUADS);
           glNormal3f(surfx[i], surfy[i], surfz[i]);
-          PLOTNGON(n1); PLOTNGON(n2); PLOTNGON(n3); PLOTNGON(n4);
-          glEnd();
+          PLOTNGON(n1); PLOTNGON(n2); PLOTNGON(n3); PLOTNGON(n4);    
         }
-        else if (nd > 4) // elt 3D
+        c += nd+1;
+      }
+      glEnd();
+
+      c = 2;
+      for (i = 0; i < nf; i++)
+      {
+        nd = connect[c]; 
+        if (nd > 4) // elt 3D
         {
           glBegin(GL_POLYGON);
           glNormal3f(surfx[i], surfy[i], surfz[i]);
@@ -699,9 +714,10 @@
     {
       // Faces des elements 3D
       c = 2;
+      glBegin(GL_TRIANGLES);
       for (i = 0; i < nf; i++)
       {
-        nd = connect[c]; // nbre de noeuds de la face
+        nd = connect[c]; 
         if (nd == 3) // TRI
         {
           blank = 0;
@@ -716,13 +732,20 @@
             n1 = connect[c+1]-1;
             n2 = connect[c+2]-1;
             n3 = connect[c+3]-1;
-            glBegin(GL_TRIANGLES);
             glNormal3f(surfx[i], surfy[i], surfz[i]);
             PLOTNGON(n1); PLOTNGON(n2); PLOTNGON(n3);
-            glEnd();
           }
         }
-        else if (nd == 4) // QUAD
+        c += nd+1;
+      }
+      glEnd();
+
+      c = 2;
+      glBegin(GL_QUADS);
+      for (i = 0; i < nf; i++)
+      {
+        nd = connect[c];
+        if (nd == 4) // QUAD
         {
           blank = 0;
           for (l = 0; l < nd; l++)
@@ -737,13 +760,19 @@
             n2 = connect[c+2]-1;
             n3 = connect[c+3]-1;
             n4 = connect[c+4]-1;
-            glBegin(GL_QUADS);
             glNormal3f(surfx[i], surfy[i], surfz[i]);
             PLOTNGON(n1); PLOTNGON(n2); PLOTNGON(n3); PLOTNGON(n4);
-            glEnd();
           }
         }
-        else if (nd > 4) // elt 3D
+        c += nd+1;
+      }
+      glEnd();
+
+      c = 2;
+      for (i = 0; i < nf; i++)
+      {
+        nd = connect[c];
+        if (nd > 4) // elt 3D
         {
           blank = 0;
           for (l = 0; l < nd; l++)

@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -58,12 +58,13 @@ public:
   static void draw_PHT3(const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3, const std::map<E_Int, std::map<E_Int, Vector_t<E_Int> > >& PH_to_PGT3, E_Int PHi);
   static void draw_PHT3s(const char* fname, const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3, const std::map<E_Int, Vector_t<E_Int> >& PHT3s, Vector_t<E_Int>& colors, const Vector_t<bool>* flag=0);
   static void draw_PGT3s(const K_FLD::FloatArray& coord,const ngon_unit& PGs);
-  static void draw_PGT3(const K_FLD::FloatArray& coord,const ngon_unit& PGs, E_Int PGi, K_FLD::FloatArray* PGnormals=0);
+  static void draw_PGT3(const char* fname, const K_FLD::FloatArray& coord,const ngon_unit& PGs, E_Int PGi, K_FLD::FloatArray* PGnormals=0);
   static void draw_PH(const char* fname, const K_FLD::FloatArray& coord, const ngon_type& ng, E_Int i);
   static void draw_wired_PH(const char* fname, const K_FLD::FloatArray& crd, const ngon_type& ng, E_Int ith, E_Int index_start);
   static void draw_PHs(const char* fname, const K_FLD::FloatArray& coord, const ngon_type& ng, const Vector_t<E_Int>& ids);
   static void draw_PG (const K_FLD::FloatArray& crd, const ngon_unit& PGs, E_Int PGi, bool localid=false);
-  static void draw_PGs(const K_FLD::FloatArray& crd, const ngon_unit& PGs, Vector_t<E_Int> PGis, bool localid = false);
+  static void draw_PGs(const char* fname, const K_FLD::FloatArray& crd, const ngon_unit& PGs, const Vector_t<E_Int>& PGis, bool localid = false);
+  static void draw_PGs(const char* fname, const K_FLD::FloatArray& crd, const ngon_unit& PGs, bool localid = false);
   static void draw_PG_to_T3(E_Int PGi, const Vector_t<E_Int>& nT3_to_PG, const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3);
   
   static void draw_wired_PG(const char* fname, const K_FLD::FloatArray& coord, const ngon_unit& PGs, E_Int ith, E_Float *normal);
@@ -80,7 +81,9 @@ public:
   
   static void __get_historical_PHs (const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3, const std::map<E_Int, Vector_t<E_Int> >& PHT3s, E_Int PHi,
                                     E_Int shift, E_Int nb_pgs1, const K_FLD::IntArray& F2E, K_FLD::IntArray& anc_PH, std::vector<E_Int>&nT3_to_oPG,
-                                    std::vector<E_Int>& PHs1, std::vector<E_Int>& PHs2);
+                                    std::set<E_Int>& PHs1, std::set<E_Int>& PHs2);
+  
+  static void extract_pgs_of_type(E_Int type, const char* fname, const ngon_type& ng, const K_FLD::FloatArray& crd);
   
 };
 
@@ -141,6 +144,8 @@ void NGON_DBG_CLASS::write_external_phs
   std::vector<E_Int> oIds;
   ng.PHs.extract_of_type(INITIAL_SKIN, PHex, oIds);
   
+  if (oIds.empty()) return;
+  
   ngon_type ngex;
   ngex.PHs=PHex;
   ngex.PGs=ng.PGs;
@@ -190,7 +195,16 @@ void NGON_DBG_CLASS::write
   
   //std::cout << cNGON << std::endl;
   
-  MIO::write(fname, coord.array(), cNGON, "NGON");
+  std::ostringstream fullname;
+  fullname << fname;
+
+#ifdef WIN32
+  fullname << ".tp";
+#else
+  fullname << ".plt";
+#endif
+  
+  MIO::write(fullname.str().c_str(), coord.array(), cNGON, "NGON");
 }
 
 /*
@@ -235,8 +249,8 @@ TEMPLATE_COORD_CONNECT
 void NGON_DBG_CLASS::enabling_write
 (const char* fname, const K_FLD::FloatArray& coord, const K_FLD::IntArray& connect, const char* elt_type)
 {
-  if (_enabled)
-    MIO::write(fname, coord, connect, elt_type);
+  //if (_enabled)
+    //MIO::write(fname, coord, connect, elt_type);
 }
 
 #define dABS(x) ((x<0)? -x : x)
@@ -310,7 +324,8 @@ void NGON_DBG_CLASS::draw_PHT3 (const K_FLD::FloatArray& coord, const ngon_type&
   
   K_FLD::IntArray connectT3;
   DELAUNAY::Triangulator t;
-  E_Int err = K_MESH::Polyhedron<UNKNOWN>::triangulate(t, ng.PGs, ng.PHs.get_facets_ptr(PHi), ng.PHs.stride(PHi), coord, connectT3); // PH -> PHT3
+  std::vector<E_Int> colors;
+  E_Int err = K_MESH::Polyhedron<UNKNOWN>::triangulate(t, ng.PGs, ng.PHs.get_facets_ptr(PHi), ng.PHs.stride(PHi), coord, connectT3, colors, true, false); // PH -> PHT3
   
   std::ostringstream o;
   o << "PHT3ized_" << PHi << ".mesh";
@@ -368,15 +383,15 @@ void NGON_DBG_CLASS::draw_PGT3s(const K_FLD::FloatArray& coord,const ngon_unit& 
 ///
 TEMPLATE_COORD_CONNECT
 void NGON_DBG_CLASS::draw_PGT3
-(const K_FLD::FloatArray& coord,const ngon_unit& PGs, E_Int PGi, K_FLD::FloatArray* PGnormals)
+(const char* fname, const K_FLD::FloatArray& coord,const ngon_unit& PGs, E_Int PGi, K_FLD::FloatArray* PGnormals)
 {
   K_FLD::IntArray connectT3;
     
   PGs.updateFacets();
   DELAUNAY::Triangulator t;
-  t.run(coord, PGs.get_facets_ptr(PGi), PGs.stride(PGi), 1, connectT3, true/*do ot shuffle*/);
+  t.run(coord, PGs.get_facets_ptr(PGi), PGs.stride(PGi), 1, connectT3, true/*do ot shuffle*/, false);
      
-  MIO::write("ngT3.mesh", coord, connectT3, "TRI");
+  MIO::write(fname, coord, connectT3, "TRI");
   
   if (PGnormals)
   {
@@ -422,7 +437,7 @@ void NGON_DBG_CLASS::draw_PG
 
 ///
 TEMPLATE_COORD_CONNECT
-void NGON_DBG_CLASS::draw_PGs(const K_FLD::FloatArray& crd, const ngon_unit& PGs, Vector_t<E_Int> PGis, bool localid)
+void NGON_DBG_CLASS::draw_PGs(const char* fname, const K_FLD::FloatArray& crd, const ngon_unit& PGs, const Vector_t<E_Int>& PGis, bool localid)
 {
   ngon_unit pg;
   for (size_t i = 0; i < PGis.size(); ++i)
@@ -433,10 +448,28 @@ void NGON_DBG_CLASS::draw_PGs(const K_FLD::FloatArray& crd, const ngon_unit& PGs
   ng.export_to_array(cnt);
   std::ostringstream o;
 #ifndef WIN32
-  o << "all_pg.plt";
+  o << fname  << ".plt";
 #else
-  o << "all_pg.tp";
+  o << fname << ".tp";
 #endif
+  
+  MIO::write(o.str().c_str(), crd, cnt, "NGON");
+}
+///
+TEMPLATE_COORD_CONNECT
+void NGON_DBG_CLASS::draw_PGs(const char* fname, const K_FLD::FloatArray& crd, const ngon_unit& PGs, bool localid)
+{    
+  ngon_type ng(PGs);
+  K_FLD::IntArray cnt;
+  ng.export_to_array(cnt);
+  std::ostringstream o;
+  
+#ifndef WIN32
+  o << fname  << ".plt";
+#else
+  o << fname << ".tp";
+#endif
+  
   MIO::write(o.str().c_str(), crd, cnt, "NGON");
 }
 /*
@@ -612,7 +645,7 @@ void NGON_DBG_CLASS::highlight_PH
   
   K_FLD::IntArray connectT3;
   Vector_t<E_Int> T3_to_nPG;
-  E_Int err = ngon_type::triangulate_pgs<Triangulator_t>(ng.PGs, coord, connectT3, T3_to_nPG);
+  E_Int err = ngon_type::template triangulate_pgs<Triangulator_t>(ng.PGs, coord, connectT3, T3_to_nPG);
   
   Vector_t<E_Int> colors(connectT3.cols(), COL_DEFAULT);
     
@@ -674,18 +707,19 @@ TEMPLATE_COORD_CONNECT
 void NGON_DBG_CLASS::__get_historical_PHs
 (const K_FLD::FloatArray& coord, const K_FLD::IntArray& connectT3, const std::map<E_Int, Vector_t<E_Int> >& PHT3s, E_Int PHi,
  E_Int shift, E_Int nb_pgs1, const K_FLD::IntArray& F2E, K_FLD::IntArray& anc_PH, std::vector<E_Int>&nT3_to_oPG,
- std::vector<E_Int>& PHs1, std::vector<E_Int>& PHs2)
+ std::set<E_Int>& PHs1, std::set<E_Int>& PHs2)
 {
   //
   typedef std::map<E_Int, Vector_t<E_Int> > map_t;
   typedef Vector_t<E_Int> vec_t;
+  typedef std::set<E_Int> set_t;
   
   map_t::const_iterator it = PHT3s.find(PHi);  
   if (it == PHT3s.end()) return;
   
   const vec_t& T3s = it->second;
   
-  vec_t* PHs = 0;
+  set_t* PHs = 0;
   
   E_Int nb_t3s = T3s.size();
   
@@ -704,9 +738,23 @@ void NGON_DBG_CLASS::__get_historical_PHs
     
     PHs = (wPG < nb_pgs1) ? &PHs1 : &PHs2;
     
-    if (F2E(0, wPG) != E_IDX_NONE) PHs->push_back(F2E(0, wPG));
-    if (F2E(1, wPG) != E_IDX_NONE) PHs->push_back(F2E(1, wPG)); 
+    if (F2E(0, wPG) != E_IDX_NONE) PHs->insert(F2E(0, wPG));
+    if (F2E(1, wPG) != E_IDX_NONE) PHs->insert(F2E(1, wPG)); 
   }
 }
+
+
+///
+TEMPLATE_COORD_CONNECT
+void NGON_DBG_CLASS::extract_pgs_of_type(E_Int type, const char* fname, const ngon_type& ng, const K_FLD::FloatArray& crd)
+{
+  ngon_unit pg_ext;
+  Vector_t<E_Int> oids;
+  //
+  ng.PGs.extract_of_type(type, pg_ext, oids);
+  write(fname, ACoordinate_t(crd), pg_ext);
+  draw_PGT3s(crd, pg_ext);
+}
+
 
 #endif

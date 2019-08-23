@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -34,11 +34,10 @@ void reshape(int w, int h)
 
   // Set view angle here
   d->_view.tang = tan(ANG2RAD * d->_view.angle * 0.5);
-
   d->farClipping();
 
   /* pour Ivan
-  printf("Cplot reshape: coucou \n");
+  printf("CPlot reshape: coucou \n");
   double alpha = 0.08;
   double dx = (d->_view.xeye - d->_view.xcam)*alpha;
   double dy = (d->_view.yeye - d->_view.ycam)*alpha;
@@ -56,7 +55,6 @@ void Data::farClipping()
   glViewport(0, 0, (GLsizei) _view.w, (GLsizei) _view.h);
   double farD = 40000000.;
   double nearD = 0.5*epsup;
-  //printf("clipping far %f %f.\n", nearD, farD);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   _view.ratio = (double)_view.w/(double)_view.h;
@@ -159,7 +157,6 @@ void Data::adaptiveClipping(double d)
   _view.clipping = -1;
   double nearD, farD;
   nearD = d*0.1; farD = nearD + 40000000.;
-  //printf("clipping adaptive %f - %f %f.\n", d, nearD, farD);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   if (_view.angle > 0)

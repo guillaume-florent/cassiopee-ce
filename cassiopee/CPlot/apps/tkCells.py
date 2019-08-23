@@ -1,5 +1,6 @@
 # - Manipulation au niveau des cellules d'un maillage -
-import Tkinter as TK
+try: import Tkinter as TK
+except: import tkinter as TK
 import CPlot.Ttk as TTK
 import Converter.PyTree as C
 import Post.PyTree as P
@@ -32,7 +33,7 @@ def selectCells(event=None):
         z = P.selectCells(z, formula, strict=strict)
         CTK.replace(CTK.t, nob, noz, z)
 
-    CTK.t = C.fillMissingVariables(CTK.t)
+    #C._fillMissingVariables(CTK.t)
     (CTK.Nb, CTK.Nz) = CPlot.updateCPlotNumbering(CTK.t)
     CTK.TXT.insert('START', 'Cells selected.\n')
     CTK.TKTREE.updateApp()
@@ -61,12 +62,12 @@ def suppressCells():
                 time.sleep(CPlot.__timeStep__)
                 W.update()
                 if (CTK.__BUSY__ == False): break
-            if (CTK.__BUSY__ == True):
+            if CTK.__BUSY__:
                 nob = CTK.Nb[nz]+1
                 noz = CTK.Nz[nz]
                 CTK.saveTree()
                 z = CTK.t[2][nob][2][noz]
-                z = C.initVars(z, 'centers:__tag__', 1)
+                C._initVars(z, 'centers:__tag__', 1)
                 C.setValue(z, 'centers:__tag__', l[1], 0)
                 try:
                     z = P.selectCells2(z, 'centers:__tag__')
@@ -105,12 +106,12 @@ def refineCells():
                 time.sleep(CPlot.__timeStep__)
                 W.update()
                 if CTK.__BUSY__ == False: break
-            if CTK.__BUSY__ == True:
+            if CTK.__BUSY__:
                 nob = CTK.Nb[nz]+1
                 noz = CTK.Nz[nz]
                 CTK.saveTree()
                 z = CTK.t[2][nob][2][noz]
-                z = C.initVars(z, 'centers:__tag__', 0)
+                C._initVars(z, 'centers:__tag__', 0)
                 C.setValue(z, 'centers:__tag__', l[1], 1)
                 try: 
                     z = P.refine(z, '__tag__')
@@ -135,7 +136,7 @@ def createApp(win):
                            text='tkCells', font=CTK.FRAMEFONT, takefocus=1)
     #BB = CTK.infoBulle(parent=Frame, text='Per cell operation\non meshes.\nCtrl+c to close applet.', temps=0, btype=1)
     Frame.bind('<Control-c>', hideApp)
-    Frame.bind('<Button-3>', displayFrameMenu)
+    Frame.bind('<ButtonRelease-3>', displayFrameMenu)
     Frame.bind('<Enter>', lambda event : Frame.focus_set())
     Frame.columnconfigure(0, weight=1)
     Frame.columnconfigure(1, weight=4)
@@ -196,7 +197,7 @@ def updateApp(): return
 #==============================================================================
 def displayFrameMenu(event=None):
     WIDGETS['frameMenu'].tk_popup(event.x_root+50, event.y_root, 0)
-
+    
 #==============================================================================
 if (__name__ == "__main__"):
     import sys

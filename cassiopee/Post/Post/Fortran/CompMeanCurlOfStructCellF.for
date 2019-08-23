@@ -1,5 +1,5 @@
 C  
-C    Copyright 2013-2017 Onera.
+C    Copyright 2013-2019 Onera.
 C
 C    This file is part of Cassiopee.
 C
@@ -61,7 +61,7 @@ C     Calcul des surfaces aux interfaces
       call k6compintsurfofcell(ind, ni, nj, nk, xt, yt, zt, surf) 
 
 C     Calcul du volume de la cellule 
-      call k6compvolofstructcell(ni, nj, nk, ind, xt, yt, zt, cellvol)
+      call k6compvolofstructcell(ni,nj,nk,-1,ind,xt,yt,zt,cellvol)
 
 C-----------------------------------------------------------------------------
 C     Calcul des vecteurs vitesse aux interfaces

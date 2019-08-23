@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -56,8 +56,8 @@ Data::Data(CPlotState* ptState)
   _bias[13] = 0.5; _bias[14] = 0.5; _bias[15] = 1.;
 
   // Initial window size
-  _view.w = 1300;
-  _view.h = 1200;
+  _view.w = 0;
+  _view.h = 0;
 
   // Camera view angle
   _view.angle = 50.;
@@ -85,6 +85,8 @@ Data::Data(CPlotState* ptState)
   _billBoardFiles = new char* [nb];
   _billBoardNis = new int [nb];
   _billBoardNjs = new int [nb];
+  _billBoardWidths = new int [nb]; // init from files
+  _billBoardHeights = new int [nb];
   _billBoardTexs = new GLuint [nb];
   _billBoardFiles[c] = new char [128];
   strcpy(_billBoardFiles[c], "smoke1.png");
@@ -107,8 +109,23 @@ Data::Data(CPlotState* ptState)
   _billBoardTexs[c] = 0;
   _billBoardNis[c] = 4; _billBoardNjs[c] = 4; c++;
   
+  // material settings
+  _nMaterials = 0;
+  _materialFiles = NULL;
+  _materialWidths = NULL;
+  _materialHeights = NULL;
+  _materialTexs = NULL;
+  
+  _nBumpMaps = 0; // must be equal to nMaterials
+  _bumpMapFiles = NULL;
+  _bumpMapWidths = NULL;
+  _bumpMapHeights = NULL;
+  _bumpMapTexs = NULL;
+  
   // Init cam
   initCam();
+  _CDisplayIsLaunched = 0;
+
 }
 
 //=============================================================================
@@ -134,6 +151,23 @@ Data::~Data()
   delete [] _billBoardTexs;
   delete [] _billBoardNis; delete [] _billBoardNjs;
   delete [] _billBoardFiles;
+
+  // delete material storage
+  for (int i = 0; i < _nMaterials; i++)
+  {
+    delete [] _materialFiles[i];
+    if (_materialTexs[i] != 0) glDeleteTextures(1, &_materialTexs[i]);
+  }
+  delete [] _materialTexs;
+  delete [] _materialFiles;
+
+  for (int i = 0; i < _nBumpMaps; i++)
+  {
+    delete [] _bumpMapFiles[i];
+    if (_bumpMapTexs[i] != 0) glDeleteTextures(1, &_bumpMapTexs[i]);
+  }
+  delete [] _bumpMapTexs;
+  delete [] _bumpMapFiles;
 } 
 
 //=============================================================================
@@ -183,8 +217,9 @@ void Data::initState()
   ptrState->activePointF = NULL;
 
   // Render
+  ptrState->farClip = 0;
   ptrState->render = 1;
-  ptrState->bb = 1;
+  ptrState->bb = 0;
   ptrState->header = 1;
   ptrState->info = 1;
   ptrState->menu = 1;
@@ -192,6 +227,7 @@ void Data::initState()
   ptrState->isoLegend = 0;
   ptrState->offscreen = 0;
   ptrState->offscreenBuffer = NULL;
+  ptrState->offscreenDepthBuffer = NULL;
 
   // overlay message
   ptrState->message = NULL;
@@ -205,11 +241,15 @@ void Data::initState()
   ptrState->lightOffsetY = 0.5; // entre 0 et 5
   ptrState->DOF = 0;
   ptrState->shadow = 0;
-  ptrState->dofPower = 6.;
+  ptrState->dofPower = 0.; // inactif par defaut
+  ptrState->gamma = 1.; // inactif par defaut
+  ptrState->sobelThreshold = -0.5; // inactif par defaut
 
-  strcpy(ptrState->file, "tmp");
   strcpy(ptrState->winTitle, "CPlot - array/pyTree display");
-
+  strcpy(ptrState->file, "tmp");
+  strcpy(ptrState->filePath, ".");
+  strcpy(ptrState->localPathName, ".");
+  
   // Local directory path name
 #if defined(_WIN32) ||defined(_WIN64)
   _getcwd(ptrState->localPathName, 120);
@@ -235,6 +275,12 @@ void Data::initState()
   ptrState->solidStyle = 1;
   ptrState->scalarStyle = 0;
   ptrState->vectorStyle = 0;
+  ptrState->vectorScale = 100.f;
+  ptrState->vectorDensity = 0.f;
+  ptrState->vectorNormalize = 0;
+  ptrState->vectorShowSurface = 1;
+  ptrState->vectorShape = 0;
+  ptrState->vector_projection = 0;
   ptrState->selectionStyle = 0;
   ptrState->colormap = 0;
   ptrState->isoLight = 1;
@@ -262,6 +308,7 @@ void Data::initState()
   ptrState->shootScreen = 0;
   pthread_mutex_init(&ptrState->export_mutex, NULL);
   pthread_cond_init(&ptrState->unlocked_export, NULL);
+  ptrState->_mustExport = 0;
 
   // Others
   ptrState->fullScreen = 0;
@@ -283,6 +330,7 @@ void Data::initState()
   ptrState->billBoardNj = 1;
   ptrState->billBoardD = -1; // taille constante
   ptrState->billBoardT = -1; // pas de champ ref pour la turbulence
+  ptrState->billBoardSize = -0.5; // size calculee par la distance
 
   // 1D overlay display
   ptrState->gridSizeI = 1;
@@ -291,6 +339,10 @@ void Data::initState()
   // time
   ptrState->ktime = 0;
   ptrState->ktimer = 0;
+
+  // High order :
+  ptrState->outer_tesselation = 2;
+  ptrState->inner_tesselation = 1;
 
   // locks
   ptrState->freeGPURes = 0;
@@ -691,7 +743,8 @@ void Data::enforceGivenData2(float xcam, float ycam, float zcam,
                              float dirx, float diry, float dirz,
                              float viewAngle,
                              int meshStyle, int solidStyle, int scalarStyle,
-                             int vectorStyle, int colormap,
+                             int vectorStyle, float vectorScale, float vectorDensity, int vectorNormalize, 
+                             int vectorShowSurface, int vectorShape, int vector_projection, int colormap,
                              int niso, float isoEdges, PyObject* isoScales,
                              int bgColor, int ghostifyDeactivatedZones,
                              int edgifyActivatedZones,
@@ -726,7 +779,12 @@ void Data::enforceGivenData2(float xcam, float ycam, float zcam,
   }
   if (scalarStyle != -1) ptrState->scalarStyle = scalarStyle;
   if (vectorStyle != -1) ptrState->vectorStyle = vectorStyle;
-
+  if (vectorScale > 0.) ptrState->vectorScale = vectorScale;
+  if (vectorDensity > -0.5) ptrState->vectorDensity = vectorDensity;
+  if (vectorNormalize != -1) ptrState->vectorNormalize = vectorNormalize;
+  if (vectorShowSurface != -1) ptrState->vectorShowSurface = vectorShowSurface;
+  if ((vector_projection > -1) and (vector_projection < 2)) ptrState->vector_projection = vector_projection;
+  if (( vectorShape > -1) and (vectorShape < 3)) ptrState->vectorShape = vectorShape;
   if (niso != -1) ptrState->niso = niso;
   if (isoEdges != -1) ptrState->isoEdges = isoEdges;
 

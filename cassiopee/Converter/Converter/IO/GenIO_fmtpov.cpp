@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -186,7 +186,7 @@ E_Int K_IO::GenIO::povwrite(
     }
   }
 
-  char format1[40], format2[40];
+  char format1[126], format2[128];
   char dataFmtl[40];
   strcpy(dataFmtl, dataFmt);
   int l = strlen(dataFmt); 

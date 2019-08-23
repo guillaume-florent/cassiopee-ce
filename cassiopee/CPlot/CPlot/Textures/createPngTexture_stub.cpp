@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -24,7 +24,8 @@
   Stub for creating textures from png files (when libpng is unavailable)
 */
 //=============================================================================
-int Data::createPngTexture(const char* filename, GLuint &tex, bool mipmap)
+int Data::createPngTexture(const char* filename, GLuint &tex, 
+                           int& width, int& height, bool mipmap)
 {
   return 0;
 }

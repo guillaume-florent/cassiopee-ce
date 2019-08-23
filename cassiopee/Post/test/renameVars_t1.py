@@ -14,7 +14,7 @@ test.testA([m2],1)
 
 # sur une liste de zones - variables differentes
 m2 = G.cart((10,0,0), (10./(ni-1),10./(nj-1),1), (ni,nj,2))
-m2 = C.addVars(m2, ['ro','rou','rov','roE'])
+C._addVars(m2, ['ro','rou','rov','roE'])
 A = [m,m2]
 B = P.renameVars(A, ['ro','rou','rov'],['Density','MomentumX','MomentumY'])
 test.testA(B,2)

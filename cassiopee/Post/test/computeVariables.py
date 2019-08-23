@@ -19,4 +19,4 @@ m = C.addVars([m, c])
 #--------------------------------------------
 p = P.computeVariables(m, ['Mach', 'Pressure'])
 m = C.addVars([m, p])
-C.convertArrays2File([m], "out.plt")
+C.convertArrays2File(m, "out.plt")

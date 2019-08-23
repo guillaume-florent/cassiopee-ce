@@ -1,6 +1,11 @@
 # - splitTRI (array) -
 import Transform as T
+import Generator as G
+import Converter as C
 import KCore.test as test
 
-c = [[0, 1, 12, 23,24,14,4], [97,87,88,89]]
-test.stdTestA(T.splitTRI,c)
+a = G.cart((0,0,0),(1,1,1),(5,5,1))
+a = C.convertArray2Tetra(a)
+c = [[10,16,22], [2,8,9]]
+d = T.splitTRI(a, c)
+test.testA(d,1)

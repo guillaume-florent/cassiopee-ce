@@ -1,5 +1,5 @@
 C  
-C    Copyright 2013-2017 Onera.
+C    Copyright 2013-2019 Onera.
 C
 C    This file is part of Cassiopee.
 C
@@ -17,7 +17,7 @@ C    You should have received a copy of the GNU General Public License
 C    along with Cassiopee.  If not, see <http://www.gnu.org/licenses/>.
 
 C  ============================================================================
-C  Surface vector and normal to the interfaces for structured grids
+C  Surface Vector and normal to the interfaces for structured grids
 C  ============================================================================
       SUBROUTINE  k6compintsurf(im, jm, km, nbnode,
      &                          intt, inti, intij, x, y, z,
@@ -39,7 +39,7 @@ C_IN
       REAL_E x(0:nbnode-1), y(0:nbnode-1), z(0:nbnode-1) ! coordinates of points
 
 C_OUT
-      REAL_E surfx(0:intt-1), surfy(0:intt-1), surfz(0:intt-1) ! surface vector
+      REAL_E surfx(0:intt-1), surfy(0:intt-1), surfz(0:intt-1) ! surface Vector
       REAL_E snorm(0:intt-1)  !  norm of surf
 
 C_LOCAL

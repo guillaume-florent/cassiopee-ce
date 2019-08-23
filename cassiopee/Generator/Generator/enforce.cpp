@@ -1,5 +1,5 @@
 /*    
-    Copyright 2013-2017 Onera.
+    Copyright 2013-2019 Onera.
 
     This file is part of Cassiopee.
 
@@ -285,13 +285,15 @@ E_Int K_GENERATOR::enforceCommon(const char* name, char* varString,
       return 3;
     }
 
+    //printf("hl=%f %f %f\n", hl, coordp[bsupm], eh);
+
     if ( hl <= coordp[binfp] )
     {
       side = +1; // force enforcePlus
     }
     else if ( hl >= coordp[bsupm] )
     {
-      side = -1;
+      side = -1; // force enforceMoins
     }
     else if ( hl <= coordp[binfp] + eh/2. )
     {
@@ -299,7 +301,7 @@ E_Int K_GENERATOR::enforceCommon(const char* name, char* varString,
     }
     else if ( hl >= coordp[bsupm] - eh/2. )
     {
-      side = -1;
+      side = -1; // force enforceMoins
     }
     else
     {
@@ -405,7 +407,7 @@ E_Int K_GENERATOR::enforceCommon(const char* name, char* varString,
       if (regularity < regularityBest)
       { 
         regularityBest = regularity;
-        if (monotonic == 0) regularityBest = regularityBest + 1000.;
+        if (monotonic == 0) regularityBest += 1000.;
         addrBest = addr; addlBest = addl;
       }
 
@@ -599,12 +601,13 @@ E_Int K_GENERATOR::enforceCommon(const char* name, char* varString,
       // taille de la derniere maille inchangee = x(iend) - x(iend-1)
       k6stretch_(pt1, pt2, sn1.begin(), np1, eh, delta1, 2, 1);
       checkDistribution(sn1, croissante, monotonic, regularity);
+      //printf("pt1 %f %f -> %f %f (npts=%d) -> reg=%f,%d\n",pt1,pt2,eh,delta1,np1,regularity,monotonic);
       addrn = addr + 1;
 
       if (regularity < regularityBest)
       { 
         regularityBest = regularity;
-        if (monotonic == 0) regularityBest = regularityBest + 1000.;
+        if (monotonic == 0) regularityBest += 1000.;
         addrBest = addr;
       }
 
@@ -722,8 +725,7 @@ E_Int K_GENERATOR::enforceCommon(const char* name, char* varString,
       // Taille de la premiere maille = eh ; 
       // taille de la derniere maille inchangee = x(iend) - x(iend-1)
       k6stretch_(pt1, pt2, sn2.begin(), np1, eh, delta1, 2, 1);
-      for (i = 0; i < np1; i++)
-        sn1[i] = -sn2[np1-1-i]+pt2+pt1;
+      for (i = 0; i < np1; i++) sn1[i] = -sn2[np1-1-i]+pt2+pt1;
 
       checkDistribution(sn1, croissante, monotonic, regularity);
      

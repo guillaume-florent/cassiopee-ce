@@ -1,7 +1,6 @@
 # - addBC2Zone (pyTree) -
 import Converter.PyTree as C
 import Generator.PyTree as G
-import Transform.PyTree as T
 import KCore.test as test
 
 # - Structure Near Match -

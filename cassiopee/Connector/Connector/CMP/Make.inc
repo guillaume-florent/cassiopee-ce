@@ -1,11 +1,11 @@
-CXX = mpic++
+CXX = mpicxx
 F90 = mpif90
 F77 = mpif77
 CC  = mpicc
 
-CFLAGS = -g -Wall -I../include
+CFLAGS = -g -Wall -I../include  -fopenmp
 FFLAGS = -g
-LINK   = -L../src -lBuffer -lmpi_cxx -lstdc++
+LINK   = -fopenmp -L../src -lBuffer -lstdc++
 
 .cpp.o:
 	$(CXX) $(CFLAGS) -c $<
